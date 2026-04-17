@@ -1,13 +1,132 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
+/// This is a simplified schema for demonstration purposes.
 
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js" /// This is the Prisma client for Node.js
+}
+/// This is the database configuration
+datasource db {
+  provider = "postgresql" /// This is the database provider
 }
 
-datasource db {
-  provider = "postgresql"
+/// Represents an authenticated user of the system.
+model User {
+  id           String       @id @default(uuid())
+  githubId     String       @unique // OAuth provider reference
+  email        String?      @unique
+  name         String?
+  avatarUrl    String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  // Relationships
+  repositories Repository[]
 }
+
+/// Represents a code repository associated with a user.
+model Repository {
+  id          String       @id @default(uuid())
+  githubRepoId String      @unique // GitHub's internal repository ID
+  name        String       // e.g., "RedFlag-CI"
+  fullName    String       // e.g., "nikhilvirdi/RedFlag-CI"
+  url         String
+  isPrivate   Boolean      @default(false)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  // Relationships
+  userId      String
+  owner       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scanResults ScanResult[]
+}
+
+/// Represents the complete analysis outcome for a given code change (e.g., a Pull Request).
+model ScanResult {
+  id            String       @id @default(uuid())
+  pullRequestId String       // ID or number of the PR scanned
+  commitSha     String       // The specific commit hash scanned
+  status        ScanStatus   @default(PENDING)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  // Relationships
+  repositoryId  String
+  repository    Repository   @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  
+  riskScore     RiskScore?   // 1-to-1 relation with RiskScore
+  findings      Finding[]    // 1-to-many relation with Findings
+}
+/// Represents the status of a scan.
+///enum is a data type that can have only a few possible values.
+///enum in typeScript is like a class with only constants.
+///enum in prisma is like a class with only constants.
+enum ScanStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+}
+
+/// Represents the evaluated security risk associated with a scan result.
+model RiskScore {
+  id               String       @id @default(uuid())
+  totalScore       Float        // Final Security Risk Score
+  classification   RiskLevel    // Qualitative classification (Critical, High, Medium, Low)
+  contributionData Json         // Breakdown of how the score was calculated
+
+  // Relationships
+  scanResultId     String       @unique
+  scanResult       ScanResult   @relation(fields: [scanResultId], references: [id], onDelete: Cascade)
+}
+/// Represents the level of risk associated with a scan result.
+///Possible values are CRITICAL, HIGH, MEDIUM, LOW
+enum RiskLevel {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
+
+/// Represents a single detected vulnerability.
+model Finding {
+  id             String       @id @default(uuid())
+  category       String       // e.g., "Credential Exposure", "Prompt Injection"
+  description    String
+  file           String       // Affected file path
+  lineNumber     Int?         // Specific line number
+  severity       RiskLevel
+  confidence     ConfidenceLevel
+  codeSnippet    String?      // The original vulnerable code segment
+
+  // Relationships
+  scanResultId   String
+  scanResult     ScanResult   @relation(fields: [scanResultId], references: [id], onDelete: Cascade)
+  
+  remediation    Remediation? // 1-to-1 relation with Remediation
+}
+
+enum ConfidenceLevel {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+/// Represents the corrective action associated with a finding.
+model Remediation {
+  id             String       @id @default(uuid())
+  type           RemediationType
+  correctedCode  String?      // The drop-in fix (if automatic)
+  recommendation String?      // Step-by-step guidance (if guided)
+
+  // Relationships
+  findingId      String       @unique
+  finding        Finding      @relation(fields: [findingId], references: [id], onDelete: Cascade)
+}
+
+enum RemediationType {
+  AUTOMATIC
+  GUIDED
+}
+
+
+
+//So prisma schema is like a blueprint for our database.
