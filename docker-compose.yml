@@ -1,0 +1,29 @@
+version: '3.8'
+
+# This file defines our raw infrastructure. We don't run our Node.js code in here yet (we'll run that locally for easier debugging), 
+# but this file provisions our databases perfectly so we don't have to install Postgres/Redis directly onto Windows.
+
+services:
+  # The PostgreSQL Database Container
+  db:
+    image: postgres:15-alpine
+    container_name: redflag-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: adminpassword
+      POSTGRES_DB: redflag_db
+    ports:
+      - "5434:5432" 
+    volumes:
+      - redflag_pg_data:/var/lib/postgresql/data 
+
+  redis:
+    image: redis:7-alpine
+    container_name: redflag-redis
+    restart: always
+    ports:
+      - "6380:6379"
+
+volumes:
+  redflag_pg_data:

@@ -1,7 +1,8 @@
 /// This is a simplified schema for demonstration purposes.
 
 generator client {
-  provider = "prisma-client-js" /// This is the Prisma client for Node.js
+  provider   = "prisma-client-js"
+  engineType = "library" // Use native library engine — avoids requiring an adapter in Prisma v7
 }
 /// This is the database configuration
 datasource db {

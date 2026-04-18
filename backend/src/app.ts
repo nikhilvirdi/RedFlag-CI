@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import { webhookRouter } from './routes/webhook.routes';
+import { logger } from './utils/logger';
 
 /**
  * 💡 Why separate `app.ts` from `index.ts`?
@@ -25,8 +26,15 @@ app.use(cors());
 // E.g., it will output: GET /healthcheck 200 4.312 ms - 25
 app.use(morgan('dev'));
 
-// Express.json() parses incoming JSON payloads from HTTP requests so you can access them via `req.body`.
-app.use(express.json());
+// Express.json() with rawBody capture.
+// The HMAC signature verification middleware requires the ORIGINAL raw bytes of the request body.
+// express.json() by default discards the raw buffer after parsing. The `verify` callback fires
+// before parsing and lets us stash the raw buffer onto req for use in our middleware.
+app.use(express.json({
+    verify: (req: Request, _res, buf) => {
+        (req as any).rawBody = buf;
+    }
+}));
 
 
 // ROUTES
@@ -50,11 +58,11 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 
 // Global error-handling middleware. Any `next(error)` call will route to this block.
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-  console.error('[Error]:', err.message);
-  
+  logger.error(`[Unhandled Error]: ${err.message}`);
+
   // Never leak internal stack traces to the client in production!
   const isProduction = process.env.NODE_ENV === 'production';
-  res.status(500).json({ 
+  res.status(500).json({
     error: 'Internal Server Error',
     details: isProduction ? undefined : err.message
   });

@@ -1,14 +1,12 @@
 import { Router } from 'express';
 import { handleGithubWebhook } from '../controllers/webhook.controller';
+import { verifyGithubSignature } from '../middlewares/verifyGithubSignature.middleware';
 
 // Initialize a clean, modular router just for Webhooks.
 export const webhookRouter = Router();
 
-/**
- * 💡 Production Practice: RESTful Naming
- * We don't route to `/api/webhooks/handleGithub`. We route to `/api/webhooks/github` 
- * and let the POST method strictly imply the action.
- */
-
 // Route: POST /api/webhooks/github
-webhookRouter.post('/github', handleGithubWebhook);
+// Request flow: verifyGithubSignature → handleGithubWebhook
+// The signature middleware acts as a locked gate — only cryptographically
+// authenticated GitHub payloads ever reach the controller.
+webhookRouter.post('/github', verifyGithubSignature, handleGithubWebhook);

@@ -2,6 +2,7 @@ import app from './app';
 import { env } from './config/env';
 import { logger } from './utils/logger';
 import { connectDatabase, prisma } from './config/db';
+import './workers/scan.worker'; // Importing boots the worker — it starts listening immediately
 
 // We wrap the server startup in an async 'bootstrap' function 
 // so we can pause and wait for the database to connect FIRST.
@@ -23,12 +24,17 @@ async function bootstrap() {
         logger.warn('⚠️ Gracefully shutting down... (Received SIGINT)');
         
         server.close(async () => {
-            logger.info('🛑 HTTP server closed.');
-            
-            // Strictly close the database connection to prevent memory leaks/corruption
+            logger.info('HTTP server closed.');
+
+            // Close the BullMQ worker: stop accepting new jobs, finish current ones
+            const { scanWorker } = await import('./workers/scan.worker');
+            await scanWorker.close();
+            logger.info('Scan worker shut down cleanly.');
+
+            // Close the database connection to prevent memory leaks/corruption
             await prisma.$disconnect();
-            logger.info('🐘 Database connection safely terminated.');
-            
+            logger.info('Database connection safely terminated.');
+
             process.exit(0);
         });
     });

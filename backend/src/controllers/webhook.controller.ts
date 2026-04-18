@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { logger } from '../utils/logger';
+import { addScanJob } from '../queues/scan.queue';
 
 /**
  * 💡 Production Practice: Controller Slimness
@@ -30,7 +31,21 @@ export const handleGithubWebhook = async (req: Request, res: Response, next: Nex
         // Therefore, we instantly reply 200 OK, and hand the heavy lifting off to a background Queue!
         res.status(200).json({ status: 'success', message: 'Webhook received and queued for processing.' });
 
-        // TODO: Push the payload to our Redis BullMQ queue here
+        // QUEUE THE JOB — only for pull_request events we actually need to scan
+        // We filter strictly here so random GitHub events (star, fork, issue comment)
+        // do not accidentally trigger expensive security scans.
+        const PR_EVENTS = ['opened', 'synchronize', 'reopened'];
+        if (githubEvent === 'pull_request' && PR_EVENTS.includes(payload.action)) {
+            await addScanJob({
+                installationId: payload.installation?.id,
+                repositoryFullName: payload.repository.full_name,
+                pullRequestNumber: payload.pull_request.number,
+                headSha: payload.pull_request.head.sha,
+                baseRef: payload.pull_request.base.ref,
+            });
+        } else {
+            logger.debug(`Event [${githubEvent}:${payload.action}] — no scan required, ignoring.`);
+        }
 
     } catch (error) {
         // 💡 Production Practice: The Global Error Net
