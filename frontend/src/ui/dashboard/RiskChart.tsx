@@ -1,3 +1,4 @@
+import { motion } from 'framer-motion'
 import type { DashboardStats, RiskLevel } from '../../api/dashboard.types'
 
 const ORDER: RiskLevel[] = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'CLEAN']
@@ -17,16 +18,19 @@ export function RiskChart({ stats }: { stats: DashboardStats }) {
     color: COLORS[level],
   }))
   const max = Math.max(1, ...rows.map((r) => r.count))
+  const total = rows.reduce((sum, r) => sum + r.count, 0)
 
   return (
     <div className="glass glass--panel" style={{ padding: 16, borderRadius: 16 }}>
-      <div style={{ color: '#fff', fontSize: 14, letterSpacing: -0.2 }}>Scan results by risk classification</div>
-      <div style={{ marginTop: 6, color: 'rgba(255,255,255,0.56)', fontSize: 12 }}>
-        Distribution of scans by highest risk bucket (from your dashboard data).
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+        <div style={{ color: '#fff', fontSize: 14, letterSpacing: -0.2 }}>Risk distribution</div>
+        <div style={{ color: 'rgba(255,255,255,0.56)', fontSize: 12 }}>
+          {total} scans classified
+        </div>
       </div>
 
       <div style={{ marginTop: 14, display: 'grid', gap: 10 }}>
-        {rows.map((r) => {
+        {rows.map((r, i) => {
           const pct = (r.count / max) * 100
           return (
             <div key={r.level}>
@@ -45,14 +49,15 @@ export function RiskChart({ stats }: { stats: DashboardStats }) {
                   overflow: 'hidden',
                 }}
               >
-                <div
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${pct}%` }}
+                  transition={{ duration: 0.75, delay: i * 0.08, ease: [0.2, 0.8, 0.2, 1] as const }}
                   style={{
-                    width: `${pct}%`,
                     height: '100%',
                     borderRadius: 999,
                     background: r.color,
                     boxShadow: `0 0 18px ${r.color}40`,
-                    transition: 'width 600ms ease',
                   }}
                 />
               </div>

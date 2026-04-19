@@ -19,20 +19,12 @@ export function RepoCard({ repo, onOpen }: Props) {
           onOpen(repo.id)
         }
       }}
-      className="glass glass--panel"
+      className="glass glass--panel card-hover"
       style={{
         padding: 14,
         borderRadius: 16,
         cursor: 'pointer',
-        transition: 'transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease',
-        willChange: 'transform',
         textAlign: 'left',
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.transform = 'translateY(-2px)'
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.transform = 'translateY(0px)'
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

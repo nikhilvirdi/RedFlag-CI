@@ -6,6 +6,10 @@ export function MarketingNav() {
   const navigate = useNavigate()
   const { state } = useAuth()
 
+  const scrollTo = (id: string) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
+  }
+
   return (
     <div
       className="glass glass--panel"
@@ -17,6 +21,7 @@ export function MarketingNav() {
         borderLeft: 'none',
         borderRight: 'none',
         borderTop: 'none',
+        backdropFilter: 'blur(var(--glass-blur))',
       }}
     >
       <div className="container" style={{ padding: '14px 0' }}>
@@ -24,24 +29,27 @@ export function MarketingNav() {
           <DotLogoMark width={154} height={34} />
 
           <div style={{ marginLeft: 10, display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
-            <a href="#demo" style={{ fontSize: 12, color: 'rgba(255,255,255,0.72)', letterSpacing: 0.6 }}>
-              Demo
-            </a>
-            <a href="#features" style={{ fontSize: 12, color: 'rgba(255,255,255,0.72)', letterSpacing: 0.6 }}>
+            <button
+              onClick={() => scrollTo('features')}
+              style={{ fontSize: 12, color: 'rgba(255,255,255,0.72)', letterSpacing: 0.6, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+            >
               Features
-            </a>
-            <a href="#workflow" style={{ fontSize: 12, color: 'rgba(255,255,255,0.72)', letterSpacing: 0.6 }}>
-              Workflow
-            </a>
-            <a href="#diff" style={{ fontSize: 12, color: 'rgba(255,255,255,0.72)', letterSpacing: 0.6 }}>
-              Diff
-            </a>
+            </button>
+            <button
+              onClick={() => scrollTo('how-it-works')}
+              style={{ fontSize: 12, color: 'rgba(255,255,255,0.72)', letterSpacing: 0.6, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+            >
+              How it works
+            </button>
+            <button
+              onClick={() => scrollTo('diff-preview')}
+              style={{ fontSize: 12, color: 'rgba(255,255,255,0.72)', letterSpacing: 0.6, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+            >
+              Diff viewer
+            </button>
           </div>
 
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 10, alignItems: 'center' }}>
-            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.56)' }}>
-              Backend <span style={{ fontFamily: 'var(--mono)' }}>localhost:4000</span>
-            </div>
             <button
               onClick={() => navigate('/login')}
               className="glass"
@@ -70,7 +78,7 @@ export function MarketingNav() {
                 fontSize: 12,
               }}
             >
-              Open dashboard
+              Dashboard
             </button>
           </div>
         </div>
@@ -78,4 +86,3 @@ export function MarketingNav() {
     </div>
   )
 }
-

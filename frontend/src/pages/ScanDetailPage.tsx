@@ -171,8 +171,23 @@ export function ScanDetailPage() {
                       )}
                     </div>
 
-                    <div style={{ marginTop: 10, color: 'rgba(255,255,255,0.56)', fontSize: 12, lineHeight: 1.6 }}>
-                      Contribution breakdown is displayed when `riskScore.contributionData` is present.
+                    <div style={{ marginTop: 10, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+                      <div style={{ padding: '10px 12px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.02)' }}>
+                        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.56)', letterSpacing: 0.6 }}>Findings</div>
+                        <div style={{ marginTop: 6, fontSize: 18, fontFamily: 'var(--mono)', color: '#fff' }}>{findings.length}</div>
+                      </div>
+                      <div style={{ padding: '10px 12px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.02)' }}>
+                        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.56)', letterSpacing: 0.6 }}>Auto-fixable</div>
+                        <div style={{ marginTop: 6, fontSize: 18, fontFamily: 'var(--mono)', color: '#fff' }}>
+                          {findings.filter(f => f.remediation?.type === 'AUTOMATIC').length}
+                        </div>
+                      </div>
+                      <div style={{ padding: '10px 12px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.02)' }}>
+                        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.56)', letterSpacing: 0.6 }}>Scanned</div>
+                        <div style={{ marginTop: 6, fontSize: 13, fontFamily: 'var(--mono)', color: 'rgba(255,255,255,0.82)' }}>
+                          {new Date(scan.createdAt).toLocaleDateString()}
+                        </div>
+                      </div>
                     </div>
 
                     {scan.riskScore?.contributionData && (

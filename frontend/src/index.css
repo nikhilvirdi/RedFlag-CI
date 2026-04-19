@@ -142,3 +142,40 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Card hover lift */
+.card-hover {
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+  will-change: transform;
+}
+.card-hover:hover {
+  transform: translateY(-2px);
+}
+
+/* Focus-visible for keyboard navigation */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+  outline: 2px solid rgba(0, 251, 255, 0.4);
+  outline-offset: 2px;
+}
+
+/* Transition helpers */
+.transition-fast {
+  transition: all 180ms ease;
+}
+
+/* ─── RESPONSIVE BREAKPOINTS ─── */
+
+/* Tablet: below 960px */
+@media (max-width: 960px) {
+  .container {
+    width: calc(100% - 32px);
+  }
+}
+
+/* Mobile: below 640px */
+@media (max-width: 640px) {
+  .container {
+    width: calc(100% - 24px);
+  }
+}

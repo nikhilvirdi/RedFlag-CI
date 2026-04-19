@@ -31,12 +31,12 @@ const credentialRemediated = [
 const stagger = {
   hidden: {},
   visible: { transition: { staggerChildren: 0.06 } },
-}
+} as const
 
 const fadeUp = {
   hidden: { opacity: 0, y: 14 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.55, ease: [0.2, 0.8, 0.2, 1] } },
-}
+  visible: { opacity: 1, y: 0, transition: { duration: 0.55, ease: [0.2, 0.8, 0.2, 1] as const } },
+} as const
 
 export function LandingPage() {
   const navigate = useNavigate()
