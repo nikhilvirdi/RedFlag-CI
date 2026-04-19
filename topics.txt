@@ -1,0 +1,145 @@
+# Implementation Order (RedFlag CI - Phase 1)
+
+1. PROJECT ARCHITECTURE & SCAFFOLDING
+- Node.js
+- TypeScript
+- CommonJS vs ESModules
+- Package.json scripts
+- Nodemon (Hot Reloading)
+- ts-node (TypeScript Execution)
+
+2. LOGGING & OBSERVABILITY
+- Winston (Structured Logging)
+- Morgan (HTTP Request Logging)
+- Logger Transports (Console/File)
+- Unified Logging Format
+
+3. INFRASTRUCTURE PROVISIONING
+- Docker
+- Docker Compose
+- Containerization
+- Port Mapping (Docker)
+- Bridge Networking (Docker)
+- Volumes (Docker Persistence)
+- PostgreSQL
+- Redis
+
+4. DATABASE & DATA MODELING
+- Prisma ORM
+- Repository Pattern (Prisma Schema)
+- Database Migrations
+- Prisma Generators
+- Prisma Engine Types (Library vs Binary)
+- Unified Database Singletons
+- JSON Parsing (Prisma Json types)
+- Enumerations (Enums)
+
+5. STRICT OPERATIONAL SAFETY
+- Dotenv (Environment Variables)
+- Environment Configuration Validation
+- Strict Type Checking
+- Interface Definition
+- Graceful Shutdown (Process Events)
+- POSIX Signals (SIGINT)
+- Node.js process.on Hooks
+
+6. API FOUNDATION
+- Express.js
+- MVC Pattern (Model-View-Controller)
+- Express Routers
+- Express Controllers
+- Express Middlewares
+- REST API Design
+- HTTP Verbs (POST, GET)
+- HTTP Status Codes (200, 401, 404, 500)
+- Helmet.js (HTTP Security Headers)
+- CORS (Cross-Origin Resource Sharing)
+- Error Handling Middleware
+- Async/Await Error Propagation (next())
+- Healthchecks
+
+7. ASYNCHRONOUS QUEUING & SCALING
+- ioredis (High-performance Redis client)
+- BullMQ (Persistent Task Queues)
+- Message Queuing
+- Producer-Consumer Pattern
+- BullMQ Workers
+- BullMQ Jobs
+- BullMQ Deduplication (Deterministic Job IDs)
+- Exponential Backoff (Retry Strategy)
+- Job TTLs (Auto-cleanup)
+- Early Acknowledgement (Webhook Pattern)
+- Decoupled Processing
+
+8. CRYPTOGRAPHIC SECURITY LAYER
+- GitHub Webhooks Authentication
+- HMAC-SHA256 (Signature Verification)
+- SHA256
+- `crypto` (Built-in Node.js module)
+- timingSafeEqual (Timing Attack Prevention)
+- Constant-Time Comparison
+- Timing Side-channel Attacks
+- Buffer Handling (Raw Body Capture)
+- Cryptographic Signs & Verifications
+- Security Sidecar Architecture
+
+9. GITHUB SERVICE INTEGRATION
+- GitHub App Architecture
+- Octokit SDK (@octokit/app, @octokit/rest)
+- GitHub REST API
+- RSA Private Keys (PEM format)
+- App Authentication (JWT)
+- Installation Tokens (GitHub OAuth)
+- Bearer Token Authentication
+- OAuth Scope Management
+- Unified Diff Format (PR Patches)
+- Commit Status API (Commit Checks)
+- Issues/Comments API (PR Reporting)
+- Pull Request API
+- Webhook Signature Logic
+
+10. PYTHON SECURITY SCAN ENGINE
+- Python 3.x
+- Abstract Syntax Trees (AST Module)
+- Regular Expressions (re Module)
+- Static Application Security Testing (SAST)
+- Code Parsing and Analysis
+- Dictionary Mapping (Mappings/Enums in Python)
+- Standard IO Streams (sys.stdin, sys.stdout, sys.stderr)
+- Unified Diff Parsing (Line tracking logic)
+- Modular Engine Design (Analyzers pattern)
+
+11. INTER-PROCESS COMMUNICATION (IPC)
+- Node.js `child_process` module
+- `spawn` vs `exec`
+- `subprocess.Popen` concepts
+- Standard Input/Output streaming (stdin.write, stdout.on('data'))
+- JSON Parsing across language boundaries (Python `json.dumps` -> Node `JSON.parse`)
+- Asynchronous process wrapping via Promises
+- Handling Non-zero exit codes
+
+12. USER AUTHENTICATION & SESSIONS
+- OAuth 2.0 (Authorization Code Grant Flow)
+- GitHub OAuth APIs
+- Cross-Site Request Forgery (CSRF) Protection
+- State parameter validation
+- In-memory state storage (Map) vs Distributed (Redis)
+- Short-lived Authorization Codes vs Access Tokens
+- JSON Web Tokens (JWT)
+- JWT Signing and Verification (HMAC-SHA256)
+- Token Expiration and TTL
+- Bearer Token Authentication Scheme
+- Express Request Type Augmentation (TypeScript)
+- Authorization headers
+
+13. ADVANCED DATA RETRIEVAL (DASHBOARD API)
+- Separation of Concerns (Service vs Controller)
+- Request Parameter & Query Formatting
+- Prisma Relations and Nested Writes (Atomic operations)
+- The "N+1 Query" Problem
+- Prisma `include` (SQL JOIN abstraction)
+- Prisma `_count` (SQL COUNT aggregations)
+- Prisma `$transaction` (Multiplexing / Isolation)
+- Insecure Direct Object Reference (IDOR) Protection
+- Cursor-based vs Offset-based Pagination
+- Data Shaping (Denormalization for Frontend Display)
