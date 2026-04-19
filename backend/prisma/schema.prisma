@@ -4,9 +4,12 @@ generator client {
   provider   = "prisma-client-js"
   engineType = "library" // Use native library engine — avoids requiring an adapter in Prisma v7
 }
-/// This is the database configuration
+/// This is the database configuration.
+/// DATABASE_URL is loaded from the .env file at runtime — never hardcode it.
+/// Example: DATABASE_URL="postgresql://postgres:password@localhost:5432/redflagci"
 datasource db {
-  provider = "postgresql" /// This is the database provider
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 /// Represents an authenticated user of the system.
@@ -79,12 +82,14 @@ model RiskScore {
   scanResult       ScanResult   @relation(fields: [scanResultId], references: [id], onDelete: Cascade)
 }
 /// Represents the level of risk associated with a scan result.
-///Possible values are CRITICAL, HIGH, MEDIUM, LOW
+/// CLEAN is included to match the Python engine's output when no findings are returned.
+/// This prevents a mapping error when trying to persist a clean scan result.
 enum RiskLevel {
   CRITICAL
   HIGH
   MEDIUM
   LOW
+  CLEAN
 }
 
 /// Represents a single detected vulnerability.

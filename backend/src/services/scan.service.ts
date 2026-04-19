@@ -1,5 +1,6 @@
 import { spawn } from 'child_process';
 import path from 'path';
+import { RiskLevel, ConfidenceLevel, RemediationType } from '@prisma/client';
 import { logger } from '../utils/logger';
 import {
     getInstallationOctokit,
@@ -8,6 +9,7 @@ import {
     setCommitStatus,
 } from './github.service';
 import { ScanJobData } from '../queues/scan.queue';
+import { prisma } from '../config/db';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TYPES
@@ -81,12 +83,12 @@ async function runPythonScanEngine(diff: string): Promise<ScanEngineResult> {
 
         logger.info(`Spawning Python scan engine at: ${enginePath}`);
 
-        // Spawn a child Python process.
-        // - 'python3' is the binary to execute.
+        // spawn a child Python process.
+        // - 'python' is the binary to execute (since python3 is not available on Windows).
         // - [enginePath] is the argument list (the script file).
         // - stdio: ['pipe', 'pipe', 'pipe'] opens writable stdin, readable stdout,
         //   and readable stderr as streams we can interact with programmatically.
-        const pythonProcess = spawn('python3', [enginePath], {
+        const pythonProcess = spawn('python', [enginePath], {
             stdio: ['pipe', 'pipe', 'pipe'],
         });
 
@@ -285,6 +287,108 @@ export async function runScanPipeline(jobData: ScanJobData): Promise<void> {
     // Pipe the diff to the Python engine and wait for the structured JSON result.
     const scanResult = await runPythonScanEngine(diff);
     logger.info(`[ScanService] Scan complete. Score: ${scanResult.risk_score}/100, Classification: ${scanResult.risk_classification}, Findings: ${scanResult.findings.length}`);
+
+    // ── STEP 4.5: Persist Results to PostgreSQL ──────────────────────────────
+    // We save results BEFORE posting the comment so that even if the GitHub
+    // API call fails (network blip, rate limit), our data is already safe.
+    //
+    // 💡 Why a try/catch here instead of letting it throw?
+    // A database write failure must NEVER block the developer from receiving
+    // their PR comment — that would defeat the core purpose of the system.
+    // We log the error and continue, preserving the UX while alerting on-call.
+    //
+    // 💡 How Prisma nested writes work:
+    // Instead of 4 separate INSERT queries (ScanResult, RiskScore, per-Finding,
+    // per-Remediation), Prisma lets us describe the entire object tree in one
+    // call. It compiles this down into a transaction — either everything is
+    // saved, or nothing is (atomicity). No need for manual BEGIN/COMMIT/ROLLBACK.
+    try {
+        // ── Map Python engine string values to Prisma enum values ────────
+        // The Python engine emits strings like 'critical', 'high', 'medium', 'low', 'clean'.
+        // Prisma enums are uppercase: CRITICAL, HIGH, etc.
+        // We map them here at the boundary so the rest of the codebase stays clean.
+        const riskLevelMap: Record<string, RiskLevel> = {
+            critical: RiskLevel.CRITICAL,
+            high:     RiskLevel.HIGH,
+            medium:   RiskLevel.MEDIUM,
+            low:      RiskLevel.LOW,
+            clean:    RiskLevel.CLEAN,
+        };
+
+        const confidenceMap: Record<string, ConfidenceLevel> = {
+            high:   ConfidenceLevel.HIGH,
+            medium: ConfidenceLevel.MEDIUM,
+            low:    ConfidenceLevel.LOW,
+        };
+
+        await prisma.scanResult.create({
+            data: {
+                pullRequestId: String(pullRequestNumber),
+                commitSha:     headSha,
+                status:        'COMPLETED',
+
+                // ── Nested write: RiskScore (1-to-1 with ScanResult) ───
+                // 'create' here tells Prisma to INSERT a new RiskScore row
+                // and automatically set its scanResultId foreign key.
+                riskScore: {
+                    create: {
+                        totalScore:       scanResult.risk_score,
+                        classification:   riskLevelMap[scanResult.risk_classification] ?? RiskLevel.CLEAN,
+                        contributionData: {
+                            // Breakdown stored as JSON for analytics queries later
+                            total_findings: scanResult.findings.length,
+                            by_severity: scanResult.findings.reduce((acc, f) => {
+                                acc[f.severity] = (acc[f.severity] ?? 0) + 1;
+                                return acc;
+                            }, {} as Record<string, number>),
+                        },
+                    },
+                },
+
+                // ── Nested write: Findings (1-to-many with ScanResult) ─
+                // 'createMany' inserts all findings in a single batch INSERT.
+                // Each finding also creates its own Remediation via a nested write.
+                findings: {
+                    create: scanResult.findings.map((finding) => ({
+                        category:    finding.type,
+                        description: finding.description,
+                        file:        finding.file,
+                        lineNumber:  finding.line,
+                        severity:    riskLevelMap[finding.severity] ?? RiskLevel.LOW,
+                        confidence:  confidenceMap[finding.confidence] ?? ConfidenceLevel.LOW,
+                        codeSnippet: finding.original_code,
+
+                        // ── Nested write: Remediation (1-to-1 with Finding) ─
+                        // Only created if the finding has at least one of these fields.
+                        // 💡 'create' inside 'findings.create' nests three levels deep —
+                        // Prisma handles the FK chaining (finding.id → remediation.findingId) automatically.
+                        remediation: (finding.remediated_code || finding.recommendation)
+                            ? {
+                                create: {
+                                    type:           finding.remediated_code ? RemediationType.AUTOMATIC : RemediationType.GUIDED,
+                                    correctedCode:  finding.remediated_code ?? null,
+                                    recommendation: finding.recommendation  ?? null,
+                                },
+                            }
+                            : undefined,
+                    })),
+                },
+
+                // ── Repository connection ─────────────────────────────────
+                // 💡 Why findFirst + connect by ID?
+                // The repository row must already exist. 'connect' requires a @unique field.
+                // Since fullName is not @unique in schema.prisma, we look it up first.
+                repository: {
+                    connect: { id: (await prisma.repository.findFirst({ where: { fullName: repositoryFullName } }))?.id || '' },
+                },
+            },
+        });
+
+        logger.info(`[ScanService] Results persisted to database for PR #${pullRequestNumber}.`);
+    } catch (dbError) {
+        // Non-fatal — log and continue so the GitHub comment is still posted.
+        logger.error('[ScanService] Failed to persist scan results to database.', { error: dbError });
+    }
 
     // ── STEP 5 & 6: Format and Post the PR Comment ──────────────────────────
     // Convert raw findings into a readable markdown report and post it.

@@ -3,6 +3,8 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import { webhookRouter } from './routes/webhook.routes';
+import { authRouter } from './routes/auth.routes';
+import { dashboardRouter } from './routes/dashboard.routes';
 import { logger } from './utils/logger';
 
 /**
@@ -47,6 +49,20 @@ app.get('/healthcheck', (req: Request, res: Response) => {
 
 // We attach modular routers here:
 app.use('/api/webhooks', webhookRouter);
+
+// Auth routes — GitHub OAuth + session verification.
+// /api/auth/github/redirect  → initiates OAuth flow
+// /api/auth/github/callback  → GitHub's redirect destination after login
+// /api/auth/me               → validates JWT, returns current user profile
+app.use('/api/auth', authRouter);
+
+// Dashboard routes — protected by JWT authenticate middleware internally.
+// /api/dashboard/stats                         → overview stats
+// /api/dashboard/repositories                  → user's repo list
+// /api/dashboard/repositories/:id              → single repo detail
+// /api/dashboard/repositories/:id/scans        → paginated scan history
+// /api/dashboard/scans/:scanResultId           → full scan detail report
+app.use('/api/dashboard', dashboardRouter);
 
 
 // GLOBAL ERROR HANDLING
