@@ -115,16 +115,30 @@ input {
   border: 0;
 }
 
+/* StatusBadge IN_PROGRESS pulse animation */
 @keyframes rfciPulse {
-  0% {
-    transform: translateX(-40%);
-    opacity: 0;
-  }
-  40% {
-    opacity: 1;
-  }
+  0%,
   100% {
-    transform: translateX(40%);
-    opacity: 0;
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(100%);
   }
 }
+
+/* Input focus ring */
+input:focus {
+  border-color: rgba(0, 251, 255, 0.28) !important;
+  box-shadow: var(--shadow-soft), var(--shadow-glow-cyan);
+}
+
+/* Button hover enhancements */
+button:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+

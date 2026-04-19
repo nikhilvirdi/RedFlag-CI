@@ -14,6 +14,7 @@ export default function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/auth/success" element={<AuthSuccessPage />} />
 
+      {/* Protected dashboard routes */}
       <Route
         path="/app"
         element={
@@ -22,7 +23,6 @@ export default function App() {
           </RequireAuth>
         }
       />
-
       <Route
         path="/app/repos/:repositoryId"
         element={
@@ -31,7 +31,6 @@ export default function App() {
           </RequireAuth>
         }
       />
-
       <Route
         path="/app/scans/:scanResultId"
         element={
