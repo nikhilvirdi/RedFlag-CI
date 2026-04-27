@@ -27,12 +27,14 @@
 <img src="https://img.shields.io/badge/Styling-Tailwind%20CSS-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white" />
 <img src="https://img.shields.io/badge/HTTP-Axios-5A29E4?style=for-the-badge&logo=axios&logoColor=white" />
 
+```text
 ██████╗ ███████╗██████╗ ███████╗██╗      █████╗  ██████╗     ██████╗██╗
 ██╔══██╗██╔════╝██╔══██╗██╔════╝██║     ██╔══██╗██╔════╝    ██╔════╝██║
 ██████╔╝█████╗  ██║  ██║█████╗  ██║     ███████║██║  ███╗   ██║     ██║
 ██╔══██╗██╔══╝  ██║  ██║██╔══╝  ██║     ██╔══██║██║   ██║   ██║     ██║
 ██║  ██║███████╗██████╔╝██║     ███████╗██║  ██║╚██████╔╝   ╚██████╗██║
 ╚═╝  ╚═╝╚══════╝╚═════╝ ╚═╝     ╚══════╝╚═╝  ╚═╝ ╚═════╝     ╚═════╝╚═╝
+```
 
 ### AI-native security analysis for modern CI/CD pipelines.
 
@@ -40,13 +42,11 @@ RedFlag-CI is a pull request security analysis engine that scans code changes
 to detect vulnerabilities in both AI-generated and human-written code before
 they are merged. It combines pattern-based detection, context-aware analysis,
 risk scoring, remediation support, GitHub PR feedback, and dashboard visibility
-into a single workflow-integrated system. [file:30]
+into a single workflow-integrated system.
 
 [Report Bug](https://github.com/nik/redflag-ci/issues) · [Request Feature](https://github.com/nik/redflag-ci/issues) · [Documentation](#documentation)
 
 </div>
-
----
 
 ## Table of Contents
 
