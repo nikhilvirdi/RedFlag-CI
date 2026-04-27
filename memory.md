@@ -1,6 +1,5 @@
-# 🧠 RedFlag CI - Project Memory & Context
 **Last Updated:** 2026-04-20
-**Status:** Backend Infrastructure STABLE; Commencing Frontend Development.
+**Status:** Frontend Dashboard COMPLETE (Phase 1-3); High-Fidelity API Integration STABLE.
 
 ---
 
@@ -12,13 +11,12 @@
 ---
 
 ## 🏗️ Architectural Blueprint
--   **Backend:** Node.js + TypeScript (Express).
+-   **Backend:** Node.js + TypeScript (Express) on Port 4000.
+-   **Frontend:** React + TypeScript + Vite on Port 5173/5174.
 -   **Database:** PostgreSQL (via Prisma ORM).
 -   **Task Queue:** BullMQ + Redis (Asynchronous scan orchestration).
--   **Security Engine:** Python 3.x (AST analysis forSAST).
--   **IPC:** Node `spawn` and `stdin/stdout` streaming to Python.
--   **Authentication:** GitHub OAuth 2.0 with JWT Sessions.
--   **Infrastructure:** Dockerized local dev environment (Postgres/Redis).
+-   **Security Engine:** Python 3.x (AST analysis for SAST).
+-   **Design:** Custom Glassmorphism + Dark Mode (Pure #000000).
 
 ---
 
@@ -26,29 +24,33 @@
 -   [x] **Infrastructure:** Docker-compose for Postgres (5434) and Redis (6380).
 -   [x] **Database:** Full Prisma schema for Users, Repos, Scans, and Findings.
 -   [x] **Scan Pipeline:** BullMQ producer/worker system that triggers Python scans.
--   [x] **Security Engine:** AST-based analyzers for Credentials and Dependencies.
+-   [x] **Security Engine:** AST-based analyzers for Credentials, SQLi, and Dependencies.
 -   [x] **Auth Layer:** Complete GitHub OAuth flow and JWT middleware.
--   [x] **Dashboard API:** REST endpoints for stats, repo lists, and scan results.
+-   [x] **Dashboard API:** REST endpoints for stats, repo lists, and scan details.
+-   [x] **Frontend Foundation:** React Router v6, TanStack Query v5, Zustand.
+-   [x] **Frontend UI:** High-fidelity Glassmorphism design system.
+-   [x] **Frontend Polish:** Count-up animations, animated risk charts, and responsive layouts.
 
 ---
 
-## 🏆 Recent Wins & Resolution: The Octokit ESM Conflict
-We successfully resolved the `ERR_PACKAGE_PATH_NOT_EXPORTED` crash.
--   **Solution:** Downgraded `@octokit/app` to `^14.0.0` and `@octokit/rest` to `^19.0.0`.
--   **Rationale:** These are the last versions that support CommonJS (our project type) natively without requiring a complete ESM migration of the entire codebase.
--   **Result:** Server now boots successfully on port 4000.
+## 🏆 Recent Wins: Frontend "Phase 3" Mastery
+We successfully transitioned from mock prototypes to a production-ready dashboard.
+-   **Real Data:** Scanned actual backend endpoints to populate `GlassStats` and `RepoCard`.
+-   **Drill-down:** Implemented full navigation depth: Dashboard → Repository → Scan Result.
+-   **Security UX:** Built the `SecurityDiffViewer` to visualize vulnerabilities (Red) vs Remediations (Cyan).
+-   **Performance:** Optimized with TanStack Query caching and Framer Motion staggered animations.
 
 ---
 
 ## 🛠️ Key Technical Patterns to Remember
--   **Fail-Fast Envs:** `env.ts` crashes the server if `.env` is missing keys.
--   **Singleton Prisma:** Shared database connection pool on `globalThis`.
--   **Deterministic IDs:** Job IDs in BullMQ prevent duplicate scans.
--   **Nested Connect:** Scan results link to Repositories via ID lookups.
+-   **Signal-First Design:** Red (#ff0000) = Danger; Cyan (#00fbff) = Secure. No ambiguity.
+-   **Glass Panel Identity:** Background `rgba(255,255,255,0.03)`, Blur `12px`, Border `rgba(255,255,255,0.10)`.
+-   **Deterministic Remediation:** Use `correctedCode` if type is `AUTOMATIC` to show diffs.
+-   **Type Safety:** Strict TypeScript interfaces for all API responses to ensure front-back alignment.
 
 ---
 
-## 🚀 Next Steps (Dashboard Phase)
-1.  **Initialize Frontend:** Run `npm create vite@latest frontend -- --template react-ts`.
-2.  **Implementation:** Follow the **Cursor Master Plan** to build the high-precision Logo Animation and Glassmorphism UI.
-3.  **Core Feature:** Build the **Security Diff Viewer** for visualizing AST-analysis findings.
+## 🚀 Next Steps (Logo & Final Polish)
+1.  **Rubik Maze Logo:** Implement the custom "RedFlag CI" logo using the Rubik Maze font (Red/White split).
+2.  **Deployment Prep:** Finalize Dockerfile for the frontend and production nginx config.
+3.  **Landing Page Polish:** Final review of the marketing copy and scroll-into-view interactions.

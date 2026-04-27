@@ -22,8 +22,6 @@ export const handleGithubWebhook = async (req: Request, res: Response, next: Nex
 
         logger.info(`📥 Received Webhook Event: [${githubEvent}]`);
 
-        // TODO: In the next step, we will use a crypto library to verify GitHub's secret signature here!
-        // We must reject hackers trying to send fake webhooks to our system.
 
         // 💡 Production Practice: Early Acknowledgement
         // GitHub expects a 200 OK response within 10 seconds. If we run a 3-minute AI Python scan here, 

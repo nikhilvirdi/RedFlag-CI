@@ -6,6 +6,7 @@ import { webhookRouter } from './routes/webhook.routes';
 import { authRouter } from './routes/auth.routes';
 import { dashboardRouter } from './routes/dashboard.routes';
 import { logger } from './utils/logger';
+import { errorHandler } from './middlewares/errorHandler.middleware';
 
 /**
  * 💡 Why separate `app.ts` from `index.ts`?
@@ -73,15 +74,6 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 });
 
 // Global error-handling middleware. Any `next(error)` call will route to this block.
-app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-  logger.error(`[Unhandled Error]: ${err.message}`);
-
-  // Never leak internal stack traces to the client in production!
-  const isProduction = process.env.NODE_ENV === 'production';
-  res.status(500).json({
-    error: 'Internal Server Error',
-    details: isProduction ? undefined : err.message
-  });
-});
+app.use(errorHandler);
 
 export default app;
