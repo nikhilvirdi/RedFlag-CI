@@ -11,7 +11,7 @@
 ╚═╝  ╚═╝╚══════╝╚═════╝ ╚═╝     ╚══════╝╚═╝  ╚═╝ ╚═════╝     ╚═════╝╚═╝
 ```
 
-<p align="left">
+<p align="center">
   <a href="https://github.com"><img src="https://img.shields.io/badge/platform-GitHub_App-181717?style=for-the-badge&logo=github" alt="GitHub App"></a>
   <a href="https://nodejs.org/"><img src="https://img.shields.io/badge/runtime-Node.js-339933?style=for-the-badge&logo=node.js&logoColor=white" alt="Node.js"></a>
   <a href="https://expressjs.com/"><img src="https://img.shields.io/badge/framework-Express.js-000000?style=for-the-badge&logo=express&logoColor=white" alt="Express.js"></a>
@@ -32,7 +32,7 @@
   <a href="https://railway.com/"><img src="https://img.shields.io/badge/deploy-Railway-0B0D0E?style=for-the-badge&logo=railway&logoColor=white" alt="Railway"></a>
 </p>
 
-<p align="left">
+<p align="center">
   <img src="https://img.shields.io/badge/validation-Zod-3E67B1?style=flat-square" alt="Zod">
   <img src="https://img.shields.io/badge/http-Axios-5A29E4?style=flat-square" alt="Axios">
   <img src="https://img.shields.io/badge/logging-Winston-231F20?style=flat-square" alt="Winston">
@@ -52,19 +52,23 @@
   <img src="https://img.shields.io/badge/license-Strict_Proprietary-7F1D1D?style=flat-square" alt="Strict Proprietary License">
 </p>
 
-RedFlag CI is a security intelligence platform built for AI-assisted software development. It plugs into GitHub pull requests, analyzes code changes before merge, identifies both classic and AI-specific security risks, and returns actionable remediation.
+</div>
+
+---
+
+RedFlag CI is a security intelligence platform built for AI-assisted software development. It plugs into GitHub pull requests, analyzes code changes before merge, and identifies both classic and AI-specific security vulnerabilities.
 
 ## The Problem
 
 AI coding assistants make teams faster, but they also introduce a new category of security issues that conventional tools do not fully understand.
 
-AI-generated code can include hardcoded credentials, hallucinated packages, disabled authentication scaffolding, insecure defaults, prompt injection paths, unsafe query construction, and development-only artifacts that accidentally reach production. Traditional scanners can catch many isolated issues, but they are not designed to reason about AI-generated code patterns, connect multiple weak signals into exploit chains, or learn a repository's false-positive behavior over time.
+AI-generated code can include hardcoded credentials, hallucinated packages, disabled authentication scaffolding, insecure defaults, prompt injection paths, unsafe query construction, and development-only flags left in production paths. Traditional SAST tools detect the first category but miss or underweight the second.
 
 ## RedFlag CI
 
-RedFlag CI is a GitHub App-based security system designed specifically for modern AI-assisted development workflows. It combines static analysis, semantic scanning, dependency intelligence, repository memory, and LLM-assisted remediation in a single review pipeline.
+RedFlag CI is a GitHub App-based security system designed specifically for modern AI-assisted development workflows. It combines static analysis, semantic scanning, dependency intelligence, repository context, and LLM-assisted remediation into a single workflow.
 
-The project focuses on pull-request-time detection so developers get feedback before insecure code is merged. It is built to be zero-configuration at onboarding while still supporting richer workflows like posture tracking, community rule sharing, SARIF export, and automated fix generation.
+The project focuses on pull-request-time detection so developers get feedback before insecure code is merged. It is built to be zero-configuration at onboarding while still supporting richer workflows for security teams and enterprises.
 
 ## What it does
 
