@@ -1,1150 +1,748 @@
-# Project : RedFlag CI
+# RedFlag CI — Project Documentation
 
-## ![alt text](<RedFlag CI.png>)
-
-## Problem Statement
-
-The rapid adoption of AI-assisted development tools has significantly accelerated software creation. Developers increasingly rely on these tools to generate production-ready code with minimal manual intervention. While this improves speed, it introduces a new class of security risks that are difficult to detect using traditional methods.
-
-AI-generated code often contains vulnerabilities such as hardcoded credentials, unsafe database queries, insecure dependency usage, and improper handling of user input. These issues arise from patterns commonly produced by language models and differ from conventional human-written code vulnerabilities. Existing security tools are not designed to identify or prioritize risks specific to AI-generated code, leading to gaps in detection and increased exposure.
-
-As a result, developers may unknowingly introduce critical security flaws into their applications, especially in fast-paced environments where manual review is limited or absent.
-
-### Objective
-
-The objective of this project is to build a system that automatically analyzes code changes during development, identifies security vulnerabilities with a focus on AI-generated patterns, and provides clear, actionable remediation.
-
-The system is designed to operate within the developer’s existing workflow, ensuring that security checks are performed early, consistently, and without requiring additional effort. It aims to reduce the risk of insecure code being merged or deployed, while maintaining high accuracy and minimizing unnecessary noise.
-
-### Target Users
-
-The primary users are individual developers and small teams who rely heavily on AI-assisted coding tools for rapid development. These users typically prioritize speed and productivity and may not have dedicated security expertise or access to enterprise-grade security solutions.
-
-The system is intended to provide immediate and reliable security feedback to such users, enabling them to write and ship code quickly without compromising on safety.
-
-### High-Level Solution Summary
-
-The project delivers an automated security analysis system integrated into both the code review workflow and a web-based dashboard.
-
-Whenever a developer submits code changes through a pull request, the system is triggered to perform a comprehensive security scan. The system first identifies whether the code contains AI-generated patterns and applies specialized analysis where required. It then executes multiple security analyzers in parallel to detect high-impact vulnerabilities, including credential exposure, unsafe query construction, dependency risks, and prompt injection issues.
-
-Each detected issue is evaluated based on severity and confidence, contributing to an overall security risk score. The system generates a structured report that highlights vulnerabilities, presents the original code, and provides corrected versions where safe automatic remediation is possible. For complex cases, it offers precise recommendations to guide manual fixes.
-
-The analysis results are delivered directly within the code review interface as structured pull request comments. In addition, the system stores these results and makes them accessible through a web application, where users can view and track their repositories, access scan histories, and review detailed analysis outputs.
-
-Key Value Proposition
-
-The system enables developers to maintain development speed while improving code security by providing accurate, context-aware analysis tailored to AI-generated code. It reduces reliance on manual security review, prevents common high-risk vulnerabilities, and integrates seamlessly into existing workflows while also offering a centralized dashboard for visibility and tracking.
-
-Scope and Boundaries
-
-The system focuses on identifying and addressing high-impact security vulnerabilities in application code during the development phase. It does not replace comprehensive security audits, runtime protection systems, or advanced enterprise compliance tooling.
-
-The system operates through integration with code repositories and a web-based interface for viewing results. The initial implementation prioritizes accuracy, reliability, and developer usability over broad feature coverage, with the ability to expand functionality in subsequent iterations.
-
-Expected Outcome
-
-## The final product is a reliable and efficient security analysis system that helps developers detect and fix vulnerabilities early in the development lifecycle. It ensures that code changes are reviewed for security risks before integration while also providing a centralized platform for users to monitor, review, and track security analysis results across their projects.
-
-## System Scope
-
-### Functional Scope
-
-The system is designed to perform automated security analysis on code changes during the development workflow. It focuses on identifying, evaluating, and assisting in the remediation of high-impact vulnerabilities, particularly those introduced through AI-assisted code generation.
-
-The core functionality includes detection of security issues, risk evaluation, remediation support, and generation of structured outputs that enable developers to take immediate corrective action. In addition to code review integration, the system also provides a web-based interface for accessing and reviewing analysis results.
-
----
-
-### Included Capabilities
-
-**AI Code Identification**
-The system analyzes code changes to identify patterns indicative of AI-generated code. This allows targeted application of security rules tailored to common AI-generated vulnerabilities.
-
----
-
-**Security Analysis**
-The system performs code analysis using multiple specialized analyzers to detect critical vulnerability types, including:
-
-- Exposure of sensitive credentials or secrets
-- Unsafe construction of database queries leading to injection risks
-- Invalid or suspicious dependencies that may introduce supply chain risks
-- Improper handling of user input in interactions with language models
-
-Each analyzer operates with predefined patterns and contextual checks to ensure accurate detection.
-
----
-
-**Risk Evaluation**
-All identified vulnerabilities are evaluated based on severity and confidence. These evaluations are aggregated into a unified security risk score that represents the overall risk level associated with the code changes.
-
----
-
-**Automated Remediation**
-For vulnerabilities that can be resolved deterministically and safely, the system generates corrected versions of the affected code. These corrections are designed to follow secure coding practices without altering intended functionality.
-
----
-
-**Guided Remediation**
-For complex or non-deterministic vulnerabilities, the system provides structured recommendations. These recommendations clearly indicate the issue, its impact, and the required corrective action.
-
----
-
-**Structured Output Generation**
-The system produces a well-defined analysis report containing:
-
-- A summary of overall risk
-- A list of identified issues with contextual explanations
-- Original code segments highlighting vulnerabilities
-- Corrected code where applicable
-- Recommended actions for unresolved issues
-
-This output is formatted for direct use within the code review process and is also made accessible through the web application for later review.
-
----
-
-**User and Repository Management**
-The system allows users to authenticate, associate repositories, and access analysis results. It maintains a structured record of scanned repositories and their corresponding outputs for tracking and reference.
-
----
-
-**Result Visualization**
-The system provides a web-based dashboard where users can view repository-level summaries, access detailed scan reports, and review historical analysis results.
-
----
-
-### Operational Scope
-
-The system operates as part of the code review workflow and as a centralized analysis platform. It is triggered automatically upon code submission through pull requests and processes only the changes introduced in that submission.
-
-In parallel, the system stores analysis results and exposes them through APIs, enabling retrieval and visualization through the web application. The analysis process itself does not require manual configuration or intervention.
-
----
-
-### Boundaries and Exclusions
-
-The system is not intended to:
-
-- Perform runtime security monitoring or intrusion detection
-- Replace full-scale security audits or penetration testing
-- Guarantee complete elimination of all possible vulnerabilities
-- Analyze external systems beyond the provided code context
-- Act as a code execution or deployment platform
-
-The focus remains on early detection and remediation of high-impact vulnerabilities within the development lifecycle, along with providing visibility into analysis results.
-
----
-
-### Design Principles
-
-- Accuracy is prioritized over breadth of detection
-- Output is actionable and directly usable by developers
-- Integration is seamless within existing workflows
-- Security analysis is deterministic where possible and contextual where required
-- System design separates analysis logic from presentation layers
-
----
-
-### Outcome
-
-The system ensures that code changes are evaluated for critical security risks before integration, while also providing a centralized platform for users to access, review, and track security analysis results across their repositories.
-
----
-
-## System Workflow
-
-### End-to-End Flow
-
-The system operates as an automated part of the code review process and as a centralized analysis platform. When a developer submits code changes through a pull request, the workflow is initiated without requiring manual intervention.
-
-A pull request is opened or updated, which triggers the security analysis process. The system retrieves the relevant code changes and begins processing them through a structured pipeline.
-
-The code is first examined to identify patterns that indicate AI-generated content. Based on this assessment, the system applies appropriate analysis strategies, ensuring that AI-specific vulnerabilities receive targeted attention.
-
-Multiple security analyzers are then executed in parallel to evaluate the code for different categories of vulnerabilities. Each analyzer processes the code independently and produces findings with associated severity and confidence levels.
-
-All findings are aggregated and passed to the risk evaluation component, where individual vulnerabilities contribute to an overall security risk score. This score reflects the cumulative risk introduced by the code changes.
-
-Following analysis, the system determines whether any identified issues can be safely corrected. For deterministic and low-risk cases, corrected code is generated automatically. For other cases, structured remediation guidance is prepared.
-
-A comprehensive report is then generated, combining the risk summary, identified issues, corrected code where applicable, and recommended actions. This report is delivered directly within the pull request interface, allowing the developer to review and address the issues before merging.
-
-In parallel, the system stores the analysis results in the database. These stored results are made accessible through backend APIs, allowing users to retrieve and review them through the web application. Users can view repository-level summaries, access detailed reports, and track past analysis results without depending solely on pull request comments.
-
----
-
-### High-Level Pipeline Stages
-
-**Trigger Stage**
-The workflow begins when a pull request is created or updated. The system is invoked automatically as part of the code review process.
-
-**Data Acquisition Stage**
-The system retrieves the relevant code changes associated with the pull request, focusing on modified and newly added files.
-
-**Pre-Analysis Stage**
-The code is analyzed to identify AI-generated patterns and to prepare it for targeted security evaluation.
-
-**Analysis Stage**
-Multiple security analyzers execute in parallel, each responsible for detecting specific categories of vulnerabilities.
-
-**Aggregation and Scoring Stage**
-All findings are collected and evaluated. Severity and confidence are assigned, and an overall security risk score is computed.
-
-**Remediation Stage**
-The system determines whether issues can be automatically fixed. Safe corrections are generated, while complex issues are prepared with structured recommendations.
-
-**Reporting Stage**
-A structured security analysis report is generated, containing all findings, fixes, and recommendations.
-
-**Output Delivery Stage**
-The report is posted directly to the pull request, ensuring immediate visibility and enabling action before code integration. The same results are also persisted and exposed for retrieval through the web application interface.
-
----
-
-## Core Components
-
-### Detection Layer
-
-The detection layer is responsible for identifying security vulnerabilities within the code. It consists of multiple specialized analyzers, each focused on a specific category of risk.
-
-This layer processes code changes and applies a combination of pattern-based and context-aware analysis techniques. It detects issues such as credential exposure, unsafe query construction, dependency risks, and improper handling of user input in interactions with language models.
-
-Each analyzer operates independently and produces structured findings that include the location of the issue, a description of the vulnerability, and relevant context required for further evaluation.
-
-The output of this layer is a collection of validated findings that represent potential security risks in the code.
-
----
-
-### Scoring Layer
-
-The scoring layer evaluates the findings generated by the detection layer and determines their impact. Each vulnerability is assigned a severity level and a confidence score based on the likelihood and potential impact of exploitation.
-
-The system aggregates these individual evaluations to compute an overall security risk score. This score represents the cumulative risk associated with the code changes and helps prioritize issues that require immediate attention.
-
-The scoring process ensures that high-risk vulnerabilities contribute more significantly to the final score, enabling clear differentiation between critical and low-impact issues.
-
----
-
-### Remediation Layer
-
-The remediation layer is responsible for generating solutions for the identified vulnerabilities. It determines whether a vulnerability can be safely and reliably corrected without altering the intended behavior of the code.
-
-For deterministic and well-defined issues, the system produces corrected code that follows secure coding practices. These corrections are designed to be directly applicable.
-
-For vulnerabilities that cannot be safely resolved automatically, the system provides structured and precise recommendations. These recommendations clearly describe the issue and outline the required steps for manual resolution.
-
-This layer ensures that all findings are accompanied by actionable guidance, either through automated fixes or well-defined instructions.
-
----
-
-### Output Layer
-
-The output layer is responsible for presenting the results of the analysis in a clear and structured format. It compiles the findings, risk evaluation, and remediation details into a comprehensive report.
-
-The report includes a summary of the overall security risk, a detailed list of identified issues with contextual explanations, the original code segments highlighting vulnerabilities, and corrected versions where applicable. It also includes recommended actions for issues that require manual intervention.
-
-This output is delivered directly within the pull request interface and is also stored for retrieval through the web application. This ensures that developers can review results within their workflow while also accessing historical analysis data through the dashboard.
-
-The goal of this layer is to provide information that is precise, actionable, and easy to understand, enabling efficient resolution of security issues.
-
----
-
-### Frontend Layer
-
-The frontend layer provides a web-based interface for user interaction and visualization of analysis results. It serves as a secondary access point to the system, complementing the pull request-based workflow.
-
-This layer enables users to:
-
-- Authenticate and manage their accounts
-- View repositories associated with the system
-- Access summaries of security analysis results
-- Review detailed reports, including vulnerabilities and remediation outputs
-- Track historical scan data
-
-The frontend communicates with the backend through APIs and does not perform any analysis itself. It acts purely as a presentation and interaction layer, ensuring that users can access and understand results beyond the code review interface.
-
-The inclusion of this layer provides centralized visibility and improves usability without altering the core analysis pipeline.
-
----
-
-## Risk Scoring System
-
-### Severity Levels
-
-Each identified vulnerability is assigned a severity level based on its potential impact and ease of exploitation.
-
-**Critical**
-Represents vulnerabilities that can lead to severe consequences such as full system compromise, data breaches, or unauthorized access without significant barriers. These require immediate attention.
-
-**High**
-Indicates serious vulnerabilities that can be exploited under certain conditions and may result in significant impact, including data exposure or system misuse.
-
-**Medium**
-Represents moderate risks that may require specific conditions or limited access to exploit. These issues should be addressed but are less urgent than higher severity levels.
-
-**Low**
-Covers minor issues with limited impact or low likelihood of exploitation. These are typically informational or best-practice violations.
-
----
-
-### Confidence Scoring
-
-Each finding is assigned a confidence score representing the likelihood that the detected issue is valid.
-
-Confidence is derived from:
-
-- Pattern match strength
-- Contextual validation
-- Consistency with known vulnerability patterns
-
-Confidence levels are categorized as:
-
-- High confidence: strong evidence with minimal ambiguity
-- Medium confidence: probable issue with some uncertainty
-- Low confidence: weak indicators or partial matches
-
-Confidence helps reduce noise by allowing developers to prioritize reliable findings.
-
----
-
-### Weighting Logic
-
-Each severity level is associated with a predefined weight that determines its contribution to the overall risk score.
-
-- Critical vulnerabilities carry the highest weight
-- High severity vulnerabilities carry significant weight
-- Medium severity vulnerabilities contribute moderately
-- Low severity vulnerabilities have minimal impact
-
-Confidence acts as a multiplier to adjust the weight of each finding. High-confidence findings contribute fully, while lower-confidence findings contribute proportionally less.
-
-This approach ensures that:
-
-- High-impact vulnerabilities dominate the score
-- Uncertain findings do not disproportionately affect results
-
----
-
-### Final Security Risk Score Calculation
-
-The final Security Risk Score represents the cumulative risk introduced by the code changes.
-
-The calculation is based on:
-
-- The number of findings
-- Their severity weights
-- Their confidence-adjusted contributions
-
-Each finding contributes a weighted value, and the total is aggregated to produce a normalized score within a defined range.
-
-The system ensures that:
-
-- A small number of critical issues can significantly increase the score
-- Multiple lower-severity issues can also accumulate to reflect meaningful risk
-- The score remains interpretable and consistent across different code changes
-
-The final score is accompanied by a qualitative classification that indicates the overall risk level, enabling quick assessment and prioritization.
-
----
-
-## Vulnerability Coverage
-
-### Types of Vulnerabilities Handled
-
-The system focuses on identifying high-impact security vulnerabilities that commonly arise in modern development workflows, particularly those introduced through AI-assisted coding.
-
-**Credential Exposure**
-Detection of hardcoded secrets such as API keys, access tokens, private keys, and database credentials present in the code.
-
-**Query Security Vulnerabilities**
-Identification of unsafe database query construction patterns, including string concatenation and improper handling of user input that may lead to injection attacks.
-
-**Dependency Integrity Risks**
-Detection of invalid, non-existent, or suspicious dependencies that may introduce supply chain vulnerabilities. This includes identifying inconsistencies between declared dependencies and trusted sources.
-
-**Prompt Injection Risks**
-Analysis of data flow where user-controlled input is passed into language model interactions without proper validation or sanitization, potentially leading to manipulation or unintended behavior.
-
----
-
-### Pattern-Based Detection Approach
-
-The system uses a structured pattern-based approach to identify vulnerabilities. Each vulnerability type is associated with a set of predefined detection patterns derived from known insecure coding practices and observed AI-generated code behaviors.
-
-Patterns are implemented using a combination of:
-
-- Rule-based matching for deterministic detection
-- Structural analysis of code constructs
-- Context-aware validation to reduce false positives
-
-For example:
-
-- Credential exposure is detected through known key formats and entropy-based analysis
-- Query vulnerabilities are identified through unsafe string construction patterns
-- Dependency risks are detected by validating declared packages against trusted registries
-- Prompt injection risks are identified by tracing the flow of user input into model-related operations
-
-Each detected pattern is validated against the surrounding code context to ensure accuracy and relevance.
-
-The pattern library is designed to be extensible, allowing continuous addition of new patterns as new vulnerability types and attack vectors emerge. This ensures that the system remains adaptable and capable of covering a broad and evolving range of security risks.
-
----
-
-## Auto-Remediation Policy
-
-### Remediation Strategy
-
-The system follows a controlled approach to remediation, ensuring that automated fixes are applied only when they are safe, reliable, and do not alter the intended functionality of the code.
-
-Each identified vulnerability is evaluated to determine whether it can be resolved deterministically. Based on this evaluation, the system either generates an automatic fix or provides structured guidance for manual resolution.
-
----
-
-### Automatic Remediation
-
-Automatic remediation is applied only to vulnerabilities that meet the following conditions:
-
-- The issue has a well-defined and unambiguous fix
-- The correction follows standard secure coding practices
-- The fix does not introduce changes to business logic or application behavior
-
-Examples of vulnerabilities suitable for automatic remediation include:
-
-- Replacement of hardcoded credentials with environment variable references
-- Conversion of unsafe query construction into parameterized queries
-
-For these cases, the system generates corrected code that can be directly applied.
-
----
-
-### Guided Remediation
-
-For vulnerabilities that cannot be safely resolved automatically, the system provides structured recommendations. These recommendations include:
-
-- A clear description of the issue
-- The potential impact of the vulnerability
-- Specific instructions on how to resolve the issue
-- Identification of the exact location in the code where changes are required
-
-This ensures that developers can address complex issues with clarity and precision.
-
----
-
-### Safety Constraints
-
-The system avoids automatic remediation in scenarios where:
-
-- The fix requires understanding of application-specific logic
-- There is a risk of altering authentication or authorization behavior
-- Multiple valid correction approaches exist
-- The system cannot confidently determine a safe fix
-
-In such cases, only guided remediation is provided.
-
----
-
-### Consistency and Reliability
-
-All generated fixes and recommendations are designed to be:
-
-- Consistent with secure coding standards
-- Easy to understand and implement
-- Aligned with the context of the original code
-
-The objective is to ensure that remediation improves security without introducing instability or unintended side effects.
-
----
-
-### Outcome
-
-The remediation approach ensures that vulnerabilities are not only identified but also addressed effectively. By combining automatic fixes with precise guidance, the system enables developers to resolve issues quickly while maintaining control over critical code changes.
-
----
-
-## Output Format
-
-### Overview
-
-The system generates a structured security analysis report designed for direct integration into the code review process and for access through a web-based dashboard. The output is clear, actionable, and focused on enabling developers to quickly understand and resolve identified vulnerabilities.
-
-The report is presented within the pull request interface for immediate visibility and is also stored and made accessible through the web application for later review and tracking.
-
 ---
-
-### Security Analysis Summary
 
-This section provides a high-level overview of the analysis results.
+## 1. Project Overview
 
-It includes:
+RedFlag CI is an automated security intelligence system purpose-built for AI-assisted development. It integrates directly into the GitHub pull request workflow, analyzes every code change for security vulnerabilities, and delivers actionable findings before code is merged.
 
-- The overall Security Risk Score
-- A qualitative risk classification indicating the severity of the code changes
-- A concise summary of the most critical findings
+Unlike general-purpose SAST tools, RedFlag CI is specifically designed to detect vulnerability patterns that emerge from AI code generation — hallucinated packages, insecure defaults, disabled authentication scaffolding, and prompt injection risks. It combines static analysis, semantic code understanding, LLM-powered remediation, and a learning engine that improves over time.
 
-This section enables rapid assessment of the overall security posture of the code changes.
+The system operates as a GitHub App, requires zero configuration from developers, and exposes all results through a REST API consumed by a web dashboard.
 
 ---
-
-### Identified Issues (Original Code)
-
-This section lists all detected vulnerabilities with relevant context.
-
-For each issue, the following details are provided:
 
-- Description of the vulnerability
-- Affected file and location
-- Severity level and confidence score
-- The original code snippet highlighting the insecure implementation
+## 2. Problem Statement
 
-The focus is on clearly presenting the issue in its original context to aid understanding.
+AI coding assistants (Copilot, ChatGPT, Cursor, Antigravity) have accelerated software development significantly. However, they introduce a new class of security risk that existing tools are not equipped to handle.
 
----
-
-### Remediated Code
+AI-generated code frequently contains:
 
-For vulnerabilities that can be safely resolved automatically, this section presents the corrected version of the code.
+- Hardcoded credentials copied from training data patterns
+- Packages that do not exist on npm or PyPI (hallucinations)
+- Disabled authentication with `// TODO: add auth later` comments
+- Wildcard CORS, broad IAM permissions, and insecure defaults
+- SQL queries built with string interpolation
+- User input passed directly into LLM prompts
+- Debug scaffolding left in production code paths
 
-Each corrected snippet:
+Tools like Snyk, SonarQube, and Semgrep detect general vulnerabilities but are not built to understand AI-generated code patterns, correlate findings into exploit chains, or learn from a repository's specific false positive history.
 
-- Directly corresponds to the original vulnerable code
-- Applies secure coding practices
-- Maintains the intended functionality
+This gap means developers shipping AI-generated code are doing so without a security layer that understands what they are actually producing.
 
-This allows developers to review and adopt fixes with minimal effort.
-
 ---
-
-### Recommended Actions
-
-This section covers vulnerabilities that require manual intervention.
 
-It provides:
+## 3. Objective
 
-- Clear explanation of the issue
-- Step-by-step guidance for resolution
-- Specific locations where changes are required
+Build a production-grade, community-facing security analysis system that:
 
-The objective is to ensure that even complex issues can be addressed efficiently.
+- Triggers automatically on every pull request via GitHub App
+- Detects vulnerabilities specific to AI-generated code alongside standard security issues
+- Correlates findings into chained exploit paths, not just isolated issues
+- Generates LLM-powered contextual fixes and pushes auto-fix branches
+- Learns from each repository's history to reduce false positives over time
+- Tracks security posture and risk trends across repositories
+- Exposes results through a structured REST API and web dashboard
+- Provides community infrastructure through a public rule registry and SARIF export
 
 ---
 
-### Delivery Format
+## 4. Target Users
 
-The complete report is formatted for presentation as a pull request comment, ensuring seamless integration into the code review workflow. The structure is designed to be readable, concise, and easy to navigate.
+**Primary:** Individual developers and small teams using AI coding tools who ship fast and lack dedicated security review.
 
-In addition, the same report structure is exposed through backend APIs and rendered within the web application, allowing users to view results outside the pull request context, access past analyses, and review repository-level summaries.
+**Secondary:** Open-source maintainers who want automated security coverage on contributor PRs.
 
-The output avoids unnecessary verbosity and prioritizes clarity, ensuring that developers can act on the findings without additional interpretation.
+**Tertiary:** Engineering teams that need audit logs, SARIF exports, and security posture tracking for compliance or reporting purposes.
 
 ---
 
-### Outcome
+## 5. Key Value Proposition
 
-The output format ensures that all relevant security information is accessible, understandable, and directly actionable within the development workflow, while also providing a centralized interface for reviewing and tracking analysis results across projects.
+- First security scanner purpose-built for AI-generated code patterns
+- Vulnerability chaining — correlates multiple findings into real exploit paths
+- LLM-powered remediation that understands code context, not just pattern templates
+- Auto-fix PR creation — not just comments, actual committed fixes
+- Codebase memory — learns your repo, reduces noise over time
+- Community-driven rule registry — open and extensible
+- Zero configuration — install GitHub App, scanning begins immediately
 
 ---
 
-## Performance Constraints
+## 6. System Architecture
 
-### Performance Objective
+### Pipeline Flow
 
-The system is designed to deliver security analysis results within a practical time frame that aligns with the development workflow. The target is to complete analysis and reporting within a defined duration that ensures usability without compromising accuracy.
+```
+PR Opened / Updated
+  → GitHub App Webhook received
+  → HMAC-SHA256 signature verified
+  → 200 OK returned immediately (async handoff)
+  → Job enqueued in BullMQ (Redis-backed)
+  → Commit status set to [pending]
+  → PR diff fetched from GitHub API
+  → Diff parsed into structured added-lines
+  → Parallel analyzer pipeline executed:
+      ├── Credential & Secret Detection
+      ├── SQL Injection Detection
+      ├── Prompt Injection Detection
+      ├── Hallucinated Package Detection (live npm/PyPI check)
+      ├── AI Code Fingerprinting
+      ├── SAST via Semgrep (XSS, SSRF, path traversal, command injection)
+      ├── IaC Security Scanner (Dockerfile, docker-compose, k8s)
+      ├── Dependency & Supply Chain Analysis
+      ├── License Risk Detection
+      ├── Secret Git History Scanner
+      ├── Semantic Similarity Scanner
+      ├── Dead Code & Ghost Dependency Detector
+      └── Environment Boundary Analyzer
+  → Findings aggregated
+  → Vulnerability Chaining Engine runs (cross-finding correlation)
+  → Risk Score computed (weighted severity × confidence)
+  → Security Posture Score updated
+  → LLM Remediation Layer called (Claude API) for each finding
+  → Auto-Fix PR created (if fixable findings exist)
+  → Markdown report generated
+  → PR comment posted
+  → Commit status set to [success] or [failure]
+  → Results persisted to PostgreSQL
+  → Codebase Memory & Baseline updated
+  → Outbound webhook fired (if configured)
+  → Slack/Discord notification sent (if configured)
+  → Audit log entry written
+```
 
-The focus is on maintaining a balance between thorough security evaluation and acceptable response time, ensuring that developers can receive feedback without significant delays.
+### Component Responsibilities
 
----
-
-### Processing Strategy
+**GitHub App** handles installation, webhook delivery, and permission scoping. One-click install from the GitHub Marketplace.
 
-To achieve efficient performance, the system employs a combination of synchronous and asynchronous processing.
+**Express Backend** is the orchestrator. It receives webhooks, manages the job queue, exposes the REST API, handles auth, and coordinates all services.
 
-- Critical stages required for immediate feedback are executed synchronously
-- Independent analysis tasks are executed in parallel to reduce total processing time
-- Non-essential or extended analysis can be handled asynchronously where appropriate
-
-This approach ensures that high-priority results are delivered promptly while allowing deeper analysis to scale without blocking the workflow.
-
----
+**BullMQ Queue (Redis)** decouples webhook receipt from scan execution. Provides retry with exponential backoff, deduplication by job ID, and concurrency control.
 
-### Parallel Execution
+**Python Scan Engine** is the core detection layer. Spawned as a child process by Node.js via `python3`. Communicates via stdin (diff JSON) and stdout (findings JSON). Stateless and replaceable.
 
-The system is designed to run multiple security analyzers concurrently. Each analyzer processes the code independently, allowing the overall execution time to be determined by the longest individual task rather than the sum of all tasks.
+**LLM Remediation Layer** calls the Claude API with each finding and its code context. Returns plain-English explanations and context-aware fixes. Runs in Node.js after the Python engine returns results.
 
-This significantly improves efficiency, especially when analyzing multiple types of vulnerabilities.
+**Vulnerability Chaining Engine** runs in Node.js after all individual findings are collected. Correlates findings from a single scan into multi-step exploit chains with elevated severity.
 
----
+**Codebase Memory & Baseline** stores pgvector embeddings of the default branch per repository. PR scans diff against the baseline so only new issues introduced by the PR are surfaced.
 
-### Incremental Processing
+**PostgreSQL + Prisma** stores all persistent state: users, repositories, scan results, findings, remediations, baselines, audit logs, and rule registry entries.
 
-The system focuses on analyzing only the relevant code changes rather than the entire codebase. By limiting the scope to modified and newly added files, processing time is reduced while maintaining accuracy for the current context.
+**GitHub Service** handles installation token generation, diff fetching, PR comment posting, commit status updates, and auto-fix branch creation.
 
 ---
-
-### Scalability Considerations
 
-The architecture supports scaling based on workload requirements. As the number of code changes or analysis complexity increases, the system can handle additional processing without degradation in performance.
+## 7. Security Detection Capabilities
 
----
+### 7.1 Credential & Secret Detection
 
-### Accuracy Priority
+Three-layer detection approach:
 
-While performance is important, the system prioritizes accuracy and reliability of results. The analysis is designed to ensure that critical vulnerabilities are not missed in favor of faster execution.
+**Layer 1 — Known Format Patterns:** Regex matching for AWS keys, GitHub tokens, Stripe keys, private PEM keys, JWTs, and database connection strings with embedded credentials. High confidence — the format itself is proof.
 
----
+**Layer 2 — Variable Assignment Patterns:** Detects security-sensitive variable names (`password`, `secret`, `token`, `api_key`) assigned string literals. Medium confidence.
 
-### Outcome
+**Layer 3 — Shannon Entropy Analysis:** Calculates information-theoretic entropy on quoted strings. Strings with entropy above 4.5 and length above 20 characters are flagged as probable secrets. Catches secrets that don't match known formats.
 
-The performance model ensures that security analysis is delivered within a reasonable time frame while maintaining high-quality results. This enables seamless integration into the development workflow without introducing significant delays.
+### 7.2 SQL Injection Detection
 
----
+Detects unsafe database query construction across Python and JavaScript/TypeScript:
 
-## Accuracy and Noise Control
+- String concatenation in SQL queries (`"SELECT ... " + userId`)
+- Python f-string interpolation (`f"SELECT ... WHERE id = {user_id}"`)
+- `.format()` method on SQL strings
+- JavaScript template literals with SQL keywords
+- Python `%` string formatting on SQL strings
 
-### Accuracy Strategy
+Performance-gated: lines without SQL keywords are skipped before regex evaluation.
 
-The system is designed to prioritize accurate detection of vulnerabilities while minimizing false positives. Each identified issue is validated using both pattern matching and contextual analysis to ensure that findings are relevant and meaningful.
+### 7.3 Prompt Injection Detection
 
-The detection process emphasizes:
+Detects user-controlled input passed directly into LLM prompts:
 
-- Strong pattern validation
-- Context-aware checks
-- Elimination of ambiguous matches where possible
+- f-string interpolation in prompt/message/system content variables
+- JavaScript template literals in prompt construction
+- String concatenation building prompt strings
+- `.format()` used on prompt templates
 
-This approach ensures that only credible and actionable vulnerabilities are reported.
+Two-phase: first detects if the file contains LLM API calls (OpenAI, Anthropic, LangChain, Gemini), then boosts confidence on unsafe interpolation findings within those files.
 
----
+### 7.4 Hallucinated Package Detection
 
-### Confidence-Based Evaluation
+Checks every imported package against live npm and PyPI registry APIs to verify existence. Flags packages that:
 
-Every finding is assigned a confidence level that reflects the likelihood of the issue being valid. Confidence is determined based on the strength of detection patterns and supporting contextual evidence.
+- Return 404 from the registry
+- Were created less than 7 days ago with zero downloads
+- Have no associated GitHub repository
 
-Findings are categorized into:
+This is a novel detection capability not present in any existing scanner. AI tools frequently invent package names that do not exist on registries.
 
-- High confidence, where the issue is clearly validated
-- Medium confidence, where the issue is probable but may require verification
-- Low confidence, where indicators are weaker and require careful review
+### 7.5 AI Code Fingerprinting & Insecure Default Detection
 
-This allows developers to prioritize issues based on both severity and reliability.
+Detects patterns statistically associated with AI-generated code:
 
----
+- Disabled or missing authentication (`// TODO: add auth`, `authenticate = False`)
+- Wildcard CORS (`origin: '*'`, `Access-Control-Allow-Origin: *`)
+- Broad permissions (`*` in IAM policies, wildcard DB access)
+- Test credentials left in production paths (`admin/admin`, `test@test.com`, `password123`)
+- Debug flags in production context (`debug=True`, `verify=False`, `ssl=False`)
+- Over-permissioned file operations (`chmod 777`)
+- Disabled TLS verification
 
-### Noise Reduction
+### 7.6 SAST via Semgrep
 
-To prevent unnecessary interruptions in the development workflow, the system avoids reporting low-quality or uncertain findings. Only issues that meet defined confidence and relevance thresholds are included in the final output.
+Invoked as a CLI subprocess. Detects:
 
-The system ensures that:
+- Cross-site scripting (XSS) — reflected and stored patterns
+- Server-side request forgery (SSRF)
+- Path traversal (`../` in file operations)
+- Command injection (unsanitized input in shell commands)
+- Insecure deserialization
+- Open redirect vulnerabilities
 
-- Redundant findings are eliminated
-- Similar issues are grouped where applicable
-- Output remains concise and focused
+Uses Semgrep's community rule registry plus custom RedFlag rules.
 
----
+### 7.7 IaC Security Scanner (Checkov)
 
-### Developer Control
+Invoked as a CLI subprocess. Scans:
 
-The system provides a mechanism to ignore or dismiss specific findings within the context of a code review. This allows developers to manage exceptions without affecting the overall analysis process.
+- Dockerfiles: running as root, exposed sensitive ports, no HEALTHCHECK, ADD instead of COPY
+- docker-compose: privileged mode, host network binding, hardcoded secrets in environment
+- Kubernetes manifests: missing resource limits, privileged containers, hostPath mounts
 
-This control ensures flexibility while maintaining the integrity of the security evaluation.
+### 7.8 Dependency & Supply Chain Analysis
 
----
+- Checks imported packages against a curated typosquat database (known malicious variants of popular packages)
+- Applies heuristic rules: packages with 4+ digit numeric suffixes, social engineering keywords, names exceeding 40 characters
+- Supports JS/TS imports, Python imports, package.json entries, and requirements.txt
 
-### Outcome
+### 7.9 License Risk Detection
 
-The accuracy and noise control approach ensures that the system produces reliable, relevant, and actionable results, reducing the likelihood of developers ignoring or disabling the tool due to excessive or inaccurate findings.
+Parses dependency declarations and checks each package's license against the SPDX license database. Flags:
 
----
+- GPL/AGPL licenses in commercial repositories (copyleft contamination risk)
+- Unknown or unlicensed packages
+- License conflicts between declared dependencies
 
-## Architecture Overview
+### 7.10 Secret Git History Scanner
 
-### System Structure
+Scans the git history of the repository for secrets that were committed and later deleted. Deleted secrets remain in git history and are exploitable. Uses TruffleHog as a CLI subprocess against the full commit log.
 
-The system is organized into modular components that operate in a structured pipeline. Each component is responsible for a specific function, enabling clear separation of concerns and maintainability.
+### 7.11 Environment Boundary Analyzer
 
-The architecture consists of:
+Detects development or debug artifacts that have leaked into production code paths:
 
-- Input handling through code review triggers and web application requests
-- Processing through detection and analysis components
-- Evaluation through scoring mechanisms
-- Remediation generation
-- Output delivery through pull request comments and backend APIs
-- Presentation through a web-based dashboard
+- `console.log` statements containing sensitive variable names
+- Hardcoded localhost URLs and development endpoints
+- Debug-only code outside conditional guards
+- Commented-out authentication checks
 
----
+### 7.12 Dead Code & Ghost Dependency Detector
 
-### Component Interaction
+- Identifies imported packages declared in `package.json` or `requirements.txt` but never referenced in the codebase
+- Flags unused import statements in added lines
+- Reduces unnecessary attack surface and dependency bloat common in AI-generated code
 
-The workflow begins with the ingestion of code changes triggered by pull request events. These changes are passed to the detection components for analysis. The results from detection are forwarded to the scoring layer for evaluation. Based on this evaluation, the remediation component generates fixes or recommendations. The output layer then compiles all information into a structured report.
+### 7.13 Auth & Authorization Pattern Analyzer
 
-Simultaneously, the generated results are stored in the database. The backend exposes these results through APIs, which are consumed by the web application. The frontend retrieves and displays repository data, scan summaries, and detailed reports to the user.
+Detects missing or broken authentication and authorization patterns:
 
-Each component operates independently while maintaining a defined interface with adjacent layers, ensuring consistency and reliability in data flow.
+- Route definitions missing auth middleware
+- JWT verified without expiry check (`jwt.decode()` instead of `jwt.verify()`)
+- Hardcoded role bypasses (`if user === 'admin'`)
+- Missing resource ownership checks on endpoints (IDOR risk)
+- Auth middleware applied inconsistently across route groups
 
----
+### 7.14 Cryptography Weakness Detector
 
-### Modularity
+Flags cryptographically unsafe usage:
 
-The system is designed to be modular, allowing individual components such as analyzers, scoring mechanisms, or interface layers to be updated or extended without affecting the overall system.
+- Weak hashing algorithms for passwords (MD5, SHA1)
+- Static or hardcoded IV in AES encryption
+- `Math.random()` used for security-sensitive values (tokens, salts, nonces)
+- Insufficient key lengths (RSA < 2048 bits, AES < 256 bits)
+- Deprecated cipher modes (ECB mode usage)
 
-This modularity supports:
+### 7.15 Input Validation Gap Detector
 
-- Incremental enhancement
-- Easy maintenance
-- Integration of additional capabilities over time
-- Independent evolution of backend and frontend components
+Detects missing or incomplete input validation at system boundaries:
 
----
+- No length limits on user-facing string fields
+- Regex patterns without timeout guards (ReDoS vulnerability)
+- Unvalidated redirects and forwards
+- File upload handlers missing MIME type or file size validation
+- External API responses used without schema validation
 
-### Scalability
+### 7.16 Node.js / Python Dangerous Pattern Detector
 
-The architecture supports parallel processing and can handle increasing workloads without significant redesign. Independent components, such as analyzers and API services, can scale based on demand, ensuring consistent performance as usage grows.
+**Node.js patterns:**
 
-The separation between processing and presentation layers allows the system to scale analysis workloads independently from user interface interactions.
+- `child_process.exec()` with unsanitized variable input
+- `eval()` or `new Function()` with dynamic content
+- Path traversal in file operations (`path.join` without normalization)
+- Prototype pollution patterns (`__proto__`, `constructor.prototype`)
+- `JSON.parse()` without try/catch on external input
 
----
+**Python patterns:**
 
-### Reliability
+- `pickle.loads()` on untrusted input
+- `subprocess.shell=True` with variable input
+- `yaml.load()` without `Loader=yaml.SafeLoader`
+- `os.system()` with unsanitized input
+- `exec()` or `eval()` on external data
 
-The system ensures consistent execution by handling failures at the component level without disrupting the entire workflow. Each stage is designed to produce stable and predictable outputs.
+### 7.17 Async & Concurrency Issue Detector
 
-Data persistence ensures that analysis results are not lost, and retry mechanisms can be applied to failed operations without affecting completed stages.
+Detects unsafe asynchronous and concurrent code patterns:
 
----
+- Unhandled Promise rejections (floating Promises without `.catch()`)
+- Missing error handling in async BullMQ worker callbacks
+- Race conditions in concurrent database writes executed outside transactions
+- `async` functions called without `await` in critical paths
 
-### Outcome
+### 7.18 Context-Aware Vulnerability Chaining
 
-The architecture provides a structured, scalable, and maintainable foundation for the system, enabling efficient processing of code changes, reliable delivery of security analysis results, and accessible visualization through both code review interfaces and a centralized web application.
+Runs after all individual analyzers complete. Analyzes the full finding set from a scan and identifies combinations that form multi-step exploitable attack chains. Examples:
 
----
+- `wildcard CORS` + `missing auth middleware` + `SQL injection` = full unauthenticated data breach path
+- `hardcoded AWS key` + `S3 bucket public access` = credential and exposure chain
+- `SSRF` + `internal metadata endpoint access` = cloud credential theft chain
 
-## Data Model Overview
+Each chain is reported as a separate finding with elevated severity and a chain-specific description. No existing scanner performs cross-finding correlation of this type.
 
-### Core Entities
+### 7.19 Semantic Similarity Scanner
 
-The system is built around a set of structured entities that represent users, repositories, and the results of security analysis. These entities enable consistent processing, storage, and reporting across both the backend system and the web application.
+Embeds code snippets from the diff using a code embedding model and compares them against a pgvector database of known-vulnerable code patterns. Catches obfuscated, reformatted, or AI-paraphrased versions of known vulnerabilities that regex patterns would miss. Similarity threshold: 0.85 cosine distance. Only runs if a baseline embedding index exists for the repository.
 
 ---
 
-**User**
-Represents an authenticated user of the system.
+## 8. Risk Evaluation & Scoring
 
-Each user includes:
+### Weighted Scoring Model
 
-- Unique identifier
-- Authentication details (OAuth provider reference)
-- Basic profile information
-
-This entity enables access control and association of repositories and scan results.
-
----
+Each finding contributes to the Security Risk Score using:
 
-**Repository**
-Represents a code repository associated with a user.
+```
+finding_contribution = severity_weight × confidence_multiplier
+```
 
-Each repository includes:
+Severity weights: `critical = 25`, `high = 15`, `medium = 8`, `low = 3`
 
-- Repository identifier
-- Repository URL or reference
-- Ownership and access metadata
+Confidence multipliers: `high = 1.0`, `medium = 0.7`, `low = 0.4`
 
-This entity allows grouping and tracking of scans across different projects.
+Raw score is the sum of all contributions, normalized to 0–100.
 
----
+### Classification Thresholds
 
-**Finding**
-Represents a single detected vulnerability.
+| Score  | Classification |
+| ------ | -------------- |
+| 80–100 | CRITICAL       |
+| 60–79  | HIGH           |
+| 30–59  | MEDIUM         |
+| 1–29   | LOW            |
+| 0      | CLEAN          |
 
-Each finding includes:
+### Security Posture Score
 
-- Description of the issue
-- Affected file and location
-- Severity level
-- Confidence level
-- Category of vulnerability
-- Reference to the relevant code segment
+A separate long-term score (0–100) calculated per repository from:
 
-This entity serves as the fundamental unit of analysis.
+- Average risk score across the last 30 scans
+- Trend direction (improving or worsening)
+- Unresolved finding count
+- Fix rate over time
 
----
+This is distinct from per-PR risk score. It represents the overall health of the repository over time.
 
-**Scan Result**
-Represents the complete analysis outcome for a given code change.
+### Risk Trending
 
-It contains:
+Every scan result is timestamped and stored. The system computes the risk score trajectory per repository — whether the codebase is improving or degrading in security posture over time. Trend data is exposed via API for dashboard visualization.
 
-- Collection of all findings
-- Aggregated risk evaluation
-- Metadata related to the analyzed code changes, such as repository reference and change context
+### AI Usage Impact Report
 
-This entity acts as the container for all results produced during a scan.
+Tracks correlation between AI-generated code patterns (detected by the fingerprinter) and vulnerability rates. Produces per-repository metrics such as: what percentage of findings appear in AI-fingerprinted code. Exposed as a dedicated API endpoint.
 
 ---
-
-**Risk Score**
-Represents the evaluated security risk associated with the scan result.
-
-It includes:
 
-- Final Security Risk Score
-- Risk classification
-- Contribution breakdown based on findings
+## 9. Remediation System
 
-This entity provides a summarized view of the overall risk level.
+### LLM-Powered Contextual Remediation
 
----
-
-**Remediation**
-Represents the corrective action associated with a finding.
+For each finding, the system calls the Claude API with:
 
-It includes:
+- The finding type, severity, and description
+- The original vulnerable code snippet
+- The file context (language, framework hints)
 
-- Type of remediation (automatic or guided)
-- Corrected code, where applicable
-- Step-by-step recommendations for manual fixes
+Claude returns:
 
-This entity ensures that each identified issue is paired with actionable resolution guidance.
+- A plain-English explanation of why the code is vulnerable
+- A corrected code snippet specific to the developer's actual code (not a generic template)
+- The reasoning behind the fix
 
----
+This replaces the static recommendation strings that existing tools use.
 
-### Data Relationships
+### Auto-Fix PR Creation
 
-- A user can be associated with multiple repositories
-- A repository can have multiple scan results
-- A scan result contains multiple findings
-- Each finding is associated with a single remediation entry
-- All findings collectively contribute to a single risk score
+After scan completion, if any findings have high-confidence automatic fixes available (from either the deterministic remediation layer or the LLM layer), the system:
 
-This relationship structure ensures clear traceability from users and repositories to detected issues and their resolutions.
-
----
+1. Creates a new branch (`redflag/fix-pr-{number}`)
+2. Applies the corrected code to the relevant files
+3. Commits with a structured message listing each fix
+4. Opens a pull request against the original PR's base branch with a summary of all applied fixes
 
-### Data Consistency
+### Deterministic Remediation
 
-All entities follow a consistent structure to ensure:
+For well-defined vulnerability patterns (typosquat replacement, known credential removal, parameterized query substitution), the scan engine generates corrected code without LLM involvement. Faster and cheaper for clear-cut cases.
 
-- Uniform processing across backend components
-- Reliable aggregation of results
-- Clear mapping between analysis, scoring, remediation, and presentation layers
+### Ignore Rules
 
-The system maintains integrity by ensuring that every finding is properly evaluated, linked to a corresponding remediation outcome, and associated with its originating scan and repository.
+Developers can mark any finding as a false positive via API. The ignore rule is stored per repository with:
 
----
+- Finding type
+- File path (optional — for file-specific suppression)
+- Reason (optional)
 
-### Outcome
+Ignored rules are applied to all future scans of that repository before results are returned.
 
-The data model provides a structured and consistent foundation for representing users, repositories, and security analysis results. It enables efficient processing, accurate scoring, and clear presentation of vulnerabilities and their resolutions across both the code review interface and the web application.
+### False Positive Learning
 
----
+When a finding type is repeatedly ignored in a specific repository, the system builds a suppression model for that repo. After sufficient signal, high-confidence false positives are automatically suppressed without developer action. The suppression model is stored per repository and improves with each scan cycle.
 
-## Limitations
+### Codebase Memory & Baseline
 
-### Scope Limitations
+On first scan, the system builds a security baseline for the entire default branch. Subsequent PR scans compare findings against this baseline and surface only NEW issues introduced by the PR. This dramatically reduces noise — developers only see what their code change broke, not pre-existing issues.
 
-The system focuses on detecting high-impact security vulnerabilities within code changes during the development process. It does not provide complete coverage of all possible security risks and should not be considered a substitute for comprehensive security audits or specialized security assessments.
+Baseline is stored as a vector embedding index per repository and updated after each merged PR.
 
 ---
 
-### Detection Limitations
+## 10. GitHub Integration
 
-The system relies on pattern-based and context-aware analysis. While this approach is effective for identifying common and well-understood vulnerabilities, it may not detect:
+### GitHub App
 
-- Highly complex or novel attack patterns
-- Deep business logic flaws that require full application context
-- Vulnerabilities dependent on runtime behavior or external system interactions
+Distributed as a marketplace-installable GitHub App. One-click installation grants the App access to selected repositories. No manual webhook configuration required.
 
----
+On installation, the system:
 
-### Context Limitations
+1. Receives the `installation.created` webhook event
+2. Fetches the list of repositories granted access
+3. Creates Repository records in the database for each
 
-The analysis is performed primarily on the provided code changes and does not fully account for:
+### Webhook Pipeline
 
-- External services or third-party integrations beyond declared dependencies
-- Runtime configurations and deployment environments
-- Dynamic execution paths that are not visible through static analysis
-
----
+GitHub sends signed webhook payloads for every PR event. The backend:
 
-### Remediation Limitations
+1. Verifies the HMAC-SHA256 signature using `x-hub-signature-256` header with timing-safe comparison
+2. Returns HTTP 200 immediately to prevent GitHub from marking the delivery as failed
+3. Enqueues the scan job in BullMQ with a deterministic job ID to prevent duplicate scans
 
-Automatic remediation is applied only in deterministic and safe scenarios. The system avoids making changes in cases where:
+### PR Comment
 
-- Multiple valid solutions exist
-- Application-specific logic must be considered
-- There is a risk of altering intended functionality
+Scan results are posted as a structured markdown comment on the PR. The comment includes the risk score, classification, finding list with severity and location, vulnerable code snippets, and remediation outputs.
 
-As a result, some vulnerabilities will require manual intervention by the developer.
+### Commit Status
 
----
+The system sets three commit status states:
 
-### Accuracy Limitations
+- `pending` — immediately when the scan starts (shows yellow dot on PR)
+- `success` — when risk score is below the threshold
+- `failure` — when risk score is at or above the threshold (can block merge in protected branches)
 
-Although the system is designed to minimize false positives, no automated analysis system can guarantee complete accuracy. There may be:
+### Auto-Fix Branch
 
-- Occasional false positives that require validation
-- Undetected vulnerabilities due to limitations in pattern coverage or context
+When fixes are available, the system pushes a new branch and opens a PR against the base branch. This is separate from the commit status — developers can merge the fix PR independently.
 
 ---
-
-### Data Availability Limitations
 
-The web application relies on stored analysis results. If a repository has not been scanned through the system, or if no recent scan data is available, the dashboard may not display meaningful insights.
+## 11. API Design
 
-The system does not perform on-demand deep scans outside the defined workflow and depends on previously processed data for visualization.
+All endpoints are REST. Protected routes require `Authorization: Bearer <JWT>` header.
 
----
+### Auth Endpoints
 
-### Performance Considerations
+| Method | Path                        | Description                        |
+| ------ | --------------------------- | ---------------------------------- |
+| GET    | `/api/auth/github/redirect` | Initiates GitHub OAuth flow        |
+| GET    | `/api/auth/github/callback` | Handles OAuth callback, issues JWT |
+| GET    | `/api/auth/me`              | Returns authenticated user profile |
 
-The system is designed to operate efficiently within the development workflow. However, analysis time may vary depending on:
+### Webhook Endpoint
 
-- Size and complexity of code changes
-- Number of detected issues
-- Depth of analysis required
+| Method | Path                   | Description                            |
+| ------ | ---------------------- | -------------------------------------- |
+| POST   | `/api/webhooks/github` | Receives all GitHub App webhook events |
 
----
+### Dashboard Endpoints
 
-### Dependency on Input Quality
+| Method | Path                                        | Description                            |
+| ------ | ------------------------------------------- | -------------------------------------- |
+| GET    | `/api/dashboard/stats`                      | Aggregate stats for authenticated user |
+| GET    | `/api/dashboard/repositories`               | All repositories for user              |
+| GET    | `/api/dashboard/repositories/:id`           | Single repository detail               |
+| GET    | `/api/dashboard/repositories/:id/scans`     | Paginated scan history                 |
+| GET    | `/api/dashboard/scans/:scanId`              | Full scan detail with all findings     |
+| POST   | `/api/dashboard/repositories/:id/rescan`    | Trigger on-demand scan                 |
+| GET    | `/api/dashboard/repositories/:id/posture`   | Security posture score + trend         |
+| GET    | `/api/dashboard/repositories/:id/ai-impact` | AI usage impact report                 |
 
-The effectiveness of the system depends on the quality and completeness of the input code. Poorly structured or incomplete code may reduce the accuracy of analysis and remediation suggestions.
+### Ignore Rules Endpoints
 
----
+| Method | Path                                         | Description        |
+| ------ | -------------------------------------------- | ------------------ |
+| POST   | `/api/repositories/:id/ignore-rules`         | Create ignore rule |
+| GET    | `/api/repositories/:id/ignore-rules`         | List ignore rules  |
+| DELETE | `/api/repositories/:id/ignore-rules/:ruleId` | Remove ignore rule |
 
-### Outcome
+### Notification Endpoints
 
-The system provides reliable and practical security analysis within its defined scope. However, it is intended to complement, not replace, broader security practices and should be used as part of a comprehensive approach to secure software development, along with providing visibility through its integrated dashboard.
+| Method | Path                                  | Description                     |
+| ------ | ------------------------------------- | ------------------------------- |
+| POST   | `/api/repositories/:id/notifications` | Configure Slack/Discord webhook |
+| GET    | `/api/repositories/:id/notifications` | Get notification config         |
+| DELETE | `/api/repositories/:id/notifications` | Remove notification config      |
 
----
+### Platform Endpoints
 
-## Future Scope
+| Method | Path                             | Description                       |
+| ------ | -------------------------------- | --------------------------------- |
+| GET    | `/api/rules`                     | List public rule registry         |
+| POST   | `/api/rules`                     | Submit community rule             |
+| GET    | `/api/scans/:scanId/sarif`       | Export scan as SARIF file         |
+| GET    | `/api/badge/:repoId`             | SVG badge with live posture score |
+| GET    | `/api/webhooks/outbound/:repoId` | Get outbound webhook config       |
+| POST   | `/api/webhooks/outbound/:repoId` | Set outbound webhook URL          |
+| GET    | `/api/audit-log`                 | Retrieve audit log for user       |
 
-### Expansion of Vulnerability Coverage
+### Pre-commit Hook Endpoint
 
-The system can be extended to cover a broader range of security vulnerabilities beyond the initial set. This includes additional categories such as advanced injection patterns, misconfigurations, and emerging threats specific to modern development practices. Continuous updates to the pattern library will ensure adaptability to evolving security risks.
+| Method | Path                                     | Description                             |
+| ------ | ---------------------------------------- | --------------------------------------- |
+| GET    | `/api/repositories/:id/precommit-config` | Returns pre-commit YAML config for repo |
 
 ---
-
-### Enhanced Contextual Analysis
 
-Future improvements may include deeper contextual understanding of code, enabling detection of complex issues that require analysis across multiple files, modules, or workflows. This would improve the system’s ability to identify multi-step vulnerabilities and more subtle security flaws.
+## 12. Scheduled Operations
 
----
+### Full-Repo Scheduled Scans
 
-### Advanced Risk Intelligence
+A cron job runs weekly against the default branch of every registered repository. This catches vulnerabilities that existed before RedFlag CI was installed and were not caught by PR-level scans. Results are stored as baseline scans and visible in the dashboard scan history.
 
-The scoring system can be enhanced to provide more granular insights, including detailed breakdowns of risk contributions, trend analysis, and improved prioritization mechanisms. This would allow better decision-making and risk management over time.
+### Baseline Refresh
 
----
+After each merged PR, the codebase baseline is updated to reflect the new state of the default branch. This keeps the baseline current so future PR scans accurately identify only new issues.
 
-### Improved Remediation Capabilities
+### OAuth State Cleanup
 
-The remediation system can be expanded to support a wider range of automatic fixes and more advanced guidance for complex issues. Enhancements may include more precise corrections and improved alignment with different coding styles and frameworks.
+Expired OAuth state tokens are purged from the in-memory state store on a scheduled interval to prevent memory growth.
 
 ---
 
-### Integration Expansion
+## 13. Platform & Community Features
 
-While the current system integrates with the code review workflow, it can be extended to support additional development environments and tools. This would improve accessibility and allow broader adoption across different workflows.
+### Public Rule Registry
 
----
-
-### Continuous Learning and Adaptation
+A publicly accessible API listing all community-contributed detection rules. Each rule contains:
 
-The system can evolve to incorporate feedback mechanisms and updated detection patterns based on newly identified vulnerabilities. This ensures that the system remains effective as development practices and threat landscapes change.
+- Rule ID and name
+- Vulnerability category
+- Detection pattern (regex or Semgrep rule)
+- Example vulnerable code
+- Example safe code
+- Contributor attribution
 
----
+Developers can submit rules via API. Accepted rules are incorporated into the scan engine and credited in the registry. This makes RedFlag CI self-improving and community-driven.
 
-### Outcome
+### RedFlag Badge
 
-The future scope focuses on improving depth, coverage, and adaptability, ensuring that the system continues to provide relevant and effective security analysis as requirements evolve.
+A real-time SVG badge served from the API displaying the repository's current security posture score. Developers embed it in their README:
 
----
+```
+[![RedFlag Score](https://redflagci.dev/api/badge/:repoId)](https://redflagci.dev)
+```
 
-## Development Approach
+Every repository using RedFlag CI becomes a distribution channel.
 
-### Phased Development Strategy
+### SARIF Export
 
-The project follows a structured and iterative development approach. The system is built in stages, with each stage focusing on implementing a well-defined set of features. Each stage is completed, tested, and validated before proceeding to the next.
+Any scan result can be exported as a `.sarif` file (Static Analysis Results Interchange Format). SARIF is the industry standard for security tool output, compatible with GitHub Code Scanning, VS Code, and enterprise SAST platforms. This makes RedFlag CI results portable and auditable outside the system.
 
-This approach ensures stability, reduces complexity, and allows continuous improvement without compromising the reliability of the system.
+### Audit Log
 
----
+Every system action is written to an immutable audit log:
 
-### Incremental Implementation
+- Scan triggered (by whom, when, which repo)
+- Findings detected
+- Ignore rules created or deleted
+- Auto-fix PRs created
+- Notification configurations changed
 
-Development begins with a foundational implementation that includes the core components required for end-to-end functionality. Once the base system is fully operational and validated, additional capabilities are introduced progressively.
+Exposed via API. Provides traceability for compliance and security review purposes.
 
-Each enhancement builds upon the existing system, ensuring compatibility and maintaining consistency across components.
+### Outbound Webhook API
 
----
+Users configure a URL to receive scan result payloads via HTTP POST after each scan completes. This enables custom integrations (internal dashboards, alerting systems, Jira ticket creation) without waiting for native integrations to be built.
 
-### Validation and Testing
+### Slack & Discord Notifications
 
-At each stage, the system undergoes thorough testing to verify:
+Per-repository notification configuration. After each scan, the system sends a structured message to the configured Slack or Discord webhook URL containing the risk score, classification, and a link to the full report.
 
-- Accuracy of vulnerability detection
-- Correctness of risk scoring
-- Reliability of remediation outputs
+### API Rate Limiting & Quotas
 
-Only after meeting defined quality standards does the system progress to the next stage.
+Per-user rate limiting on all API endpoints using a sliding window algorithm. Enforced at the middleware level with Redis as the counter store. Provides foundation for usage-based monetization without requiring a full billing system immediately.
 
 ---
-
-### Controlled Expansion
 
-New features and enhancements are introduced in a controlled manner. The focus remains on maintaining system stability and ensuring that existing functionality is not negatively impacted.
+## 14. Security & Reliability
 
-This approach prevents uncontrolled growth and ensures that the system remains maintainable and reliable.
+### Webhook Security
 
----
+HMAC-SHA256 signature verification on all incoming webhook payloads. Uses `crypto.timingSafeEqual()` for constant-time comparison to prevent timing attacks. Requests without a valid signature are rejected with HTTP 401 before reaching any business logic.
 
-### Final Delivery Objective
+### Authentication
 
-The development process is structured to result in a complete, stable, and fully functional system. Intermediate stages are used internally for development and validation, while the final output presented to users represents a polished and cohesive product.
+GitHub OAuth 2.0 for user login. JWT sessions signed with HMAC-SHA256. Tokens carry only the user's internal database ID. 7-day expiry. OAuth state parameter prevents CSRF attacks. State stored in-memory with TTL.
 
----
+### Authorization
 
-### Outcome
+Resource-level ownership checks on all repository and scan endpoints (IDOR protection). The JWT middleware confirms authentication; service-layer checks confirm ownership.
 
-The development approach ensures that the system is built methodically, with a strong emphasis on quality, reliability, and completeness, leading to a robust final product suitable for practical use.
+### Queue Reliability
 
----
+BullMQ with Redis backend. Jobs have deterministic IDs (repo + PR number + commit SHA) preventing duplicate scans. Failed jobs retry up to 3 times with exponential backoff. Failed jobs retained for 7 days for post-mortem. Completed jobs retained for 24 hours.
 
-## Technology Stack
+### Graceful Shutdown
 
-### Overview
+On SIGINT, the server stops accepting new connections, waits for the BullMQ worker to finish current jobs, closes the database connection, and exits cleanly.
 
-The system is implemented as a full-stack application consisting of a backend service for analysis and orchestration, a dedicated scan engine for security detection, and a web application for user interaction and visualization. The architecture ensures clear separation of concerns while maintaining seamless integration across all components.
+### Error Handling
 
----
+Centralized error handler middleware. Controllers never leak stack traces. Production errors return generic messages; development errors include details. All errors logged via Winston with structured context.
 
-### Core System Components
+### Rate Limiting
 
-| Component         | Technology | Purpose                                                            |
-| ----------------- | ---------- | ------------------------------------------------------------------ |
-| Backend Runtime   | Node.js    | Executes core application logic and manages asynchronous workflows |
-| Backend Framework | Express.js | Handles API routing, middleware, and request processing            |
-| Language          | TypeScript | Provides type safety and maintainable code structure               |
-| API Design        | REST       | Enables communication between frontend, backend, and services      |
+`express-rate-limit` on all public-facing endpoints. Redis-backed for accuracy across multiple instances.
 
 ---
-
-### Frontend Application
-
-| Component        | Technology      | Purpose                                                        |
-| ---------------- | --------------- | -------------------------------------------------------------- |
-| Framework        | Next.js         | Builds the web application for dashboard and product interface |
-| Language         | TypeScript      | Ensures type-safe frontend development                         |
-| Styling          | Tailwind CSS    | Provides consistent and efficient UI styling                   |
-| State Management | Zustand         | Manages global application state                               |
-| Data Fetching    | TanStack Query  | Handles API calls, caching, and synchronization                |
-| Forms            | React Hook Form | Manages user inputs and form validation                        |
-| API Client       | Axios           | Facilitates communication with backend APIs                    |
 
----
+## 15. Tech Stack
 
-### Security Analysis Layer
+### Backend
 
-| Component             | Technology               | Purpose                                                    |
-| --------------------- | ------------------------ | ---------------------------------------------------------- |
-| Scan Engine           | Python                   | Executes vulnerability detection logic                     |
-| Static Analysis       | Semgrep                  | Detects code-level vulnerabilities such as injection risks |
-| Secret Detection      | TruffleHog               | Identifies exposed credentials and sensitive data          |
-| Dependency Validation | npm Registry / PyPI APIs | Verifies dependency authenticity and existence             |
-| Code Parsing          | Python AST, Regex        | Enables structured and pattern-based analysis              |
+| Component   | Technology             | Purpose                                 |
+| ----------- | ---------------------- | --------------------------------------- |
+| Runtime     | Node.js                | Core application execution              |
+| Framework   | Express.js             | HTTP routing and middleware             |
+| Language    | TypeScript (strict)    | Type safety throughout                  |
+| Validation  | Zod                    | Runtime schema validation at boundaries |
+| Job Queue   | BullMQ                 | Async scan job management               |
+| Queue Store | Redis / ioredis        | BullMQ backend + rate limit counters    |
+| Scheduler   | node-cron              | Scheduled full-repo scans               |
+| Auth        | GitHub OAuth 2.0 + JWT | User authentication                     |
+| HTTP Client | Axios                  | GitHub API calls + LLM API calls        |
+| Logging     | Winston + Morgan       | Structured logging                      |
+| Testing     | Jest + Supertest       | Unit and API tests                      |
 
----
+### Scan Engine
 
-### Integration Layer
+| Component        | Technology              | Purpose                                      |
+| ---------------- | ----------------------- | -------------------------------------------- |
+| Engine Language  | Python                  | Core detection logic                         |
+| SAST             | Semgrep (CLI)           | XSS, SSRF, path traversal, command injection |
+| Secret Detection | TruffleHog (CLI)        | Git history secret scanning                  |
+| IaC Scanning     | Checkov (CLI)           | Dockerfile, k8s, compose scanning            |
+| Code Parsing     | Python AST + Regex      | Pattern and structural analysis              |
+| Embeddings       | Code embedding model    | Semantic similarity scanner (pgvector)       |
+| Registry API     | npm Registry + PyPI API | Hallucinated package detection               |
+| License DB       | SPDX API                | License risk detection                       |
+| Analyzers        | 19 modules              | See Section 7 for full capability list       |
+| Vector Store     | pgvector (PostgreSQL)   | Baseline embeddings + similarity search      |
 
-| Component          | Technology      | Purpose                                           |
-| ------------------ | --------------- | ------------------------------------------------- |
-| Authentication     | GitHub OAuth    | Enables secure user login and repository access   |
-| Session Management | JWT             | Maintains authenticated user sessions             |
-| GitHub Integration | GitHub App      | Connects system with repositories and permissions |
-| Event Trigger      | GitHub Webhooks | Triggers analysis on pull request events          |
-| PR Interaction     | GitHub REST API | Posts analysis results and remediation outputs    |
+### LLM Layer
 
----
+| Component    | Technology             | Purpose                              |
+| ------------ | ---------------------- | ------------------------------------ |
+| LLM Provider | Claude API (Anthropic) | Contextual fix generation            |
+| Integration  | REST via Axios         | API calls from Node.js service layer |
 
 ### Data Layer
 
-| Component    | Technology    | Purpose                                               |
-| ------------ | ------------- | ----------------------------------------------------- |
-| Database     | PostgreSQL    | Stores users, repositories, scan results, and scores  |
-| ORM          | Prisma        | Simplifies database interaction and schema management |
-| Query Access | pg (optional) | Allows direct SQL queries where needed                |
+| Component | Technology | Purpose                       |
+| --------- | ---------- | ----------------------------- |
+| Database  | PostgreSQL | All persistent storage        |
+| ORM       | Prisma     | Schema management and queries |
+
+### Integration
+
+| Component  | Technology      | Purpose                                |
+| ---------- | --------------- | -------------------------------------- |
+| GitHub App | @octokit/app    | App-level auth and installation tokens |
+| GitHub API | @octokit/rest   | Diff fetch, PR comments, commit status |
+| Webhooks   | GitHub Webhooks | PR event triggers                      |
+
+### Frontend
+
+| Component     | Technology           | Purpose                       |
+| ------------- | -------------------- | ----------------------------- |
+| Framework     | Next.js + TypeScript | Dashboard web application     |
+| Styling       | Tailwind CSS         | UI styling                    |
+| State         | Zustand              | Global state management       |
+| Data Fetching | TanStack Query       | API calls and caching         |
+| Forms         | React Hook Form      | Input handling and validation |
+
+### DevOps
+
+| Component        | Technology              | Purpose                            |
+| ---------------- | ----------------------- | ---------------------------------- |
+| Containerization | Docker + Docker Compose | Local and production environment   |
+| Deployment       | Railway                 | Cloud deployment                   |
+| CI/CD            | GitHub Actions          | Build, test, and deploy automation |
+| Code Quality     | ESLint + Prettier       | Consistent code standards          |
 
 ---
 
-### Processing and Execution
+## 16. Database Schema Overview
 
-| Component        | Technology                | Purpose                                  |
-| ---------------- | ------------------------- | ---------------------------------------- |
-| Concurrency      | Node.js Async / Promises  | Enables parallel execution of analyzers  |
-| Worker Execution | Child Processes           | Executes Python scan engine from backend |
-| Task Handling    | Event-driven architecture | Manages scan lifecycle efficiently       |
+### Core Entities
 
----
+**User** — Authenticated developer. Identified by GitHub numeric ID (permanent, unlike username). Stores name, email, avatar.
 
-### Caching Layer (Optional)
+**Repository** — A GitHub repository associated with a user. Stores full name, GitHub repo ID, privacy status. Has many ScanResults.
 
-| Component      | Technology | Purpose                                                     |
-| -------------- | ---------- | ----------------------------------------------------------- |
-| Cache Store    | Redis      | Stores temporary scan data and reduces redundant operations |
-| Client Library | ioredis    | Enables efficient Redis interaction                         |
+**ScanResult** — The output of one scan on one PR. Stores pull request ID, commit SHA, status (PENDING / IN_PROGRESS / COMPLETED / FAILED). Has one RiskScore, many Findings.
 
----
+**RiskScore** — The computed score for a ScanResult. Stores total score (0–100), classification enum, and a JSON breakdown of contribution data.
 
-### DevOps and Deployment
+**Finding** — A single detected vulnerability. Stores category, description, file, line number, severity, confidence, and the original code snippet. Has one optional Remediation.
 
-| Component            | Technology         | Purpose                                           |
-| -------------------- | ------------------ | ------------------------------------------------- |
-| Containerization     | Docker             | Packages application and dependencies             |
-| Local Setup          | Docker Compose     | Runs multi-service environment locally            |
-| Deployment Platform  | Railway / Render   | Simplified cloud deployment                       |
-| Cloud Infrastructure | AWS (EC2, S3, IAM) | Scalable and secure infrastructure (future-ready) |
+**Remediation** — The fix associated with a Finding. Stores type (AUTOMATIC or GUIDED), corrected code, and recommendation text.
 
----
+**IgnoreRule** — A developer-created suppression for a specific finding type in a repository. Stores finding type, optional file path scope, and optional reason.
 
-### CI/CD and Automation
+**BaselineSnapshot** — Stores the security state of the default branch at a point in time. Used for diffing against PR findings to surface only new issues.
 
-| Component          | Technology       | Purpose                                  |
-| ------------------ | ---------------- | ---------------------------------------- |
-| CI/CD Pipeline     | GitHub Actions   | Automates build, testing, and deployment |
-| Code Quality       | ESLint, Prettier | Maintains consistent code standards      |
-| Environment Config | dotenv           | Manages environment variables securely   |
+**CodeEmbedding** — Stores vector embeddings of code snippets per repository using the pgvector PostgreSQL extension. Fields: id, repositoryId, filePath, commitSha, embedding (vector 1536 dimensions), createdAt. Used by the Semantic Similarity Scanner and Codebase Memory system. Requires `pgvector` extension enabled in PostgreSQL.
 
----
+**AuditLog** — Immutable record of every significant system action. Stores actor, action type, target resource, and timestamp. Never updated or deleted.
 
-### Logging and Observability
+**NotificationConfig** — Per-repository Slack or Discord webhook URL with delivery preferences.
 
-| Component             | Technology          | Purpose                              |
-| --------------------- | ------------------- | ------------------------------------ |
-| Logging               | Winston             | Captures structured application logs |
-| HTTP Logging          | Morgan              | Logs API requests and responses      |
-| Monitoring (Optional) | Prometheus, Grafana | Tracks metrics and system health     |
+**OutboundWebhook** — Per-repository URL to receive scan result payloads via HTTP POST after each scan.
+
+**CommunityRule** — A user-submitted detection rule in the public registry. Stores pattern, description, example vulnerable code, example safe code, contributor, and review status (PENDING / UNDER_REVIEW / ACTIVE / REJECTED).
+
+**ScheduledScanLog** — Tracks scheduled full-repo scan execution. Stores repositoryId, status (STARTED / COMPLETED / FAILED), startedAt, completedAt. Used on server startup to re-queue any scans that started but never completed due to a server restart.
+
+## 17. Boundaries & Exclusions
+
+The system does not:
+
+- Perform runtime security monitoring or intrusion detection
+- Replace penetration testing or full security audits
+- Guarantee detection of all possible vulnerabilities
+- Analyze code that is not part of a pull request diff (except scheduled full-repo scans)
+- Execute or deploy code
+- Provide compliance certification
 
 ---
-
-### Testing
-
-| Component    | Technology | Purpose                               |
-| ------------ | ---------- | ------------------------------------- |
-| Unit Testing | Jest       | Tests core logic and modules          |
-| API Testing  | Supertest  | Validates API endpoints and workflows |
-
----
-
-### Developer Tooling
-
-| Component       | Technology             | Purpose                            |
-| --------------- | ---------------------- | ---------------------------------- |
-| Code Editor     | VS Code                | Primary development environment    |
-| Version Control | Git, GitHub            | Source control and collaboration   |
-| API Testing     | Postman                | Manual API validation              |
-| Database Tools  | pgAdmin, Prisma Studio | Database inspection and management |
-
----
-
-## Summary
-
-The technology stack is designed to support a full-stack security analysis system with strong backend capabilities, a dedicated analysis engine, and a user-facing web application. It balances development efficiency, scalability, and alignment with modern development practices, ensuring that the system is both practical to build and robust in operation.

@@ -2,20 +2,9 @@ import { App } from '@octokit/app';
 import { Octokit } from '@octokit/rest';
 import { logger } from '../utils/logger';
 
-// GITHUB APP AUTHENTICATION
-// GitHub Apps authenticate in two stages:
-//   Stage 1 — App-level JWT: Signed with the App's RSA private key, valid for 10 min.
-//             Used only to generate Installation Tokens.
-//   Stage 2 — Installation Token: A scoped, short-lived OAuth-like token granting
-//             the App permissions on a specific user/org's repositories.
-//
-// @octokit/app wraps both stages automatically. We initialize it once here and
-// call getInstallationOctokit() per request to get a correctly scoped client.
-
 let githubApp: App | null = null;
 
 function getGithubApp(): App {
-    // Lazy singleton — only instantiate once, reuse across all requests.
     if (githubApp) return githubApp;
 
     const appId = process.env.GITHUB_APP_ID;
@@ -27,10 +16,8 @@ function getGithubApp(): App {
 
     githubApp = new App({
         appId,
-        // Private key in .env is stored with literal \n — replace to real newlines.
         privateKey: privateKey.replace(/\\n/g, '\n'),
         webhooks: {
-            // webhooks secret is handled separately in the middleware, not here.
             secret: process.env.GITHUB_WEBHOOK_SECRET || '',
         },
     });
@@ -38,21 +25,12 @@ function getGithubApp(): App {
     return githubApp;
 }
 
-// GET INSTALLATION OCTOKIT
-// Returns an Octokit instance authenticated with a fresh Installation Token
-// scoped to the specific repository that triggered the webhook.
-// Each installation (user/org that installed our App) has a unique installationId.
 export async function getInstallationOctokit(installationId: number): Promise<Octokit> {
     const app = getGithubApp();
-    // @octokit/app internally generates the JWT, exchanges it for an installation
-    // token, and injects the token as a Bearer header on all subsequent requests.
     const octokit = await app.getInstallationOctokit(installationId);
     return octokit as unknown as Octokit;
 }
 
-// GET PULL REQUEST DIFF
-// Downloads the raw unified diff (patch format) for a specific PR.
-// The diff contains exactly the lines added/removed — this is what the scan engine will analyze.
 export async function getPullRequestDiff(
     octokit: Octokit,
     owner: string,
@@ -61,7 +39,6 @@ export async function getPullRequestDiff(
 ): Promise<string> {
     logger.info(`Fetching diff for ${owner}/${repo}#${pullRequestNumber}`);
 
-    // GitHub returns the diff when Accept header is set to 'application/vnd.github.v3.diff'
     const response = await octokit.request('GET /repos/{owner}/{repo}/pulls/{pull_number}', {
         owner,
         repo,
@@ -74,9 +51,6 @@ export async function getPullRequestDiff(
     return response.data as unknown as string;
 }
 
-// POST PR REVIEW COMMENT
-// Posts a top-level summary comment on the Pull Request with the scan results.
-// This is what the developer actually sees in their GitHub PR interface.
 export async function postPullRequestComment(
     octokit: Octokit,
     owner: string,
@@ -89,15 +63,11 @@ export async function postPullRequestComment(
     await octokit.request('POST /repos/{owner}/{repo}/issues/{issue_number}/comments', {
         owner,
         repo,
-        // GitHub treats PRs as Issues for the purposes of comments.
         issue_number: pullRequestNumber,
         body,
     });
 }
 
-// SET COMMIT STATUS
-// Updates the GitHub "check" icon (green tick / red cross) on a commit.
-// This is what blocks or allows merging in protected branch workflows.
 export async function setCommitStatus(
     octokit: Octokit,
     owner: string,
@@ -114,6 +84,139 @@ export async function setCommitStatus(
         sha,
         state,
         description,
-        context: 'RedFlag CI / Security Scan', // Label shown in the GitHub PR UI
+        context: 'RedFlag CI / Security Scan',
     });
+}
+
+export async function getFileContent(
+    octokit: Octokit,
+    owner: string,
+    repo: string,
+    path: string,
+    ref: string
+): Promise<string> {
+    logger.info(`Fetching file content: ${path} at ${ref}`);
+    const response = await octokit.request('GET /repos/{owner}/{repo}/contents/{path}', {
+        owner,
+        repo,
+        path,
+        ref,
+    });
+    
+    if (Array.isArray(response.data) || !('content' in response.data) || !response.data.content) {
+        throw new Error(`File ${path} is not a single readable file`);
+    }
+
+    return Buffer.from(response.data.content, 'base64').toString('utf8');
+}
+
+export async function createBranch(
+    octokit: Octokit,
+    owner: string,
+    repo: string,
+    branchName: string,
+    sha: string
+): Promise<void> {
+    logger.info(`Creating branch ${branchName} from ${sha}`);
+    await octokit.request('POST /repos/{owner}/{repo}/git/refs', {
+        owner,
+        repo,
+        ref: `refs/heads/${branchName}`,
+        sha,
+    });
+}
+
+export async function createBlob(
+    octokit: Octokit,
+    owner: string,
+    repo: string,
+    content: string
+): Promise<string> {
+    const response = await octokit.request('POST /repos/{owner}/{repo}/git/blobs', {
+        owner,
+        repo,
+        content,
+        encoding: 'utf-8',
+    });
+    return response.data.sha;
+}
+
+export async function createTree(
+    octokit: Octokit,
+    owner: string,
+    repo: string,
+    baseTreeSha: string,
+    tree: Array<{
+        path: string;
+        mode: '100644' | '100755' | '040000' | '160000' | '120000';
+        type: 'blob' | 'tree' | 'commit';
+        sha: string;
+    }>
+): Promise<string> {
+    const response = await octokit.request('POST /repos/{owner}/{repo}/git/trees', {
+        owner,
+        repo,
+        base_tree: baseTreeSha,
+        tree,
+    });
+    return response.data.sha;
+}
+
+export async function createCommit(
+    octokit: Octokit,
+    owner: string,
+    repo: string,
+    message: string,
+    treeSha: string,
+    parentShas: string[]
+): Promise<string> {
+    const response = await octokit.request('POST /repos/{owner}/{repo}/git/commits', {
+        owner,
+        repo,
+        message,
+        tree: treeSha,
+        parents: parentShas,
+    });
+    return response.data.sha;
+}
+
+export async function updateRef(
+    octokit: Octokit,
+    owner: string,
+    repo: string,
+    ref: string,
+    sha: string
+): Promise<void> {
+    logger.info(`Updating ref ${ref} to ${sha}`);
+    await octokit.request('PATCH /repos/{owner}/{repo}/git/refs/{ref}', {
+        owner,
+        repo,
+        ref,
+        sha,
+        force: true,
+    });
+}
+
+export async function createPullRequest(
+    octokit: Octokit,
+    owner: string,
+    repo: string,
+    title: string,
+    head: string,
+    base: string,
+    body: string
+): Promise<{ html_url: string; number: number }> {
+    logger.info(`Opening Pull Request: ${head} -> ${base}`);
+    const response = await octokit.request('POST /repos/{owner}/{repo}/pulls', {
+        owner,
+        repo,
+        title,
+        head,
+        base,
+        body,
+    });
+    return {
+        html_url: response.data.html_url,
+        number: response.data.number,
+    };
 }

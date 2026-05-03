@@ -1,37 +1,17 @@
 import { Request, Response, NextFunction } from 'express';
 import { logger } from '../utils/logger';
 import { addScanJob } from '../queues/scan.queue';
-
-/**
- * 💡 Production Practice: Controller Slimness
- * A Controller should ONLY do three things:
- * 1. Extract data from the incoming Request (Headers, Body)
- * 2. Hand that data off to a Service (The actual business logic)
- * 3. Return a Response to the client.
- * 
- * It should NEVER contain complex `if-else` business logic or database queries directly!
- */
+import { prisma } from '../config/db';
 
 export const handleGithubWebhook = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        // 1. Extract the GitHub event type (e.g., "pull_request", "push")
         const githubEvent = req.headers['x-github-event'];
-        
-        // 2. Extract the actual JSON data GitHub sent us
         const payload = req.body;
 
         logger.info(`📥 Received Webhook Event: [${githubEvent}]`);
 
-
-        // 💡 Production Practice: Early Acknowledgement
-        // GitHub expects a 200 OK response within 10 seconds. If we run a 3-minute AI Python scan here, 
-        // GitHub will assume our server crashed and angrily mark the webhook as "Failed".
-        // Therefore, we instantly reply 200 OK, and hand the heavy lifting off to a background Queue!
         res.status(200).json({ status: 'success', message: 'Webhook received and queued for processing.' });
 
-        // QUEUE THE JOB — only for pull_request events we actually need to scan
-        // We filter strictly here so random GitHub events (star, fork, issue comment)
-        // do not accidentally trigger expensive security scans.
         const PR_EVENTS = ['opened', 'synchronize', 'reopened'];
         if (githubEvent === 'pull_request' && PR_EVENTS.includes(payload.action)) {
             await addScanJob({
@@ -41,15 +21,94 @@ export const handleGithubWebhook = async (req: Request, res: Response, next: Nex
                 headSha: payload.pull_request.head.sha,
                 baseRef: payload.pull_request.base.ref,
             });
+        } else if (githubEvent === 'installation' && payload.action === 'created') {
+            const senderGithubId = String(payload.sender.id);
+            const user = await prisma.user.findUnique({
+                where: { githubId: senderGithubId }
+            });
+            
+            if (user) {
+                for (const repo of payload.repositories) {
+                    await prisma.repository.upsert({
+                        where: { githubRepoId: String(repo.id) },
+                        update: {
+                            name: repo.name,
+                            fullName: repo.full_name,
+                            url: `https://github.com/${repo.full_name}`,
+                            isPrivate: repo.private,
+                        },
+                        create: {
+                            githubRepoId: String(repo.id),
+                            name: repo.name,
+                            fullName: repo.full_name,
+                            url: `https://github.com/${repo.full_name}`,
+                            isPrivate: repo.private,
+                            userId: user.id,
+                        }
+                    });
+                }
+                logger.info(`[WebhookController] Populated ${payload.repositories.length} repositories for user ${user.id}`);
+            } else {
+                logger.warn(`[WebhookController] Installation created by unknown user (githubId: ${senderGithubId})`);
+            }
+        } else if (githubEvent === 'installation_repositories') {
+            const senderGithubId = String(payload.sender.id);
+            const user = await prisma.user.findUnique({
+                where: { githubId: senderGithubId }
+            });
+            
+            if (user) {
+                if (payload.action === 'added') {
+                    for (const repo of payload.repositories_added) {
+                        await prisma.repository.upsert({
+                            where: { githubRepoId: String(repo.id) },
+                            update: {
+                                name: repo.name,
+                                fullName: repo.full_name,
+                                url: `https://github.com/${repo.full_name}`,
+                                isPrivate: repo.private,
+                            },
+                            create: {
+                                githubRepoId: String(repo.id),
+                                name: repo.name,
+                                fullName: repo.full_name,
+                                url: `https://github.com/${repo.full_name}`,
+                                isPrivate: repo.private,
+                                userId: user.id,
+                            }
+                        });
+                    }
+                    logger.info(`[WebhookController] Added ${payload.repositories_added.length} repositories for user ${user.id}`);
+                } else if (payload.action === 'removed') {
+                    for (const repo of payload.repositories_removed) {
+                        await prisma.repository.deleteMany({
+                            where: { githubRepoId: String(repo.id) }
+                        });
+                    }
+                    logger.info(`[WebhookController] Removed ${payload.repositories_removed.length} repositories for user ${user.id}`);
+                }
+            } else {
+                logger.warn(`[WebhookController] installation_repositories event by unknown user (githubId: ${senderGithubId})`);
+            }
+        } else if (githubEvent === 'installation' && payload.action === 'deleted') {
+            const senderGithubId = String(payload.sender.id);
+            const user = await prisma.user.findUnique({
+                where: { githubId: senderGithubId }
+            });
+            
+            if (user) {
+                const deleteResult = await prisma.repository.deleteMany({
+                    where: { userId: user.id }
+                });
+                logger.info(`[WebhookController] Installation deleted. Removed ${deleteResult.count} repositories for user ${user.id}`);
+            } else {
+                logger.warn(`[WebhookController] Installation deleted by unknown user (githubId: ${senderGithubId})`);
+            }
         } else {
             logger.debug(`Event [${githubEvent}:${payload.action}] — no scan required, ignoring.`);
         }
 
     } catch (error) {
-        // 💡 Production Practice: The Global Error Net
-        // We NEVER do `res.status(500).json({ error: error.message })` inside a controller. 
-        // We pass the error strictly to the `next()` function, which throws it into our custom 
-        // Error Handler middleware (errorHandler.middleware.ts) to process it securely.
         next(error);
     }
 };
