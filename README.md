@@ -1,14 +1,13 @@
-RedFlag-CI
+# RedFlag CI
 
+```
 ██████╗ ███████╗██████╗ ███████╗██╗      █████╗  ██████╗     ██████╗██╗
 ██╔══██╗██╔════╝██╔══██╗██╔════╝██║     ██╔══██╗██╔════╝    ██╔════╝██║
 ██████╔╝█████╗  ██║  ██║█████╗  ██║     ███████║██║  ███╗   ██║     ██║
 ██╔══██╗██╔══╝  ██║  ██║██╔══╝  ██║     ██╔══██║██║   ██║   ██║     ██║
 ██║  ██║███████╗██████╔╝██║     ███████╗██║  ██║╚██████╔╝   ╚██████╗██║
 ╚═╝  ╚═╝╚══════╝╚═════╝ ╚═╝     ╚══════╝╚═╝  ╚═╝ ╚═════╝     ╚═════╝╚═╝
-
-                 
-# RedFlag CI
+```
 
 <p align="left">
   <a href="https://github.com"><img src="https://img.shields.io/badge/platform-GitHub_App-181717?style=for-the-badge&logo=github" alt="GitHub App"></a>
@@ -51,25 +50,27 @@ RedFlag-CI
   <img src="https://img.shields.io/badge/license-Strict_Proprietary-7F1D1D?style=flat-square" alt="Strict Proprietary License">
 </p>
 
-RedFlag CI is a security intelligence platform built for AI-assisted software development. It plugs into GitHub pull requests, analyzes code changes before merge, identifies both classic and AI-specific security risks, and returns actionable remediation.
+---
+
+RedFlag CI is a security intelligence platform built for AI-assisted software development. It plugs into GitHub pull requests, analyzes code changes before merge, and identifies both classic and AI-specific security issues before they reach production.
 
 ## The Problem
 
 AI coding assistants make teams faster, but they also introduce a new category of security issues that conventional tools do not fully understand.
 
-AI-generated code can include hardcoded credentials, hallucinated packages, disabled authentication scaffolding, insecure defaults, prompt injection paths, unsafe query construction, and development-only artifacts that accidentally reach production. Traditional scanners can catch many isolated issues, but they are not designed to reason about AI-generated code patterns, connect multiple weak signals into exploit chains, or learn a repository's false-positive behavior over time.
+AI-generated code can include hardcoded credentials, hallucinated packages, disabled authentication scaffolding, insecure defaults, prompt injection paths, unsafe query construction, and development-oriented misconfigurations that aren't meant for production.
 
 ## RedFlag CI
 
-RedFlag CI is a GitHub App-based security system designed specifically for modern AI-assisted development workflows. It combines static analysis, semantic scanning, dependency intelligence, repository memory, and LLM-assisted remediation in a single review pipeline.
+RedFlag CI is a GitHub App-based security system designed specifically for modern AI-assisted development workflows. It combines static analysis, semantic scanning, dependency intelligence, and repository learning to catch security issues that traditional SAST tools miss.
 
-The project focuses on pull-request-time detection so developers get feedback before insecure code is merged. It is built to be zero-configuration at onboarding while still supporting richer workflows like posture tracking, community rule sharing, SARIF export, and automated fix generation.
+The project focuses on pull-request-time detection so developers get feedback before insecure code is merged. It is built to be zero-configuration at onboarding while still supporting richer workflows for security teams and platform engineers.
 
-## What it does
+## What It Does
 
 RedFlag CI scans pull request diffs and detects both common security flaws and issues that are strongly associated with AI-generated code.
 
-### Detection coverage
+### Detection Coverage
 
 - Finds exposed secrets, credential patterns, and high-entropy probable secrets.
 - Detects SQL injection, prompt injection, command injection, path traversal, SSRF, XSS, insecure deserialization, and related application-layer issues.
@@ -82,11 +83,11 @@ RedFlag CI scans pull request diffs and detects both common security flaws and i
 - Correlates multiple findings into exploit chains and computes a weighted security risk score.
 - Produces contextual remediation and supports automatic fix pull requests where appropriate.
 
-## How it does it
+## How It Works
 
 RedFlag CI follows an asynchronous review pipeline so pull request events are handled quickly while analysis runs in the background.
 
-```text
+```
 Pull Request Event
   -> GitHub App webhook received
   -> Signature verification
@@ -101,7 +102,7 @@ Pull Request Event
   -> Results stored for history and posture tracking
 ```
 
-### Pipeline summary
+### Pipeline Summary
 
 - A GitHub App receives pull request events and passes the work into a Redis-backed BullMQ queue.
 - An Express.js service orchestrates webhook handling, job management, authentication, persistence, and integration flows.
@@ -126,7 +127,7 @@ Pull Request Event
 - Slack, Discord, and outbound webhook notifications.
 - Audit logging and community-facing platform features.
 
-## Why it is better than existing solutions
+## Why It Is Better Than Existing Solutions
 
 Most existing security tools are strong at finding known isolated patterns, but RedFlag CI is designed for the way AI-assisted code is actually produced and shipped.
 
@@ -141,9 +142,9 @@ Most existing security tools are strong at finding known isolated patterns, but 
 
 ## Tech Stack
 
-### Backend and orchestration
+### Backend and Orchestration
 
-| Technology | Category | Why this is used in the project |
+| Technology | Category | Why This Is Used in the Project |
 |---|---|---|
 | Node.js | Runtime | Runs the core backend services and supports the event-driven workflow needed for webhook handling and async orchestration. |
 | Express.js | Backend framework | Provides a lightweight and flexible HTTP layer for webhooks, APIs, middleware, and service composition. |
@@ -161,9 +162,9 @@ Most existing security tools are strong at finding known isolated patterns, but 
 | @octokit/app | GitHub integration | Handles GitHub App authentication and installation-level interactions. |
 | @octokit/rest | GitHub integration | Supports GitHub API operations like pull request and repository actions. |
 
-### Scan engine and analysis
+### Scan Engine and Analysis
 
-| Technology | Category | Why this is used in the project |
+| Technology | Category | Why This Is Used in the Project |
 |---|---|---|
 | Python | Scan engine language | Powers the analyzer layer where pattern matching, heuristics, and code analysis are executed. |
 | Python AST | Code parsing | Enables structure-aware analysis instead of relying only on plain-text matching. |
@@ -177,16 +178,16 @@ Most existing security tools are strong at finding known isolated patterns, but 
 | Embedding model | Semantic analysis | Supports similarity-based detection for obfuscated or paraphrased vulnerable code. |
 | pgvector | Vector search | Stores and queries code embeddings for repository memory and semantic comparison. |
 
-### Data and persistence
+### Data and Persistence
 
-| Technology | Category | Why this is used in the project |
+| Technology | Category | Why This Is Used in the Project |
 |---|---|---|
 | PostgreSQL | Database | Stores repositories, scan results, findings, remediations, baselines, trends, and audit records. |
 | Prisma | ORM | Simplifies schema management and database access while keeping models consistent. |
 
 ### Frontend
 
-| Technology | Category | Why this is used in the project |
+| Technology | Category | Why This Is Used in the Project |
 |---|---|---|
 | Next.js | Frontend framework | Powers the dashboard experience for repository views, trends, and scan detail presentation. |
 | TypeScript | Frontend language | Keeps UI code strongly typed and aligned with shared domain models. |
@@ -195,9 +196,9 @@ Most existing security tools are strong at finding known isolated patterns, but 
 | TanStack Query | Data fetching | Handles API caching, revalidation, and asynchronous dashboard data flows. |
 | React Hook Form | Forms | Simplifies reliable form handling for settings and repository configuration screens. |
 
-### DevOps and quality
+### DevOps and Quality
 
-| Technology | Category | Why this is used in the project |
+| Technology | Category | Why This Is Used in the Project |
 |---|---|---|
 | Docker | Containerization | Standardizes local and deployable runtime environments. |
 | Docker Compose | Multi-service orchestration | Helps run dependent services together during development and testing. |
@@ -208,9 +209,9 @@ Most existing security tools are strong at finding known isolated patterns, but 
 | ESLint | Code quality | Enforces code standards and reduces maintainability issues. |
 | Prettier | Formatting | Keeps code style consistent across the project. |
 
-### External services and integrations
+### External Services and Integrations
 
-| Technology | Category | Why this is used in the project |
+| Technology | Category | Why This Is Used in the Project |
 |---|---|---|
 | GitHub App | Platform integration | Makes RedFlag CI installable inside repository workflows where pull requests originate. |
 | GitHub API | Platform integration | Provides repository, diff, comment, and status data required for scan execution. |
