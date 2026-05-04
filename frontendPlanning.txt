@@ -1,0 +1,48 @@
+frontend toolkit:
+Core (already decided)
+
+Next.js 14 (App Router)
+Tailwind CSS
+Zustand (state)
+TanStack Query (server state/fetching)
+
+UI Components
+
+shadcn/ui — pre-built accessible components, fully customizable, works perfectly with Tailwind. This alone saves weeks.
+
+Charts/Data viz
+
+Recharts — risk trend charts, posture score graphs. Simple API, React-native.
+
+Animations
+
+Framer Motion — for dashboard subtle animations (staggered lists, fade-ins)
+GSAP — for landing page cinematic animations (cursor effects, scroll triggers)
+
+Landing Page Specifics
+
+Aceternity UI — pre-built stunning landing page components (moving cards, spotlight effects, grid backgrounds). Perfect for your use case.
+Magic UI — similar, great for hero sections
+
+Code Display
+
+Shiki or react-syntax-highlighter — for showing vulnerable code snippets in scan reports with syntax highlighting
+
+Forms
+
+React Hook Form + Zod — already in your stack
+
+Icons
+
+Lucide React — already in your stack
+
+CI/CD PIPELINE FOR OUR PROJECT IMPLEMENTED IN FRONTEND:
+
+
+Why you should make it:
+
+RedFlag CI's core value is the pipeline — if users can't visualize it in 10 seconds, they won't get it
+Goes on the landing page as a key section
+Goes in the README
+Goes in your resume/portfolio as a system design artifact
+Interviewers will ask "walk me through your architecture" — this diagram is your answer

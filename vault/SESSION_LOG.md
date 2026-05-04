@@ -40,4 +40,9 @@
 - Completed Stage 4 Task 10: Cryptography Weakness Detector (crypto_analyzer.py)
   - Detects weak algorithms (MD5, SHA1, DES, RC4), insecure randomness (Math.random, random.random), hardcoded secrets (IVs, salts), and ECB mode.
 - Registered all new analyzers in main.py.
-- Next session: Stage 4 Task 11 — Input validation gap detector
+- ## [2026-05-05] — Session 6: Stage 4 Task 11
+- Completed Stage 4 Task 11: Input Validation Gap Detector (input_validation_analyzer.py)
+  - Detects missing sanitization when user input (req.body, req.query, etc.) reaches sensitive sinks (SQL, Path, Command, XSS, SSRF).
+  - Uses variable tracing heuristics and sanitizer whitelist (Joi, Zod, parseInt, etc.).
+  - Registered in main.py.
+- Next session: Stage 4 Task 12 — Node.js/Python dangerous pattern detector

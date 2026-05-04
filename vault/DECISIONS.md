@@ -65,3 +65,12 @@ Settled: yes.
 Reason: The scan engine operates on a diff-only basis to optimize for speed and context window. The Dead Code / Ghost Dependency analyzer only checks for dependency usage within the changed files (the current diff). 
 Limitation: Dependencies that are added or modified in a PR but are only used in files *outside* the current diff will be flagged as ghost dependencies. This is an intentional trade-off to avoid scanning the entire repository on every commit.
 Settled: yes.
+
+## [2026-05-05] Input Validation Gap Detector Heuristics
+Reason: Analyzing input-to-sink flow within a `DiffFile` (patch-only) is challenging without full-program data flow analysis.
+Decision: Use pattern-based heuristics. A finding is triggered if:
+1. A known sink (SQL, Command, Path, etc.) is found in an added line.
+2. A known user-controlled source (req.body, sys.argv, etc.) is found in the same line or in a variable assignment within the same file's added lines.
+3. No known sanitizer (parseInt, DOMPurify, Joi, etc.) is present in the same line as the sink.
+Limitation: This may result in false positives if sanitization happens in lines not included in the diff.
+Settled: yes.
