@@ -22,6 +22,7 @@ from analyzers import auth_pattern_analyzer
 from analyzers import crypto_analyzer
 from analyzers import input_validation_analyzer
 from analyzers import dangerous_pattern_analyzer
+from analyzers import async_concurrency_analyzer
 
 
 def log(message: str) -> None:
@@ -72,6 +73,7 @@ def main() -> None:
         ('Cryptography Weakness',     crypto_analyzer.analyze),
         ('Input Validation Gap',      input_validation_analyzer.analyze),
         ('Dangerous Patterns',        dangerous_pattern_analyzer.analyze),
+        ('Async / Concurrency',       async_concurrency_analyzer.analyze),
     ]
 
     for name, analyzer_fn in analyzers:
