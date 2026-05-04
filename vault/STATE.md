@@ -2,7 +2,7 @@
 
 Last updated: 2026-05-05 (end of session 5)
 Current stage: Stage 4 — New Analyzers
-Next task: Stage 4 Task 10 — Cryptography weakness detector
+Next task: Stage 4 Task 11 — Input validation gap detector
 
 ## Stage 1 — Foundation ✅
 - [x] Express app structure (app.ts, index.ts)
@@ -59,7 +59,7 @@ Next task: Stage 4 Task 10 — Cryptography weakness detector
 - [x] Environment boundary analyzer
 - [x] Dead code and ghost dependency detector
 - [x] Auth/authz pattern analyzer
-- [ ] Cryptography weakness detector
+- [x] Cryptography weakness detector
 - [ ] Input validation gap detector
 - [ ] Node.js/Python dangerous pattern detector
 - [ ] Async/concurrency issue detector
