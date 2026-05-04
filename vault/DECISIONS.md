@@ -60,3 +60,8 @@ Settled: yes. Non-negotiable.
 ## [2026-05-04] Git Push Workflow
 Reason: Manual push to GitHub after every completed task to maintain a tight feedback loop and atomic history. We do not batch multiple tasks into one commit. After task completion, the agent stops, notifies the user, and returns the push commands for the user to execute manually.
 Settled: yes.
+
+## [2026-05-05] Ghost Dependency Analyzer Scope
+Reason: The scan engine operates on a diff-only basis to optimize for speed and context window. The Dead Code / Ghost Dependency analyzer only checks for dependency usage within the changed files (the current diff). 
+Limitation: Dependencies that are added or modified in a PR but are only used in files *outside* the current diff will be flagged as ghost dependencies. This is an intentional trade-off to avoid scanning the entire repository on every commit.
+Settled: yes.

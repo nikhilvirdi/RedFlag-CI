@@ -1,8 +1,8 @@
 # RedFlag CI — Build State
 
-Last updated: 2026-05-04 (end of session 4)
+Last updated: 2026-05-05 (end of session 5)
 Current stage: Stage 4 — New Analyzers
-Next task: Stage 4 Task 8 — Dead code and ghost dependency detector
+Next task: Stage 4 Task 9 — Auth/authz pattern analyzer
 
 ## Stage 1 — Foundation ✅
 - [x] Express app structure (app.ts, index.ts)
@@ -57,7 +57,7 @@ Next task: Stage 4 Task 8 — Dead code and ghost dependency detector
 - [x] License risk detector
 - [x] TruffleHog git history subprocess
 - [x] Environment boundary analyzer
-- [ ] Dead code and ghost dependency detector
+- [x] Dead code and ghost dependency detector
 - [ ] Auth/authz pattern analyzer
 - [ ] Cryptography weakness detector
 - [ ] Input validation gap detector
