@@ -1,4 +1,5 @@
 import re
+import sys
 from typing import List
 
 from models import ScanFinding
@@ -94,36 +95,37 @@ RECOMMENDATION = (
 
 def analyze(files: List[DiffFile]) -> List[ScanFinding]:
     findings: List[ScanFinding] = []
+    try:
+        for diff_file in files:
+            file_has_llm_usage = any(
+                pattern.search(diff_file.full_content)
+                for pattern in LLM_API_PATTERNS
+            )
 
-    for diff_file in files:
-        file_has_llm_usage = any(
-            pattern.search(diff_file.full_content)
-            for pattern in LLM_API_PATTERNS
-        )
+            for diff_line in diff_file.added_lines:
+                line_content = diff_line.content
+                stripped = line_content.strip()
 
-        for diff_line in diff_file.added_lines:
-            line_content = diff_line.content
-            stripped = line_content.strip()
+                if not stripped or stripped.startswith(('#', '//', '/*', '*')):
+                    continue
 
-            if not stripped or stripped.startswith(('#', '//', '/*', '*')):
-                continue
+                for pattern_def in UNSAFE_PROMPT_PATTERNS:
+                    if pattern_def['pattern'].search(line_content):
+                        confidence = 'high' if file_has_llm_usage else pattern_def['confidence']
 
-            for pattern_def in UNSAFE_PROMPT_PATTERNS:
-                if pattern_def['pattern'].search(line_content):
-                    confidence = 'high' if file_has_llm_usage else pattern_def['confidence']
-
-                    findings.append(ScanFinding(
-                        type='prompt_injection',
-                        severity=pattern_def['severity'],
-                        confidence=confidence,
-                        file=diff_file.filename,
-                        line=diff_line.line_number,
-                        description=(
-                            f"{pattern_def['name']}: {pattern_def['description']}"
-                        ),
-                        original_code=stripped,
-                        recommendation=RECOMMENDATION,
-                    ))
-                    break
-
+                        findings.append(ScanFinding(
+                            type='prompt_injection',
+                            severity=pattern_def['severity'],
+                            confidence=confidence,
+                            file=diff_file.filename,
+                            line=diff_line.line_number,
+                            description=(
+                                f"{pattern_def['name']}: {pattern_def['description']}"
+                            ),
+                            original_code=stripped,
+                            recommendation=RECOMMENDATION,
+                        ))
+                        break
+    except Exception as e:
+        print(f'[PromptInjectionAnalyzer] error: {e}', file=sys.stderr)
     return findings

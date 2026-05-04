@@ -1,4 +1,5 @@
 import re
+import sys
 from typing import List, Set
 
 from models import ScanFinding
@@ -55,61 +56,62 @@ REQUIREMENTS_PATTERN = re.compile(
 
 def analyze(files: List[DiffFile]) -> List[ScanFinding]:
     findings: List[ScanFinding] = []
+    try:
+        for diff_file in files:
+            for diff_line in diff_file.added_lines:
+                line_content = diff_line.content
+                stripped = line_content.strip()
 
-    for diff_file in files:
-        for diff_line in diff_file.added_lines:
-            line_content = diff_line.content
-            stripped = line_content.strip()
+                if not stripped:
+                    continue
 
-            if not stripped:
-                continue
+                packages = _extract_packages(diff_file.filename, line_content)
 
-            packages = _extract_packages(diff_file.filename, line_content)
+                for package_name in packages:
+                    if package_name.lower() in KNOWN_BAD_PACKAGES:
+                        legit_name = _find_legitimate_package(package_name.lower())
 
-            for package_name in packages:
-                if package_name.lower() in KNOWN_BAD_PACKAGES:
-                    legit_name = _find_legitimate_package(package_name.lower())
+                        findings.append(ScanFinding(
+                            type='dependency',
+                            severity='critical',
+                            confidence='high',
+                            file=diff_file.filename,
+                            line=diff_line.line_number,
+                            description=(
+                                f'Known typosquat package detected: "{package_name}". '
+                                f'This is likely a malicious imitation of the legitimate '
+                                f'package "{legit_name}". It may contain code that steals '
+                                f'environment variables, installs backdoors, or mines cryptocurrency.'
+                            ),
+                            original_code=stripped,
+                            remediated_code=stripped.replace(package_name, legit_name),
+                            recommendation=(
+                                f'Replace "{package_name}" with "{legit_name}". '
+                                f'Remove this package immediately and audit your '
+                                f'node_modules or site-packages directory for unexpected files.'
+                            ),
+                        ))
 
-                    findings.append(ScanFinding(
-                        type='dependency',
-                        severity='critical',
-                        confidence='high',
-                        file=diff_file.filename,
-                        line=diff_line.line_number,
-                        description=(
-                            f'Known typosquat package detected: "{package_name}". '
-                            f'This is likely a malicious imitation of the legitimate '
-                            f'package "{legit_name}". It may contain code that steals '
-                            f'environment variables, installs backdoors, or mines cryptocurrency.'
-                        ),
-                        original_code=stripped,
-                        remediated_code=stripped.replace(package_name, legit_name),
-                        recommendation=(
-                            f'Replace "{package_name}" with "{legit_name}". '
-                            f'Remove this package immediately and audit your '
-                            f'node_modules or site-packages directory for unexpected files.'
-                        ),
-                    ))
-
-                elif _has_suspicious_pattern(package_name):
-                    findings.append(ScanFinding(
-                        type='dependency',
-                        severity='medium',
-                        confidence='low',
-                        file=diff_file.filename,
-                        line=diff_line.line_number,
-                        description=(
-                            f'Package "{package_name}" has a suspicious naming pattern. '
-                            f'This may indicate a typosquat or malicious package.'
-                        ),
-                        original_code=stripped,
-                        recommendation=(
-                            f'Verify that "{package_name}" is the correct package by '
-                            f'checking its npm/PyPI page, download count, maintainer '
-                            f'history, and GitHub repository link.'
-                        ),
-                    ))
-
+                    elif _has_suspicious_pattern(package_name):
+                        findings.append(ScanFinding(
+                            type='dependency',
+                            severity='medium',
+                            confidence='low',
+                            file=diff_file.filename,
+                            line=diff_line.line_number,
+                            description=(
+                                f'Package "{package_name}" has a suspicious naming pattern. '
+                                f'This may indicate a typosquat or malicious package.'
+                            ),
+                            original_code=stripped,
+                            recommendation=(
+                                f'Verify that "{package_name}" is the correct package by '
+                                f'checking its npm/PyPI page, download count, maintainer '
+                                f'history, and GitHub repository link.'
+                            ),
+                        ))
+    except Exception as e:
+        print(f'[DependencyAnalyzer] error: {e}', file=sys.stderr)
     return findings
 
 

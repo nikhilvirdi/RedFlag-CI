@@ -1,4 +1,5 @@
 import re
+import sys
 from typing import List
 
 from models import ScanFinding
@@ -109,30 +110,31 @@ UNSAFE_PATTERNS = [
 
 def analyze(files: List[DiffFile]) -> List[ScanFinding]:
     findings: List[ScanFinding] = []
+    try:
+        for diff_file in files:
+            for diff_line in diff_file.added_lines:
+                line_content = diff_line.content
+                stripped = line_content.strip()
 
-    for diff_file in files:
-        for diff_line in diff_file.added_lines:
-            line_content = diff_line.content
-            stripped = line_content.strip()
+                if not stripped or stripped.startswith(('#', '//', '/*', '*')):
+                    continue
 
-            if not stripped or stripped.startswith(('#', '//', '/*', '*')):
-                continue
+                if not SQL_KEYWORDS.search(line_content):
+                    continue
 
-            if not SQL_KEYWORDS.search(line_content):
-                continue
-
-            for pattern_def in UNSAFE_PATTERNS:
-                if pattern_def['pattern'].search(line_content):
-                    findings.append(ScanFinding(
-                        type='sql_injection',
-                        severity=pattern_def['severity'],
-                        confidence=pattern_def['confidence'],
-                        file=diff_file.filename,
-                        line=diff_line.line_number,
-                        description=f"{pattern_def['name']}: {pattern_def['description']}",
-                        original_code=stripped,
-                        recommendation=pattern_def['recommendation'],
-                    ))
-                    break
-
+                for pattern_def in UNSAFE_PATTERNS:
+                    if pattern_def['pattern'].search(line_content):
+                        findings.append(ScanFinding(
+                            type='sql_injection',
+                            severity=pattern_def['severity'],
+                            confidence=pattern_def['confidence'],
+                            file=diff_file.filename,
+                            line=diff_line.line_number,
+                            description=f"{pattern_def['name']}: {pattern_def['description']}",
+                            original_code=stripped,
+                            recommendation=pattern_def['recommendation'],
+                        ))
+                        break
+    except Exception as e:
+        print(f'[SqlInjectionAnalyzer] error: {e}', file=sys.stderr)
     return findings

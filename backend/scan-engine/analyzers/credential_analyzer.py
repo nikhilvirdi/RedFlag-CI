@@ -1,5 +1,6 @@
 import re
 import math
+import sys
 from typing import List
 
 from models import ScanFinding
@@ -189,82 +190,83 @@ MIN_ENTROPY_LENGTH = 20
 
 def analyze(files: List[DiffFile]) -> List[ScanFinding]:
     findings: List[ScanFinding] = []
-
-    for diff_file in files:
-        if _is_non_code_file(diff_file.filename):
-            continue
-
-        for diff_line in diff_file.added_lines:
-            line_content = diff_line.content
-
-            stripped = line_content.strip()
-            if not stripped or stripped.startswith(('#', '//', '/*', '*', '<!--')):
+    try:
+        for diff_file in files:
+            if _is_non_code_file(diff_file.filename):
                 continue
 
-            layer1_matched = False
-            for secret_pattern in KNOWN_SECRET_PATTERNS:
-                if secret_pattern['pattern'].search(line_content):
-                    findings.append(ScanFinding(
-                        type='credential',
-                        severity=secret_pattern['severity'],
-                        confidence=secret_pattern['confidence'],
-                        file=diff_file.filename,
-                        line=diff_line.line_number,
-                        description=f"{secret_pattern['name']}: {secret_pattern['description']}",
-                        original_code=stripped,
-                        recommendation=secret_pattern.get('recommendation'),
-                    ))
-                    layer1_matched = True
-                    break
+            for diff_line in diff_file.added_lines:
+                line_content = diff_line.content
 
-            if layer1_matched:
-                continue
-
-            if SUSPICIOUS_VAR_PATTERN.search(line_content):
-                findings.append(ScanFinding(
-                    type='credential',
-                    severity='high',
-                    confidence='medium',
-                    file=diff_file.filename,
-                    line=diff_line.line_number,
-                    description=(
-                        'Potential hardcoded credential detected. A variable with a '
-                        'security-sensitive name is assigned a string literal value.'
-                    ),
-                    original_code=stripped,
-                    recommendation=(
-                        'Replace with an environment variable lookup. '
-                        'Node.js: process.env.SECRET_NAME | '
-                        'Python: os.environ["SECRET_NAME"]'
-                    ),
-                ))
-                continue
-
-            for string_match in QUOTED_STRING_PATTERN.finditer(line_content):
-                value = string_match.group(1)
-                if len(value) < MIN_ENTROPY_LENGTH:
+                stripped = line_content.strip()
+                if not stripped or stripped.startswith(('#', '//', '/*', '*', '<!--')):
                     continue
 
-                entropy = calculate_shannon_entropy(value)
-                if entropy >= ENTROPY_THRESHOLD:
+                layer1_matched = False
+                for secret_pattern in KNOWN_SECRET_PATTERNS:
+                    if secret_pattern['pattern'].search(line_content):
+                        findings.append(ScanFinding(
+                            type='credential',
+                            severity=secret_pattern['severity'],
+                            confidence=secret_pattern['confidence'],
+                            file=diff_file.filename,
+                            line=diff_line.line_number,
+                            description=f"{secret_pattern['name']}: {secret_pattern['description']}",
+                            original_code=stripped,
+                            recommendation=secret_pattern.get('recommendation'),
+                        ))
+                        layer1_matched = True
+                        break
+
+                if layer1_matched:
+                    continue
+
+                if SUSPICIOUS_VAR_PATTERN.search(line_content):
                     findings.append(ScanFinding(
                         type='credential',
-                        severity='medium',
-                        confidence='low',
+                        severity='high',
+                        confidence='medium',
                         file=diff_file.filename,
                         line=diff_line.line_number,
                         description=(
-                            f'High-entropy string detected (entropy: {entropy:.2f}). '
-                            f'Strings with entropy above {ENTROPY_THRESHOLD} often indicate '
-                            f'secrets, tokens, or encoded credentials.'
+                            'Potential hardcoded credential detected. A variable with a '
+                            'security-sensitive name is assigned a string literal value.'
                         ),
                         original_code=stripped,
                         recommendation=(
-                            'Verify whether this string is a secret. If so, move it '
-                            'to environment variables or a secrets manager.'
+                            'Replace with an environment variable lookup. '
+                            'Node.js: process.env.SECRET_NAME | '
+                            'Python: os.environ["SECRET_NAME"]'
                         ),
                     ))
+                    continue
 
+                for string_match in QUOTED_STRING_PATTERN.finditer(line_content):
+                    value = string_match.group(1)
+                    if len(value) < MIN_ENTROPY_LENGTH:
+                        continue
+
+                    entropy = calculate_shannon_entropy(value)
+                    if entropy >= ENTROPY_THRESHOLD:
+                        findings.append(ScanFinding(
+                            type='credential',
+                            severity='medium',
+                            confidence='low',
+                            file=diff_file.filename,
+                            line=diff_line.line_number,
+                            description=(
+                                f'High-entropy string detected (entropy: {entropy:.2f}). '
+                                f'Strings with entropy above {ENTROPY_THRESHOLD} often indicate '
+                                f'secrets, tokens, or encoded credentials.'
+                            ),
+                            original_code=stripped,
+                            recommendation=(
+                                'Verify whether this string is a secret. If so, move it '
+                                'to environment variables or a secrets manager.'
+                            ),
+                        ))
+    except Exception as e:
+        print(f'[CredentialAnalyzer] error: {e}', file=sys.stderr)
     return findings
 
 

@@ -17,6 +17,28 @@
 ### BUG-005: require() inside function body in auth.controller.ts
 - **Fixed**: Moved imports to top-level in `auth.controller.ts`.
 
+### BUG-006: Wrong ScanFinding field names in Stage 4 analyzers (runtime crash)
+- **Files**: `async_concurrency_analyzer.py`, `dangerous_pattern_analyzer.py`, `input_validation_analyzer.py`, `hallucinated_package_analyzer.py`
+- **Problem**: Used non-existent fields (`file_path`, `line_number`, `column_number`, `rule_id`, `context`) instead of the schema-correct fields from `models.py`.
+- **Fixed**: All `ScanFinding` instantiations now use: `type`, `severity`, `confidence`, `file`, `line`, `description`, `original_code`, `recommendation` (optional), `remediated_code` (optional).
+
+### BUG-007: Wrong DiffFile import in async_concurrency_analyzer.py
+- **Problem**: `DiffFile` was imported from `models` — it does not exist there. Must be imported from `diff_parser`.
+- **Fixed**: Import corrected to `from diff_parser import DiffFile`.
+
+### BUG-008: Dead code block in async_concurrency_analyzer.py
+- **Problem**: Residual dead block `if 'async' in line.content and 'function' in line.content: pass` was left after refactor.
+- **Fixed**: Block removed entirely.
+
+### BUG-009: Missing exception handling in all 13 Stage 4 analyzers
+- **Problem**: Any unhandled exception inside `analyze()` would propagate up and crash the scan engine pipeline.
+- **Fixed**: All 13 `analyze()` functions now wrap their main logic in `try/except Exception`, logging the error to `stderr` and returning the partial (or empty) findings list instead of crashing.
+- **Files fixed**: `async_concurrency_analyzer.py`, `dangerous_pattern_analyzer.py`, `input_validation_analyzer.py`, `credential_analyzer.py`, `sql_injection_analyzer.py`, `dependency_analyzer.py`, `prompt_injection_analyzer.py`, `ai_fingerprint_analyzer.py`, `environment_boundary_analyzer.py`, `auth_pattern_analyzer.py`, `crypto_analyzer.py`, `dead_code_analyzer.py`, `hallucinated_package_analyzer.py`.
+
+### BUG-010: Invalid confidence values in ai_fingerprint_analyzer.py
+- **Problem**: Confidence values were set to `'confidence_high'` and `'confidence_medium'` — not valid schema values.
+- **Fixed**: Replaced with `'high'` and `'medium'` respectively.
+
 ## CRITICAL — Fix Before Stage 3
 (None)
 
@@ -32,7 +54,7 @@ Fix: add express-rate-limit in Stage 8.
 
 ### DEBT-003: No tests written
 Issue: Jest and Supertest are in package.json but zero tests exist.
-Fix: write tests for each feature as it is completed from Stage 3 onwards.
+Fix: Tests are written exclusively in Stage 8. Do not write any tests before that.
 
 ### DEBT-004: dashboard.routes.ts not confirmed to exist
 Issue: app.ts mounts dashboardRouter but file was not visible in folder structure audit.
