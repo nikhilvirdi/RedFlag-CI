@@ -46,3 +46,9 @@
   - Uses variable tracing heuristics and sanitizer whitelist (Joi, Zod, parseInt, etc.).
   - Registered in main.py.
 - Next session: Stage 4 Task 12 — Node.js/Python dangerous pattern detector
+
+## [2026-05-05] — Session 7: Stage 4 Task 12
+- Completed Stage 4 Task 12: Node.js/Python Dangerous Pattern Detector (dangerous_pattern_analyzer.py)
+  - Detects eval(), exec(), pickle.loads(), subprocess.shell=True, child_process.exec(), __import__(), prototype pollution, and setTimeout(string).
+  - Registered in main.py.
+- Next session: Stage 4 Task 13 — Async/concurrency issue detector

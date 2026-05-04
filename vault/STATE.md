@@ -61,7 +61,7 @@ Next task: Stage 4 Task 11 — Input validation gap detector
 - [x] Auth/authz pattern analyzer
 - [x] Cryptography weakness detector
 - [x] Input validation gap detector
-- [ ] Node.js/Python dangerous pattern detector
+- [x] Node.js/Python dangerous pattern detector
 - [ ] Async/concurrency issue detector
 
 ## Stage 5 — Intelligence Layer
