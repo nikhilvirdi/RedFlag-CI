@@ -1,8 +1,8 @@
 # RedFlag CI — Build State
 
-Last updated: 2026-05-03 (end of session 2)
+Last updated: 2026-05-04 (end of session 3)
 Current stage: Stage 4 — New Analyzers
-Next task: Stage 4 Task 2 — AI Code Fingerprinter
+Next task: Stage 4 Task 6 — TruffleHog git history subprocess
 
 ## Stage 1 — Foundation ✅
 - [x] Express app structure (app.ts, index.ts)
@@ -51,10 +51,10 @@ Next task: Stage 4 Task 2 — AI Code Fingerprinter
 
 ## Stage 4 — New Analyzers (In Progress)
 - [x] Hallucinated package detector (live npm + PyPI API verification)
-- [ ] AI code fingerprinter
-- [ ] Semgrep SAST subprocess
-- [ ] Checkov IaC subprocess
-- [ ] License risk detector
+- [x] AI code fingerprinter
+- [x] Semgrep SAST subprocess
+- [x] Checkov IaC subprocess
+- [x] License risk detector
 - [ ] TruffleHog git history subprocess
 - [ ] Environment boundary analyzer
 - [ ] Dead code and ghost dependency detector

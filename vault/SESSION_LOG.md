@@ -21,3 +21,12 @@
 - Pushed to GitHub: commit "Stage 2 complete, Stage 3 complete, Stage 4 Task 1 complete, codebase sanitized"
 - Shell sandbox failure on Windows: git commands run manually by user
 - Next session: Stage 4 Task 2 — AI Code Fingerprinter
+
+## [2026-05-04] — Session 3: Stage 4 Tasks 2-5
+- Completed Stage 4 Task 2: AI Code Fingerprinter (ai_fingerprint_analyzer.py)
+- Completed Stage 4 Task 3: Semgrep SAST Subprocess (semgrep_analyzer.py)
+- Completed Stage 4 Task 4: Checkov IaC Subprocess (checkov_analyzer.py)
+- Completed Stage 4 Task 5: License Risk Detector (license_risk_analyzer.py)
+- Registered all new analyzers in main.py
+- Updated DECISIONS.md with new Git Push Workflow rule
+- Next session: Stage 4 Task 6 — TruffleHog git history subprocess
