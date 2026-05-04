@@ -2,7 +2,7 @@
 
 Last updated: 2026-05-04 (end of session 4)
 Current stage: Stage 4 — New Analyzers
-Next task: Stage 4 Task 7 — Environment boundary analyzer
+Next task: Stage 4 Task 8 — Dead code and ghost dependency detector
 
 ## Stage 1 — Foundation ✅
 - [x] Express app structure (app.ts, index.ts)
@@ -56,7 +56,7 @@ Next task: Stage 4 Task 7 — Environment boundary analyzer
 - [x] Checkov IaC subprocess
 - [x] License risk detector
 - [x] TruffleHog git history subprocess
-- [ ] Environment boundary analyzer
+- [x] Environment boundary analyzer
 - [ ] Dead code and ghost dependency detector
 - [ ] Auth/authz pattern analyzer
 - [ ] Cryptography weakness detector

@@ -16,6 +16,7 @@ from analyzers import semgrep_analyzer
 from analyzers import checkov_analyzer
 from analyzers import license_risk_analyzer
 from analyzers import trufflehog_analyzer
+from analyzers import environment_boundary_analyzer
 
 
 def log(message: str) -> None:
@@ -60,6 +61,7 @@ def main() -> None:
         ('Checkov IaC',               checkov_analyzer.analyze),
         ('License Risk',              license_risk_analyzer.analyze),
         ('TruffleHog Secrets',        trufflehog_analyzer.analyze),
+        ('Environment Boundary',      environment_boundary_analyzer.analyze),
     ]
 
     for name, analyzer_fn in analyzers:
