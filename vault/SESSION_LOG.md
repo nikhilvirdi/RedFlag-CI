@@ -31,9 +31,11 @@
 - Updated DECISIONS.md with new Git Push Workflow rule
 - Next session: Stage 4 Task 6 — TruffleHog git history subprocess
 
-## [2026-05-05] — Session 5: Stage 4 Task 8
+## [2026-05-05] — Session 5: Stage 4 Tasks 8-9
 - Completed Stage 4 Task 8: Dead Code & Ghost Dependency Detector (dead_code_analyzer.py)
   - Detects unused imports (Python/JS), dead exports (Python/JS), and ghost dependencies (Manifest vs. Diff Imports).
   - Logged ghost dependency check limitation in DECISIONS.md.
-- Registered analyzer in main.py.
-- Next session: Stage 4 Task 9 — Auth/authz pattern analyzer
+- Completed Stage 4 Task 9: Auth/Authz Pattern Analyzer (auth_pattern_analyzer.py)
+  - Detects missing Express middleware, hardcoded roles, insecure hashing (MD5/SHA1), and insecure JWT/cookie configs.
+- Registered all new analyzers in main.py.
+- Next session: Stage 4 Task 10 — Cryptography weakness detector

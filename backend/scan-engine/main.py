@@ -18,6 +18,7 @@ from analyzers import license_risk_analyzer
 from analyzers import trufflehog_analyzer
 from analyzers import environment_boundary_analyzer
 from analyzers import dead_code_analyzer
+from analyzers import auth_pattern_analyzer
 
 
 def log(message: str) -> None:
@@ -64,6 +65,7 @@ def main() -> None:
         ('TruffleHog Secrets',        trufflehog_analyzer.analyze),
         ('Environment Boundary',      environment_boundary_analyzer.analyze),
         ('Dead Code / Ghost Deps',    dead_code_analyzer.analyze),
+        ('Auth/Authz Pattern',        auth_pattern_analyzer.analyze),
     ]
 
     for name, analyzer_fn in analyzers:
