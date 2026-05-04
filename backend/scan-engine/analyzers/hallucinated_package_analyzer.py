@@ -84,76 +84,77 @@ TRUSTED_SCOPES: Set[str] = {'@types', '@aws-sdk', '@google-cloud', '@angular'}
 
 def analyze(files: List[DiffFile]) -> List[ScanFinding]:
     findings: List[ScanFinding] = []
+    try:
+        npm_candidates:  Dict[str, Tuple[str, int, str]] = {}
+        pypi_candidates: Dict[str, Tuple[str, int, str]] = {}
 
-    npm_candidates:  Dict[str, Tuple[str, int, str]] = {}
-    pypi_candidates: Dict[str, Tuple[str, int, str]] = {}
+        for diff_file in files:
+            filename = diff_file.filename
 
-    for diff_file in files:
-        filename = diff_file.filename
+            for diff_line in diff_file.added_lines:
+                line = diff_line.content
+                stripped = line.strip()
 
-        for diff_line in diff_file.added_lines:
-            line = diff_line.content
-            stripped = line.strip()
+                if not stripped or stripped.startswith('#') or stripped.startswith('//'):
+                    continue
 
-            if not stripped or stripped.startswith('#') or stripped.startswith('//'):
+                if filename.endswith(('.js', '.ts', '.jsx', '.tsx', '.mjs', '.cjs')):
+                    for pkg in JS_IMPORT_RE.findall(line):
+                        pkg = _normalize_js_package(pkg)
+                        if pkg and pkg not in npm_candidates:
+                            npm_candidates[pkg] = (filename, diff_line.line_number, stripped)
+
+                elif filename.endswith('package.json'):
+                    for pkg in PKG_JSON_RE.findall(line):
+                        pkg = _normalize_js_package(pkg)
+                        if pkg and pkg not in npm_candidates:
+                            npm_candidates[pkg] = (filename, diff_line.line_number, stripped)
+
+                elif filename.endswith('.py'):
+                    match = PY_IMPORT_RE.match(stripped)
+                    if match:
+                        pkg = _normalize_py_package(match.group(1))
+                        if pkg and pkg not in pypi_candidates:
+                            pypi_candidates[pkg] = (filename, diff_line.line_number, stripped)
+
+                elif 'requirements' in filename and filename.endswith('.txt'):
+                    match = REQUIREMENTS_RE.match(stripped)
+                    if match:
+                        pkg = _normalize_py_package(match.group(1))
+                        if pkg and pkg not in pypi_candidates:
+                            pypi_candidates[pkg] = (filename, diff_line.line_number, stripped)
+
+        _log(f"Verifying {len(npm_candidates)} npm package(s) and {len(pypi_candidates)} PyPI package(s)...")
+
+        for pkg_name, (filename, line_number, original_code) in npm_candidates.items():
+            exists, err = _check_npm(pkg_name)
+            if err:
+                _log(f"npm check skipped for '{pkg_name}': {err}")
                 continue
+            if not exists:
+                findings.append(_make_finding(
+                    pkg_name=pkg_name,
+                    ecosystem='npm',
+                    filename=filename,
+                    line_number=line_number,
+                    original_code=original_code,
+                ))
 
-            if filename.endswith(('.js', '.ts', '.jsx', '.tsx', '.mjs', '.cjs')):
-                for pkg in JS_IMPORT_RE.findall(line):
-                    pkg = _normalize_js_package(pkg)
-                    if pkg and pkg not in npm_candidates:
-                        npm_candidates[pkg] = (filename, diff_line.line_number, stripped)
-
-            elif filename.endswith('package.json'):
-                for pkg in PKG_JSON_RE.findall(line):
-                    pkg = _normalize_js_package(pkg)
-                    if pkg and pkg not in npm_candidates:
-                        npm_candidates[pkg] = (filename, diff_line.line_number, stripped)
-
-            elif filename.endswith('.py'):
-                match = PY_IMPORT_RE.match(stripped)
-                if match:
-                    pkg = _normalize_py_package(match.group(1))
-                    if pkg and pkg not in pypi_candidates:
-                        pypi_candidates[pkg] = (filename, diff_line.line_number, stripped)
-
-            elif 'requirements' in filename and filename.endswith('.txt'):
-                match = REQUIREMENTS_RE.match(stripped)
-                if match:
-                    pkg = _normalize_py_package(match.group(1))
-                    if pkg and pkg not in pypi_candidates:
-                        pypi_candidates[pkg] = (filename, diff_line.line_number, stripped)
-
-    _log(f"Verifying {len(npm_candidates)} npm package(s) and {len(pypi_candidates)} PyPI package(s)...")
-
-    for pkg_name, (filename, line_number, original_code) in npm_candidates.items():
-        exists, err = _check_npm(pkg_name)
-        if err:
-            _log(f"npm check skipped for '{pkg_name}': {err}")
-            continue
-        if not exists:
-            findings.append(_make_finding(
-                pkg_name=pkg_name,
-                ecosystem='npm',
-                filename=filename,
-                line_number=line_number,
-                original_code=original_code,
-            ))
-
-    for pkg_name, (filename, line_number, original_code) in pypi_candidates.items():
-        exists, err = _check_pypi(pkg_name)
-        if err:
-            _log(f"PyPI check skipped for '{pkg_name}': {err}")
-            continue
-        if not exists:
-            findings.append(_make_finding(
-                pkg_name=pkg_name,
-                ecosystem='PyPI',
-                filename=filename,
-                line_number=line_number,
-                original_code=original_code,
-            ))
-
+        for pkg_name, (filename, line_number, original_code) in pypi_candidates.items():
+            exists, err = _check_pypi(pkg_name)
+            if err:
+                _log(f"PyPI check skipped for '{pkg_name}': {err}")
+                continue
+            if not exists:
+                findings.append(_make_finding(
+                    pkg_name=pkg_name,
+                    ecosystem='PyPI',
+                    filename=filename,
+                    line_number=line_number,
+                    original_code=original_code,
+                ))
+    except Exception as e:
+        _log(f"error: {e}")
     return findings
 
 

@@ -30,9 +30,10 @@
 - **Problem**: Residual dead block `if 'async' in line.content and 'function' in line.content: pass` was left after refactor.
 - **Fixed**: Block removed entirely.
 
-### BUG-009: Missing exception handling in all 13 Stage 4 analyzers
+### BUG-009: Missing exception handling in all Stage 4 analyzers
 - **Problem**: Any unhandled exception inside `analyze()` would propagate up and crash the scan engine pipeline.
-- **Fixed**: All 13 `analyze()` functions now wrap their main logic in `try/except Exception`, logging the error to `stderr` and returning the partial (or empty) findings list instead of crashing.
+- **Fixed**: All `analyze()` functions now wrap their main logic in `try/except Exception`, logging the error to `stderr` and returning the partial (or empty) findings list instead of crashing.
+- **Note**: `dead_code_analyzer.py` and `hallucinated_package_analyzer.py` were incorrectly listed as fixed in the prior session — top-level wrap was missing. Corrected in Session 9.
 - **Files fixed**: `async_concurrency_analyzer.py`, `dangerous_pattern_analyzer.py`, `input_validation_analyzer.py`, `credential_analyzer.py`, `sql_injection_analyzer.py`, `dependency_analyzer.py`, `prompt_injection_analyzer.py`, `ai_fingerprint_analyzer.py`, `environment_boundary_analyzer.py`, `auth_pattern_analyzer.py`, `crypto_analyzer.py`, `dead_code_analyzer.py`, `hallucinated_package_analyzer.py`.
 
 ### BUG-010: Invalid confidence values in ai_fingerprint_analyzer.py

@@ -59,3 +59,16 @@
   - Registered in main.py.
 - Stage 4 — New Analyzers: All 13 tasks completed.
 - Next session: Stage 5 — Intelligence Layer (LLM Remediation)
+
+## [2026-05-05] — Session 9: Stage 4 Hardening Audit
+- Verified all 4 Fix targets from audit (Fix 1–4).
+- Fix 1 ✅ — ScanFinding fields correct in async_concurrency, dangerous_pattern, input_validation, hallucinated_package analyzers.
+- Fix 2 ✅ — DiffFile import in async_concurrency_analyzer.py is from diff_parser (not models).
+- Fix 3 ✅ — Dead pass block removed from async_concurrency_analyzer.py.
+- Fix 4 — Found two analyzers still missing top-level try/except:
+  - dead_code_analyzer.py: entire analyze() body was unprotected. Wrapped in try/except Exception.
+  - hallucinated_package_analyzer.py: same issue. Wrapped in try/except Exception.
+  - All 13 analyzers now confirmed protected.
+- Updated BUGS.md BUG-009 to reflect the correction.
+- No Obsidian MCP used. All changes written directly to project files.
+- Manual push required by user.
