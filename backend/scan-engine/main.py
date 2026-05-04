@@ -15,6 +15,7 @@ from analyzers import ai_fingerprint_analyzer
 from analyzers import semgrep_analyzer
 from analyzers import checkov_analyzer
 from analyzers import license_risk_analyzer
+from analyzers import trufflehog_analyzer
 
 
 def log(message: str) -> None:
@@ -58,6 +59,7 @@ def main() -> None:
         ('Semgrep SAST',              semgrep_analyzer.analyze),
         ('Checkov IaC',               checkov_analyzer.analyze),
         ('License Risk',              license_risk_analyzer.analyze),
+        ('TruffleHog Secrets',        trufflehog_analyzer.analyze),
     ]
 
     for name, analyzer_fn in analyzers:

@@ -1,8 +1,8 @@
 # RedFlag CI — Build State
 
-Last updated: 2026-05-04 (end of session 3)
+Last updated: 2026-05-04 (end of session 4)
 Current stage: Stage 4 — New Analyzers
-Next task: Stage 4 Task 6 — TruffleHog git history subprocess
+Next task: Stage 4 Task 7 — Environment boundary analyzer
 
 ## Stage 1 — Foundation ✅
 - [x] Express app structure (app.ts, index.ts)
@@ -55,7 +55,7 @@ Next task: Stage 4 Task 6 — TruffleHog git history subprocess
 - [x] Semgrep SAST subprocess
 - [x] Checkov IaC subprocess
 - [x] License risk detector
-- [ ] TruffleHog git history subprocess
+- [x] TruffleHog git history subprocess
 - [ ] Environment boundary analyzer
 - [ ] Dead code and ghost dependency detector
 - [ ] Auth/authz pattern analyzer
