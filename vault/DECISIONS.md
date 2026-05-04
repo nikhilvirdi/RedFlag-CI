@@ -56,3 +56,7 @@ Settled: yes.
 Reason: Comments consume tokens on every context load during agentic sessions. A comment-heavy codebase means thousands of wasted tokens per session, increasing cost and reducing effective context window for actual logic. All comments, docstrings, block comments, and inline documentation are permanently stripped. Code is the documentation during build phase. Developer review happens at project completion.
 Scope: All TypeScript (src/) and Python (scan-engine/) files.
 Settled: yes. Non-negotiable.
+
+## [2026-05-04] Git Push Workflow
+Reason: Manual push to GitHub after every completed task to maintain a tight feedback loop and atomic history. We do not batch multiple tasks into one commit. After task completion, the agent stops, notifies the user, and returns the push commands for the user to execute manually.
+Settled: yes.

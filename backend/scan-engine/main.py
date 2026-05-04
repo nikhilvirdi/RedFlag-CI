@@ -11,6 +11,10 @@ from analyzers import sql_injection_analyzer
 from analyzers import dependency_analyzer
 from analyzers import prompt_injection_analyzer
 from analyzers import hallucinated_package_analyzer
+from analyzers import ai_fingerprint_analyzer
+from analyzers import semgrep_analyzer
+from analyzers import checkov_analyzer
+from analyzers import license_risk_analyzer
 
 
 def log(message: str) -> None:
@@ -50,6 +54,10 @@ def main() -> None:
         ('Dependency Integrity',      dependency_analyzer.analyze),
         ('Prompt Injection',          prompt_injection_analyzer.analyze),
         ('Hallucinated Package',      hallucinated_package_analyzer.analyze),
+        ('AI Code Fingerprint',       ai_fingerprint_analyzer.analyze),
+        ('Semgrep SAST',              semgrep_analyzer.analyze),
+        ('Checkov IaC',               checkov_analyzer.analyze),
+        ('License Risk',              license_risk_analyzer.analyze),
     ]
 
     for name, analyzer_fn in analyzers:

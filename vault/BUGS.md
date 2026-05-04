@@ -37,3 +37,14 @@ Fix: write tests for each feature as it is completed from Stage 3 onwards.
 ### DEBT-004: dashboard.routes.ts not confirmed to exist
 Issue: app.ts mounts dashboardRouter but file was not visible in folder structure audit.
 Fix: confirm file exists and exports dashboardRouter correctly.
+
+### DEBT-005: DEBT-003 (tests) note is incorrect — tests are Stage 8 only
+Issue: DEBT-003 says "write tests as each feature is completed from Stage 3 onwards." This contradicts AGENT_WORKPLAN.md which locks tests to Stage 8.
+Fix: Tests are written exclusively in Stage 8. Do not write any tests before that.
+
+## ENVIRONMENT ISSUES
+
+### ENV-001: Windows PowerShell sandbox failure in Antigravity agent
+Issue: run_command tool fails with "sandboxing is not supported on Windows" — agent cannot execute shell or git commands.
+Impact: git operations (add, commit, push, rm) must be run manually by the user in terminal.
+Status: Ongoing. Not a codebase issue. Work around by user running git commands directly.
