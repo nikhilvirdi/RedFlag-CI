@@ -1,15 +1,17 @@
 /// This is a simplified schema for demonstration purposes.
 
 generator client {
-  provider   = "prisma-client-js"
-  engineType = "library" // Use native library engine — avoids requiring an adapter in Prisma v7
+  provider        = "prisma-client-js"
+  engineType      = "library"
+  previewFeatures = ["postgresqlExtensions"]
 }
 /// This is the database configuration.
 /// DATABASE_URL is loaded from the .env file at runtime — never hardcode it.
 /// Example: DATABASE_URL="postgresql://postgres:password@localhost:5432/redflagci"
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [pgvector(map: "vector")]
 }
 
 /// Represents an authenticated user of the system.
@@ -135,4 +137,15 @@ enum RemediationType {
 
 
 
-//So prisma schema is like a blueprint for our database.
+model CodeEmbedding {
+  id           String   @id @default(dbgenerated("gen_random_uuid()"))
+  repositoryId String
+  findingType  String
+  file         String
+  codeSnippet  String
+  embedding    Unsupported("vector(1536)")
+  scanResultId String
+  createdAt    DateTime @default(now())
+
+  @@index([repositoryId])
+}

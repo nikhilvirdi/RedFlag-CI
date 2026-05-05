@@ -108,3 +108,25 @@
   - Chains stored in contributionData JSON field on RiskScore (no schema change required).
 - Manual push required by user.
 - Next session: Stage 5 Task 3 — Codebase memory and baseline (pgvector).
+
+## [2026-05-05] — Session 10 cont.: Stage 5 Task 3 — Codebase Memory and Baseline (pgvector)
+- Completed Stage 5 Task 3: Codebase Memory and Baseline.
+- Created memory.service.ts:
+  - getEmbedding(): calls OpenAI text-embedding-ada-002, truncates input to 8000 chars.
+  - detectRegressions(): for each finding, embeds its code snippet, queries CodeEmbedding table via $queryRawUnsafe with cosine distance operator (<=>) for same repositoryId, marks finding.isRegression = true and prepends [REGRESSION] to description if similarity >= 0.92. Fully per-finding graceful degradation via Promise.allSettled.
+  - storeEmbeddings(): for each finding, embeds code snippet and inserts into CodeEmbedding via $executeRawUnsafe with gen_random_uuid(). Fully per-finding graceful degradation.
+- Created prisma/schema.prisma changes:
+  - Enabled previewFeatures = ["postgresqlExtensions"] in generator client.
+  - Added extensions = [pgvector(map: "vector")] to datasource block.
+  - Added CodeEmbedding model with Unsupported("vector(1536)") column, repositoryId index, no FK constraints (intentional for flexibility).
+- Modified scan.service.ts:
+  - Added isRegression?: boolean to ScanFinding interface.
+  - Imported detectRegressions and storeEmbeddings from memory.service.
+  - Moved repoRecord fetch before the try block so it is available for memory ops.
+  - Called detectRegressions() after chaining, before persistence (graceful — runs only if repoRecord exists).
+  - Changed prisma.scanResult.create() to capture return value as dbScanResult.
+  - Called storeEmbeddings() inside nested try after successful persistence.
+- Modified env.ts: added OPENAI_API_KEY to required vars and env export.
+- Modified package.json: added openai ^4.103.0 to dependencies.
+- Manual push required by user.
+- Next session: Stage 5 Task 4 — Semantic similarity scanner OR false positive learning model.

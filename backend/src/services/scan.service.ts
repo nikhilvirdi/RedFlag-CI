@@ -19,6 +19,7 @@ import { ScanJobData } from '../queues/scan.queue';
 import { prisma } from '../config/db';
 import { remediateFindings } from './remediation.service';
 import { chainFindings, VulnerabilityChain } from './chaining.service';
+import { detectRegressions, storeEmbeddings } from './memory.service';
 
 export interface ScanFinding {
     type: 'credential' | 'sql_injection' | 'dependency' | 'prompt_injection';
@@ -30,6 +31,7 @@ export interface ScanFinding {
     original_code: string;
     remediated_code?: string;
     recommendation?: string;
+    isRegression?: boolean;
 }
 
 export interface ScanEngineResult {
@@ -285,7 +287,17 @@ export async function runScanPipeline(jobData: ScanJobData): Promise<void> {
 
     const chains: VulnerabilityChain[] = chainFindings(scanResult.findings);
 
+    const repoRecord = await prisma.repository.findFirst({ where: { fullName: repositoryFullName } });
+
+    if (repoRecord) {
+        await detectRegressions(scanResult.findings, repoRecord.id);
+    }
+
     try {
+        if (!repoRecord) {
+            throw new Error(`Repository ${repositoryFullName} not found. Cannot persist scan result.`);
+        }
+
         const riskLevelMap: Record<string, RiskLevel> = {
             critical: RiskLevel.CRITICAL,
             high:     RiskLevel.HIGH,
@@ -300,12 +312,7 @@ export async function runScanPipeline(jobData: ScanJobData): Promise<void> {
             low:    ConfidenceLevel.LOW,
         };
 
-        const repoRecord = await prisma.repository.findFirst({ where: { fullName: repositoryFullName } });
-        if (!repoRecord) {
-            throw new Error(`Repository ${repositoryFullName} not found. Cannot persist scan result.`);
-        }
-
-        await prisma.scanResult.create({
+        const dbScanResult = await prisma.scanResult.create({
             data: {
                 pullRequestId: String(pullRequestNumber),
                 commitSha:     headSha,
@@ -355,6 +362,13 @@ export async function runScanPipeline(jobData: ScanJobData): Promise<void> {
         });
 
         logger.info(`[ScanService] Results persisted to database for PR #${pullRequestNumber}.`);
+
+        try {
+            await storeEmbeddings(scanResult.findings, repoRecord.id, dbScanResult.id);
+            logger.info(`[ScanService] Embeddings stored for ${scanResult.findings.length} finding(s).`);
+        } catch (memError) {
+            logger.warn('[ScanService] Embedding storage failed — memory features degraded.', { error: memError });
+        }
     } catch (dbError) {
         logger.error('[ScanService] Failed to persist scan results to database.', { error: dbError });
     }

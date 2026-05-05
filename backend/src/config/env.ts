@@ -16,6 +16,7 @@ const requiredVariables = [
     'REDIS_HOST',
     'REDIS_PORT',
     'ANTHROPIC_API_KEY',
+    'OPENAI_API_KEY',
 ];
 
 for (const envVar of requiredVariables) {
@@ -39,4 +40,5 @@ export const env = {
     REDIS_HOST: process.env.REDIS_HOST as string,
     REDIS_PORT: parseInt(process.env.REDIS_PORT as string, 10),
     ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY as string,
+    OPENAI_API_KEY:    process.env.OPENAI_API_KEY as string,
 };
