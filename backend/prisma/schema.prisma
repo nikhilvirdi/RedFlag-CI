@@ -149,3 +149,16 @@ model CodeEmbedding {
 
   @@index([repositoryId])
 }
+
+model FalsePositive {
+  id           String   @id @default(dbgenerated("gen_random_uuid()"))
+  repositoryId String
+  findingType  String
+  file         String
+  codeSnippet  String
+  embedding    Unsupported("vector(1536)")
+  dismissedBy  String
+  createdAt    DateTime @default(now())
+
+  @@index([repositoryId, findingType])
+}

@@ -1,8 +1,8 @@
 # RedFlag CI — Build State
 
-Last updated: 2026-05-05 (session 10 — Task 4)
+Last updated: 2026-05-05 (session 10 — Task 5)
 Current stage: Stage 5 — Intelligence Layer (In Progress)
-Next task: Stage 5 Task 5 — False positive learning model
+Next task: Stage 5 Task 6 — Ignore rules API
 
 ## Stage 1 — Foundation ✅
 - [x] Express app structure (app.ts, index.ts)
@@ -69,7 +69,7 @@ Next task: Stage 5 Task 5 — False positive learning model
 - [x] Vulnerability chaining engine
 - [x] Codebase memory and baseline (pgvector)
 - [x] Semantic similarity scanner
-- [ ] False positive learning model
+- [x] False positive learning model
 - [ ] Ignore rules API
 
 ## Stage 6 — Platform Features

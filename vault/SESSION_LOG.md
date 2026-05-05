@@ -146,3 +146,18 @@
 - Logged MANUAL-001 in vault/BUGS.md.
 - Manual push required by user.
 - Next session: Stage 5 Task 5 — False positive learning model.
+
+## [2026-05-05] — Session 10 cont.: Stage 5 Task 5 — False Positive Learning Model
+- Completed Stage 5 Task 5: False Positive Learning Model.
+- Created falsePositive.service.ts:
+  - filterFalsePositives(findings, repositoryId): for each finding, embeds code snippet via getEmbedding, queries FalsePositive table by repositoryId + findingType using cosine distance (<=>) with threshold 0.95. Suppresses finding if match found; passes through on any error (graceful degradation). Uses Promise.allSettled for per-finding isolation.
+  - recordFalsePositive(repositoryId, findingType, file, codeSnippet, dismissedBy): embeds snippet and inserts row into FalsePositive table. Called by ignore rules API when a user dismisses a finding.
+- Modified prisma/schema.prisma: Added FalsePositive model with vector(1536) embedding, repositoryId, findingType, file, codeSnippet, dismissedBy, createdAt. Composite index on (repositoryId, findingType).
+- Modified scan.service.ts:
+  - Imported filterFalsePositives from falsePositive.service.
+  - Called filterFalsePositives after scanForSimilarPatterns, before persistence (only if repoRecord exists).
+  - Replaces scanResult.findings in-place so all downstream logic (persistence, embedding storage) sees the filtered list.
+  - Logs count of suppressed findings when > 0.
+- Logged MANUAL-002 in vault/BUGS.md — FalsePositive table requires manual SQL creation before production deploy.
+- Manual push required by user.
+- Next session: Stage 5 Task 6 — Ignore rules API.

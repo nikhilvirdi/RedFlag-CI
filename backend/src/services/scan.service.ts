@@ -21,6 +21,7 @@ import { remediateFindings } from './remediation.service';
 import { chainFindings, VulnerabilityChain } from './chaining.service';
 import { detectRegressions, storeEmbeddings } from './memory.service';
 import { scanForSimilarPatterns, SimilarityAnnotation } from './similarity.service';
+import { filterFalsePositives } from './falsePositive.service';
 
 export interface ScanFinding {
     type: 'credential' | 'sql_injection' | 'dependency' | 'prompt_injection';
@@ -297,6 +298,15 @@ export async function runScanPipeline(jobData: ScanJobData): Promise<void> {
     let similarityAnnotations: SimilarityAnnotation[] = [];
     if (repoRecord) {
         similarityAnnotations = await scanForSimilarPatterns(scanResult.findings, repoRecord.id);
+    }
+
+    if (repoRecord) {
+        const beforeCount = scanResult.findings.length;
+        scanResult.findings = await filterFalsePositives(scanResult.findings, repoRecord.id);
+        const filtered = beforeCount - scanResult.findings.length;
+        if (filtered > 0) {
+            logger.info(`[ScanService] ${filtered} finding(s) suppressed by false positive model.`);
+        }
     }
 
     try {

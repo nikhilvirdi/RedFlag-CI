@@ -96,3 +96,24 @@ CREATE TABLE IF NOT EXISTS "CodeEmbedding" (
 CREATE INDEX IF NOT EXISTS code_embedding_repo_idx ON "CodeEmbedding" ("repositoryId");
 ```
 - **Status**: Pending. Must be executed by operator before Stage 5 features go live.
+
+### MANUAL-002: FalsePositive table must be created manually
+- **Stage introduced**: Stage 5 Task 5
+- **Risk**: If this step is skipped, filterFalsePositives will fail on every query call. Findings pass through gracefully (no suppression), but the false positive learning model will not function.
+- **Why manual**: Same reason as MANUAL-001 — `Unsupported("vector(1536)")` columns cannot be auto-migrated by Prisma.
+- **Required SQL (run once against production PostgreSQL)**:
+```sql
+CREATE TABLE IF NOT EXISTS "FalsePositive" (
+  id             UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  "repositoryId" TEXT        NOT NULL,
+  "findingType"  TEXT        NOT NULL,
+  file           TEXT        NOT NULL,
+  "codeSnippet"  TEXT        NOT NULL,
+  embedding      vector(1536) NOT NULL,
+  "dismissedBy"  TEXT        NOT NULL,
+  "createdAt"    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS fp_repo_type_idx ON "FalsePositive" ("repositoryId", "findingType");
+```
+- **Status**: Pending. Must be executed by operator before Stage 5 features go live.
