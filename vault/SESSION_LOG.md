@@ -130,3 +130,19 @@
 - Modified package.json: added openai ^4.103.0 to dependencies.
 - Manual push required by user.
 - Next session: Stage 5 Task 4 — Semantic similarity scanner OR false positive learning model.
+
+## [2026-05-05] — Session 10 cont.: Stage 5 Task 4 — Semantic Similarity Scanner
+- Completed Stage 5 Task 4: Semantic Similarity Scanner.
+- Created similarity.service.ts:
+  - Exports SimilarityMatch and SimilarityAnnotation interfaces.
+  - scanForSimilarPatterns(findings, repositoryId): for each finding, reuses getEmbedding from memory.service.ts, queries CodeEmbedding via $queryRawUnsafe with cosine distance (<=>), excludes self-file matches, returns annotations for findings with similarity >= 0.88.
+  - Returns SimilarityAnnotation[] — each entry pairs the finding with its matched similar code locations.
+  - Per-finding graceful degradation via Promise.allSettled, warns on individual failures.
+- Modified memory.service.ts: exported getEmbedding so similarity.service.ts can reuse OpenAI client without duplication.
+- Modified scan.service.ts:
+  - Imported scanForSimilarPatterns and SimilarityAnnotation from similarity.service.
+  - Called scanForSimilarPatterns after detectRegressions, before persistence (graceful — only if repoRecord exists).
+  - Added similar_patterns (count) and similarity_annotations (full detail) to contributionData on RiskScore.
+- Logged MANUAL-001 in vault/BUGS.md.
+- Manual push required by user.
+- Next session: Stage 5 Task 5 — False positive learning model.

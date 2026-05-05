@@ -71,3 +71,28 @@ Fix: Tests are written exclusively in Stage 8. Do not write any tests before tha
 Issue: run_command tool fails with "sandboxing is not supported on Windows" — agent cannot execute shell or git commands.
 Impact: git operations (add, commit, push, rm) must be run manually by the user in terminal.
 Status: Ongoing. Not a codebase issue. Work around by user running git commands directly.
+
+## MANUAL STEPS — Required Before Production Deploy
+
+### MANUAL-001: pgvector extension and CodeEmbedding table must be created manually
+- **Stage introduced**: Stage 5 Task 3
+- **Risk**: If this step is skipped, memory.service.ts will fail on every storeEmbeddings and detectRegressions call. Scans will degrade gracefully (warnings only), but no regression detection or similarity scanning will work.
+- **Why manual**: Prisma does not support auto-migrating `Unsupported("vector(1536)")` columns via `prisma migrate dev`. The extension and table must be created with raw SQL before running the application in production.
+- **Required SQL (run once against production PostgreSQL)**:
+```sql
+CREATE EXTENSION IF NOT EXISTS vector;
+
+CREATE TABLE IF NOT EXISTS "CodeEmbedding" (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  "repositoryId" TEXT NOT NULL,
+  "findingType"  TEXT NOT NULL,
+  file           TEXT NOT NULL,
+  "codeSnippet"  TEXT NOT NULL,
+  embedding      vector(1536) NOT NULL,
+  "scanResultId" TEXT NOT NULL,
+  "createdAt"    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS code_embedding_repo_idx ON "CodeEmbedding" ("repositoryId");
+```
+- **Status**: Pending. Must be executed by operator before Stage 5 features go live.

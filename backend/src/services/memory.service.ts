@@ -10,7 +10,7 @@ const MAX_SNIPPET_CHARS = 8000;
 
 const client = new OpenAI({ apiKey: env.OPENAI_API_KEY });
 
-async function getEmbedding(text: string): Promise<number[]> {
+export async function getEmbedding(text: string): Promise<number[]> {
     const response = await client.embeddings.create({
         model: EMBEDDING_MODEL,
         input: text.slice(0, MAX_SNIPPET_CHARS),

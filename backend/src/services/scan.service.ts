@@ -20,6 +20,7 @@ import { prisma } from '../config/db';
 import { remediateFindings } from './remediation.service';
 import { chainFindings, VulnerabilityChain } from './chaining.service';
 import { detectRegressions, storeEmbeddings } from './memory.service';
+import { scanForSimilarPatterns, SimilarityAnnotation } from './similarity.service';
 
 export interface ScanFinding {
     type: 'credential' | 'sql_injection' | 'dependency' | 'prompt_injection';
@@ -293,6 +294,11 @@ export async function runScanPipeline(jobData: ScanJobData): Promise<void> {
         await detectRegressions(scanResult.findings, repoRecord.id);
     }
 
+    let similarityAnnotations: SimilarityAnnotation[] = [];
+    if (repoRecord) {
+        similarityAnnotations = await scanForSimilarPatterns(scanResult.findings, repoRecord.id);
+    }
+
     try {
         if (!repoRecord) {
             throw new Error(`Repository ${repositoryFullName} not found. Cannot persist scan result.`);
@@ -329,6 +335,8 @@ export async function runScanPipeline(jobData: ScanJobData): Promise<void> {
                                 return acc;
                             }, {} as Record<string, number>),
                             chains,
+                            similar_patterns: similarityAnnotations.length,
+                            similarity_annotations: similarityAnnotations,
                         },
                     },
                 },
