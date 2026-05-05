@@ -1,8 +1,8 @@
 # RedFlag CI — Build State
 
-Last updated: 2026-05-05 (session 10 — Task 5)
-Current stage: Stage 5 — Intelligence Layer (In Progress)
-Next task: Stage 5 Task 6 — Ignore rules API
+Last updated: 2026-05-05 (session 10 — Task 6 / Stage 5 complete)
+Current stage: Stage 6 — Platform Features (Not Started)
+Next task: Stage 6 Task 1 — (first Stage 6 task per AGENT_WORKPLAN.md)
 
 ## Stage 1 — Foundation ✅
 - [x] Express app structure (app.ts, index.ts)
@@ -70,7 +70,7 @@ Next task: Stage 5 Task 6 — Ignore rules API
 - [x] Codebase memory and baseline (pgvector)
 - [x] Semantic similarity scanner
 - [x] False positive learning model
-- [ ] Ignore rules API
+- [x] Ignore rules API
 
 ## Stage 6 — Platform Features
 - [ ] Re-scan on demand API

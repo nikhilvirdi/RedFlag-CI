@@ -5,6 +5,7 @@ import morgan from 'morgan';
 import { webhookRouter } from './routes/webhook.routes';
 import { authRouter } from './routes/auth.routes';
 import { dashboardRouter } from './routes/dashboard.routes';
+import { ignoreRulesRouter } from './routes/ignoreRules.routes';
 import { logger } from './utils/logger';
 import { errorHandler } from './middlewares/errorHandler.middleware';
 
@@ -27,6 +28,7 @@ app.get('/healthcheck', (req: Request, res: Response) => {
 app.use('/api/webhooks', webhookRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/dashboard', dashboardRouter);
+app.use('/api/ignore-rules', ignoreRulesRouter);
 
 app.use((req: Request, res: Response, next: NextFunction) => {
   res.status(404).json({ error: 'Route not found' });

@@ -161,3 +161,21 @@
 - Logged MANUAL-002 in vault/BUGS.md — FalsePositive table requires manual SQL creation before production deploy.
 - Manual push required by user.
 - Next session: Stage 5 Task 6 — Ignore rules API.
+
+## [2026-05-05] — Session 10 cont.: Stage 5 Task 6 — Ignore Rules API (Stage 5 COMPLETE)
+- Completed Stage 5 Task 6: Ignore Rules API.
+- Created ignoreRules.controller.ts:
+  - createIgnoreRuleHandler (POST /): validates body (repositoryId, findingType, file, codeSnippet), verifies repository ownership against userId, calls recordFalsePositive(), responds 201.
+  - listIgnoreRulesHandler (GET /): validates repositoryId query param, verifies repository ownership, queries FalsePositive table via $queryRawUnsafe ordered by createdAt DESC, responds 200 with rules array.
+  - deleteIgnoreRuleHandler (DELETE /:id): fetches rule row to get repositoryId, verifies repository ownership against userId, deletes row via $executeRawUnsafe, responds 200.
+  - All three handlers use next(error) for unhandled errors and verify ownership before any mutation/deletion.
+- Created ignoreRules.routes.ts:
+  - Mounts authenticate middleware at router level (all routes protected).
+  - POST / → createIgnoreRuleHandler
+  - GET / → listIgnoreRulesHandler
+  - DELETE /:id → deleteIgnoreRuleHandler
+- Modified app.ts: imported ignoreRulesRouter, mounted at /api/ignore-rules.
+- Updated vault/STATE.md: Stage 5 complete, current stage set to Stage 6.
+- Stage 5 — Intelligence Layer: ALL 6 TASKS COMPLETE.
+- Manual push required by user.
+- Next session: Stage 6 — Platform Features.
