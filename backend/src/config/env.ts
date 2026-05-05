@@ -15,6 +15,7 @@ const requiredVariables = [
     'JWT_SECRET',
     'REDIS_HOST',
     'REDIS_PORT',
+    'ANTHROPIC_API_KEY',
 ];
 
 for (const envVar of requiredVariables) {
@@ -37,4 +38,5 @@ export const env = {
     JWT_SECRET: process.env.JWT_SECRET as string,
     REDIS_HOST: process.env.REDIS_HOST as string,
     REDIS_PORT: parseInt(process.env.REDIS_PORT as string, 10),
+    ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY as string,
 };

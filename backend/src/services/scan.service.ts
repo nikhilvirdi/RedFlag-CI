@@ -17,6 +17,7 @@ import {
 } from './github.service';
 import { ScanJobData } from '../queues/scan.queue';
 import { prisma } from '../config/db';
+import { remediateFindings } from './remediation.service';
 
 export interface ScanFinding {
     type: 'credential' | 'sql_injection' | 'dependency' | 'prompt_injection';
@@ -277,6 +278,9 @@ export async function runScanPipeline(jobData: ScanJobData): Promise<void> {
 
     const scanResult = await runPythonScanEngine(diff);
     logger.info(`[ScanService] Scan complete. Score: ${scanResult.risk_score}/100, Classification: ${scanResult.risk_classification}, Findings: ${scanResult.findings.length}`);
+
+    scanResult.findings = await remediateFindings(scanResult.findings);
+    logger.info(`[ScanService] LLM remediation complete.`);
 
     try {
         const riskLevelMap: Record<string, RiskLevel> = {

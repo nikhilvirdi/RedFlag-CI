@@ -72,3 +72,23 @@
 - Updated BUGS.md BUG-009 to reflect the correction.
 - No Obsidian MCP used. All changes written directly to project files.
 - Manual push required by user.
+
+## [2026-05-05] — Session 10: Stage 5 Task 1 — LLM Remediation Layer
+- Completed Stage 5 Task 1: LLM Remediation Layer.
+- Created remediation.service.ts:
+  - Filters findings to severity high/critical AND confidence high, max 10 per scan.
+  - Calls Claude claude-sonnet-4-5 with extended thinking (10k budget) per eligible finding.
+  - System prompt enforces two-line output: fixed code on line 1, one-sentence recommendation on line 2.
+  - Uses Promise.allSettled — individual Claude failures are logged but never block scan result persistence.
+  - Returns the enriched findings array with remediated_code and recommendation fields populated.
+- Modified scan.service.ts:
+  - Added import for remediateFindings.
+  - Inserted call to remediateFindings() after runPythonScanEngine, before DB persistence try block.
+  - Enriched findings flow directly into existing Prisma nested create for Finding and Remediation tables.
+- Modified env.ts:
+  - Added ANTHROPIC_API_KEY to required variables and exported env object.
+- Modified package.json:
+  - Added @anthropic-ai/sdk ^0.39.0 to dependencies.
+- No schema changes required — Remediation model was already correctly defined.
+- Manual push required by user.
+- Next session: Stage 5 Task 2 — Vulnerability chaining engine.
