@@ -2,7 +2,7 @@
 
 Last updated: 2026-05-05 (end of session 10)
 Current stage: Stage 5 — Intelligence Layer (In Progress)
-Next task: Stage 5 Task 2 — Vulnerability chaining engine
+Next task: Stage 5 Task 3 — Codebase memory and baseline (pgvector)
 
 ## Stage 1 — Foundation ✅
 - [x] Express app structure (app.ts, index.ts)
@@ -66,7 +66,7 @@ Next task: Stage 5 Task 2 — Vulnerability chaining engine
 
 ## Stage 5 — Intelligence Layer
 - [x] LLM remediation layer (Claude API)
-- [ ] Vulnerability chaining engine
+- [x] Vulnerability chaining engine
 - [ ] Codebase memory and baseline (pgvector)
 - [ ] Semantic similarity scanner
 - [ ] False positive learning model

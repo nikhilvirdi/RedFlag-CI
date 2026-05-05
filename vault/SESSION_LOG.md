@@ -92,3 +92,19 @@
 - No schema changes required — Remediation model was already correctly defined.
 - Manual push required by user.
 - Next session: Stage 5 Task 2 — Vulnerability chaining engine.
+
+## [2026-05-05] — Session 10 cont.: Stage 5 Task 2 — Vulnerability Chaining Engine
+- Completed Stage 5 Task 2: Vulnerability Chaining Engine.
+- Created chaining.service.ts:
+  - Pure function chainFindings(findings: ScanFinding[]): VulnerabilityChain[].
+  - Directed adjacency graph: prompt_injection → dangerous_pattern/credential/input_validation, input_validation → sql_injection/dangerous_pattern/credential, sql_injection → credential, dangerous_pattern → credential, ghost_dependency → hallucinated_package.
+  - Chains each root finding to any downstream findings in the graph that appear in the same scan.
+  - Combined severity = max severity of chain members; escalated by one level if chain has 3+ findings.
+  - Each chain stores: name (types joined with →), severity, types[], files[], count.
+  - Used Set<number> to prevent double-counting findings across chains.
+- Modified scan.service.ts:
+  - Added import for chainFindings and VulnerabilityChain.
+  - Called chainFindings() after remediateFindings(), before DB persistence.
+  - Chains stored in contributionData JSON field on RiskScore (no schema change required).
+- Manual push required by user.
+- Next session: Stage 5 Task 3 — Codebase memory and baseline (pgvector).

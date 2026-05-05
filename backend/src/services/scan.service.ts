@@ -18,6 +18,7 @@ import {
 import { ScanJobData } from '../queues/scan.queue';
 import { prisma } from '../config/db';
 import { remediateFindings } from './remediation.service';
+import { chainFindings, VulnerabilityChain } from './chaining.service';
 
 export interface ScanFinding {
     type: 'credential' | 'sql_injection' | 'dependency' | 'prompt_injection';
@@ -282,6 +283,8 @@ export async function runScanPipeline(jobData: ScanJobData): Promise<void> {
     scanResult.findings = await remediateFindings(scanResult.findings);
     logger.info(`[ScanService] LLM remediation complete.`);
 
+    const chains: VulnerabilityChain[] = chainFindings(scanResult.findings);
+
     try {
         const riskLevelMap: Record<string, RiskLevel> = {
             critical: RiskLevel.CRITICAL,
@@ -318,6 +321,7 @@ export async function runScanPipeline(jobData: ScanJobData): Promise<void> {
                                 acc[f.severity] = (acc[f.severity] ?? 0) + 1;
                                 return acc;
                             }, {} as Record<string, number>),
+                            chains,
                         },
                     },
                 },
