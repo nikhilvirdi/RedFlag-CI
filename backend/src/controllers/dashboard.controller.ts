@@ -188,7 +188,7 @@ export async function getPostureHandler(
     }
 }
 
-import { getRiskTrendForRepository, getAiImpactForRepository } from '../services/dashboard.service';
+import { getRiskTrendForRepository, getAiImpactForRepository, getSecurityDebtForRepository } from '../services/dashboard.service';
 
 export async function getRiskTrendHandler(
     req: Request,
@@ -255,6 +255,35 @@ export async function getAiImpactHandler(
         const aiImpact = await getAiImpactForRepository(repository.id, days);
 
         res.status(200).json({ aiImpact });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function getSecurityDebtHandler(
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> {
+    try {
+        const userId = req.userId!;
+        const { repositoryId } = req.params;
+
+        if (!repositoryId) {
+            res.status(400).json({ error: 'repositoryId is required.' });
+            return;
+        }
+
+        const repository = await getRepositoryByIdForUser(repositoryId as string, userId);
+
+        if (!repository) {
+            res.status(404).json({ error: 'Repository not found or access denied.' });
+            return;
+        }
+
+        const securityDebt = await getSecurityDebtForRepository(repository.id);
+
+        res.status(200).json({ securityDebt });
     } catch (error) {
         next(error);
     }

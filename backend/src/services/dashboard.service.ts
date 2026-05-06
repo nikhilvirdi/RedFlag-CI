@@ -237,3 +237,55 @@ export async function getAiImpactForRepository(repositoryId: string, days: numbe
         trend,
     };
 }
+
+export async function getSecurityDebtForRepository(repositoryId: string) {
+    logger.info(`[DashboardService] Fetching security debt for repo: ${repositoryId}`);
+
+    const scans = await prisma.scanResult.findMany({
+        where: { repositoryId, status: 'COMPLETED' },
+        orderBy: { createdAt: 'desc' },
+        include: { findings: true },
+    });
+
+    if (scans.length < 2) return [];
+
+    const latestScan = scans[0];
+    const previousScans = scans.slice(1);
+
+    const persistentFindings = [];
+
+    for (const finding of latestScan.findings) {
+        let occurrenceCount = 1;
+        let firstSeenAt = latestScan.createdAt;
+
+        for (const scan of previousScans) {
+            const match = scan.findings.find(f => 
+                f.category === finding.category && 
+                f.file === finding.file && 
+                f.codeSnippet === finding.codeSnippet
+            );
+
+            if (match) {
+                occurrenceCount++;
+                firstSeenAt = scan.createdAt;
+            } else {
+                break;
+            }
+        }
+
+        if (occurrenceCount > 1) {
+            persistentFindings.push({
+                category: finding.category,
+                file: finding.file,
+                severity: finding.severity,
+                occurrenceCount,
+                firstSeenAt,
+                codeSnippet: finding.codeSnippet,
+            });
+        }
+    }
+
+    persistentFindings.sort((a, b) => b.occurrenceCount - a.occurrenceCount);
+
+    return persistentFindings;
+}
