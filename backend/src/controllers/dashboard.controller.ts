@@ -6,6 +6,8 @@ import {
     getScanResultById,
     getDashboardStats,
 } from '../services/dashboard.service';
+import { addScanJob } from '../queues/scan.queue';
+import { getRepositoryContext } from '../services/github.service';
 
 export async function getDashboardStatsHandler(
     req: Request,
@@ -106,6 +108,50 @@ export async function getScanResultDetailHandler(
         }
 
         res.status(200).json({ scanResult });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function rescanRepositoryHandler(
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> {
+    try {
+        const userId = req.userId!;
+        const { repositoryId } = req.params;
+
+        if (!repositoryId) {
+            res.status(400).json({ error: 'repositoryId is required.' });
+            return;
+        }
+
+        const repository = await getRepositoryByIdForUser(repositoryId as string, userId);
+
+        if (!repository) {
+            res.status(404).json({ error: 'Repository not found or access denied.' });
+            return;
+        }
+
+        const [owner, repo] = repository.fullName.split('/');
+        const context = await getRepositoryContext(owner, repo);
+
+        await addScanJob({
+            installationId: context.installationId,
+            repositoryFullName: repository.fullName,
+            pullRequestNumber: 0,
+            headSha: context.headSha,
+            baseRef: context.defaultBranch,
+        });
+
+        res.status(202).json({
+            message: 'Rescan job enqueued successfully.',
+            context: {
+                branch: context.defaultBranch,
+                commit: context.headSha,
+            },
+        });
     } catch (error) {
         next(error);
     }

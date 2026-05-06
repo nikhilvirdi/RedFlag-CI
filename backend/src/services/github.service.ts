@@ -220,3 +220,49 @@ export async function createPullRequest(
         number: response.data.number,
     };
 }
+
+export async function getRepositoryContext(owner: string, repo: string) {
+    const app = getGithubApp();
+    const { data: installation } = await app.octokit.request('GET /repos/{owner}/{repo}/installation', {
+        owner,
+        repo,
+    });
+    
+    const octokit = await getInstallationOctokit(installation.id);
+    const { data: repository } = await octokit.request('GET /repos/{owner}/{repo}', {
+        owner,
+        repo,
+    });
+
+    const { data: branch } = await octokit.request('GET /repos/{owner}/{repo}/branches/{branch}', {
+        owner,
+        repo,
+        branch: repository.default_branch,
+    });
+
+    return {
+        installationId: installation.id,
+        defaultBranch: repository.default_branch,
+        headSha: branch.commit.sha,
+    };
+}
+
+export async function getCommitDiff(
+    octokit: Octokit,
+    owner: string,
+    repo: string,
+    sha: string
+): Promise<string> {
+    logger.info(`Fetching diff for ${owner}/${repo}@${sha}`);
+
+    const response = await octokit.request('GET /repos/{owner}/{repo}/commits/{ref}', {
+        owner,
+        repo,
+        ref: sha,
+        headers: {
+            accept: 'application/vnd.github.v3.diff',
+        },
+    });
+
+    return response.data as unknown as string;
+}

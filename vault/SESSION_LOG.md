@@ -177,5 +177,15 @@
 - Modified app.ts: imported ignoreRulesRouter, mounted at /api/ignore-rules.
 - Updated vault/STATE.md: Stage 5 complete, current stage set to Stage 6.
 - Stage 5 — Intelligence Layer: ALL 6 TASKS COMPLETE.
-- Manual push required by user.
+- Pushed all changes: ignore rules API, route registration, and updated vault files.
 - Next session: Stage 6 — Platform Features.
+
+### Session 10 Summary (Intelligence Layer Wrap-up)
+- **Goal**: Complete the RedFlag Intelligence Layer.
+- **Achievements**:
+  - Implemented the False Positive Learning Model (`falsePositive.service.ts`).
+  - Created the Ignore Rules management API (Controller + Routes).
+  - Integrated suppression logic into the core scan pipeline.
+  - Verified repository-level security for all intelligence management actions.
+- **Current Status**: Backend now supports regression detection, semantic similarity scanning, and AI-driven false positive suppression.
+- **Next**: Moving to Stage 6 for platform features (Re-scan, User Management, etc.).

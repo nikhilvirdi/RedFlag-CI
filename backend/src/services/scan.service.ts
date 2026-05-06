@@ -5,6 +5,7 @@ import { logger } from '../utils/logger';
 import {
     getInstallationOctokit,
     getPullRequestDiff,
+    getCommitDiff,
     postPullRequestComment,
     setCommitStatus,
     getFileContent,
@@ -106,7 +107,9 @@ function formatReportAsMarkdown(result: ScanEngineResult, repositoryFullName: st
 
     const lines: string[] = [
         `## ${emoji} RedFlag CI — Security Scan Report`,
-        `> **Repository:** \`${repositoryFullName}\` | **PR:** #${pullRequestNumber}`,
+        pullRequestNumber === 0 
+            ? `> **Repository:** \`${repositoryFullName}\` | **On-Demand Scan**`
+            : `> **Repository:** \`${repositoryFullName}\` | **PR:** #${pullRequestNumber}`,
         '',
         `### 📊 Risk Summary`,
         `| Metric | Value |`,
@@ -278,8 +281,14 @@ export async function runScanPipeline(jobData: ScanJobData): Promise<void> {
     await setCommitStatus(octokit, owner, repo, headSha, 'pending', 'RedFlag CI scan in progress…');
     logger.info(`[ScanService] Commit status set to [pending]`);
 
-    const diff = await getPullRequestDiff(octokit, owner, repo, pullRequestNumber);
-    logger.info(`[ScanService] PR diff fetched. Size: ${diff.length} bytes`);
+    let diff: string;
+    if (pullRequestNumber === 0) {
+        logger.info(`[ScanService] On-Demand Scan triggered. Fetching diff for commit ${headSha.slice(0, 7)}`);
+        diff = await getCommitDiff(octokit, owner, repo, headSha);
+    } else {
+        diff = await getPullRequestDiff(octokit, owner, repo, pullRequestNumber);
+        logger.info(`[ScanService] PR diff fetched. Size: ${diff.length} bytes`);
+    }
 
     const scanResult = await runPythonScanEngine(diff);
     logger.info(`[ScanService] Scan complete. Score: ${scanResult.risk_score}/100, Classification: ${scanResult.risk_classification}, Findings: ${scanResult.findings.length}`);
@@ -391,11 +400,14 @@ export async function runScanPipeline(jobData: ScanJobData): Promise<void> {
         logger.error('[ScanService] Failed to persist scan results to database.', { error: dbError });
     }
 
-    const fixPrUrl = await applyAutoFixes(octokit, owner, repo, pullRequestNumber, headSha, scanResult.findings);
-
-    const markdownReport = formatReportAsMarkdown(scanResult, repositoryFullName, pullRequestNumber, fixPrUrl);
-    await postPullRequestComment(octokit, owner, repo, pullRequestNumber, markdownReport);
-    logger.info(`[ScanService] Report posted to PR #${pullRequestNumber}`);
+    if (pullRequestNumber !== 0) {
+        const fixPrUrl = await applyAutoFixes(octokit, owner, repo, pullRequestNumber, headSha, scanResult.findings);
+        const markdownReport = formatReportAsMarkdown(scanResult, repositoryFullName, pullRequestNumber, fixPrUrl);
+        await postPullRequestComment(octokit, owner, repo, pullRequestNumber, markdownReport);
+        logger.info(`[ScanService] Report posted to PR #${pullRequestNumber}`);
+    } else {
+        logger.info(`[ScanService] On-Demand scan complete. Results persisted. Skipping PR comment/auto-fix.`);
+    }
 
     const finalState = scanResult.risk_score >= 70 ? 'failure' : 'success';
     const finalDescription = finalState === 'failure'
