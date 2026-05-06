@@ -9,6 +9,7 @@ import {
     rescanRepositoryHandler,
     getPostureHandler,
     getRiskTrendHandler,
+    getAiImpactHandler,
 } from '../controllers/dashboard.controller';
 
 const dashboardRouter = Router();
@@ -20,6 +21,7 @@ dashboardRouter.get('/repositories', getRepositoriesHandler);
 dashboardRouter.get('/repositories/:repositoryId', getRepositoryHandler);
 dashboardRouter.get('/repositories/:repositoryId/posture', getPostureHandler);
 dashboardRouter.get('/repositories/:repositoryId/risk-trend', getRiskTrendHandler);
+dashboardRouter.get('/repositories/:repositoryId/ai-impact', getAiImpactHandler);
 dashboardRouter.get('/repositories/:repositoryId/scans', getScanResultsHandler);
 dashboardRouter.get('/scans/:scanResultId', getScanResultDetailHandler);
 dashboardRouter.post('/repositories/:repositoryId/rescan', rescanRepositoryHandler);

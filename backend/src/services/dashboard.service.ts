@@ -165,3 +165,75 @@ export async function getRiskTrendForRepository(repositoryId: string, days: numb
         classification: scan.riskScore?.classification ?? 'CLEAN',
     }));
 }
+
+export async function getAiImpactForRepository(repositoryId: string, days: number = 30) {
+    logger.info(`[DashboardService] Fetching AI impact for repo: ${repositoryId}, days: ${days}`);
+
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - days);
+
+    const scanResults = await prisma.scanResult.findMany({
+        where: {
+            repositoryId,
+            status: 'COMPLETED',
+            createdAt: {
+                gte: cutoffDate,
+            },
+        },
+        include: {
+            findings: true,
+        },
+        orderBy: { createdAt: 'asc' },
+    });
+
+    const AI_FINGERPRINT_CATEGORIES = [
+        'Disabled Authentication (TODO)',
+        'Wildcard CORS Configuration',
+        'Wildcard CORS Header',
+        'Debug Mode Enabled',
+        'Disabled CSRF Protection',
+        'Disabled TLS Verification',
+        'Insecure Bind Address',
+        'prompt_injection',
+        'Hallucinated Package',
+        'AI Code Fingerprint'
+    ];
+
+    let totalFindings = 0;
+    let aiFingerprintedCount = 0;
+    const findingsByAnalyzer: Record<string, number> = {};
+    const trend: { date: Date; total: number; aiFingerprinted: number }[] = [];
+
+    for (const scan of scanResults) {
+        let scanTotal = 0;
+        let scanAi = 0;
+
+        for (const finding of scan.findings) {
+            totalFindings++;
+            scanTotal++;
+
+            findingsByAnalyzer[finding.category] = (findingsByAnalyzer[finding.category] || 0) + 1;
+
+            if (AI_FINGERPRINT_CATEGORIES.includes(finding.category) || finding.category.toLowerCase().includes('ai')) {
+                aiFingerprintedCount++;
+                scanAi++;
+            }
+        }
+
+        trend.push({
+            date: scan.createdAt,
+            total: scanTotal,
+            aiFingerprinted: scanAi,
+        });
+    }
+
+    const aiPercentage = totalFindings > 0 ? (aiFingerprintedCount / totalFindings) * 100 : 0;
+
+    return {
+        totalFindings,
+        findingsByAnalyzer,
+        aiFingerprintedCount,
+        aiPercentage,
+        trend,
+    };
+}
