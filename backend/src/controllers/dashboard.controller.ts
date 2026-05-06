@@ -156,3 +156,34 @@ export async function rescanRepositoryHandler(
         next(error);
     }
 }
+
+import { calculatePostureScore } from '../services/posture.service';
+
+export async function getPostureHandler(
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> {
+    try {
+        const userId = req.userId!;
+        const { repositoryId } = req.params;
+
+        if (!repositoryId) {
+            res.status(400).json({ error: 'repositoryId is required.' });
+            return;
+        }
+
+        const repository = await getRepositoryByIdForUser(repositoryId as string, userId);
+
+        if (!repository) {
+            res.status(404).json({ error: 'Repository not found or access denied.' });
+            return;
+        }
+
+        const posture = await calculatePostureScore(repository.id);
+
+        res.status(200).json({ posture });
+    } catch (error) {
+        next(error);
+    }
+}
