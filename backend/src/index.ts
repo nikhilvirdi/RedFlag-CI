@@ -3,9 +3,11 @@ import { env } from './config/env';
 import { logger } from './utils/logger';
 import { connectDatabase, prisma } from './config/db';
 import './workers/scan.worker';
+import { initializeScheduler } from './services/scheduler.service';
 
 async function bootstrap() {
     await connectDatabase();
+    initializeScheduler();
 
     const server = app.listen(env.PORT, () => {
         logger.info(`✅ Server successfully started on port ${env.PORT}`);
