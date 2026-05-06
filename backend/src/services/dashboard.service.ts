@@ -138,3 +138,30 @@ export async function getDashboardStats(userId: string) {
         }, {} as Record<string, number>),
     };
 }
+
+export async function getRiskTrendForRepository(repositoryId: string, days: number = 30) {
+    logger.info(`[DashboardService] Fetching risk trend for repo: ${repositoryId}, days: ${days}`);
+
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - days);
+
+    const scanResults = await prisma.scanResult.findMany({
+        where: {
+            repositoryId,
+            status: 'COMPLETED',
+            createdAt: {
+                gte: cutoffDate,
+            },
+        },
+        orderBy: { createdAt: 'asc' },
+        include: {
+            riskScore: true,
+        },
+    });
+
+    return scanResults.map(scan => ({
+        date: scan.createdAt,
+        riskScore: scan.riskScore?.totalScore ?? 0,
+        classification: scan.riskScore?.classification ?? 'CLEAN',
+    }));
+}

@@ -187,3 +187,40 @@ export async function getPostureHandler(
         next(error);
     }
 }
+
+import { getRiskTrendForRepository } from '../services/dashboard.service';
+
+export async function getRiskTrendHandler(
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> {
+    try {
+        const userId = req.userId!;
+        const { repositoryId } = req.params;
+
+        if (!repositoryId) {
+            res.status(400).json({ error: 'repositoryId is required.' });
+            return;
+        }
+
+        const repository = await getRepositoryByIdForUser(repositoryId as string, userId);
+
+        if (!repository) {
+            res.status(404).json({ error: 'Repository not found or access denied.' });
+            return;
+        }
+
+        let days = parseInt(req.query.days as string, 10);
+        if (isNaN(days) || days <= 0) {
+            days = 30;
+        }
+        days = Math.min(days, 90); // max 90 days
+
+        const trend = await getRiskTrendForRepository(repository.id, days);
+
+        res.status(200).json({ trend });
+    } catch (error) {
+        next(error);
+    }
+}
