@@ -6,10 +6,10 @@ import {
     deleteIgnoreRuleHandler,
 } from '../controllers/ignoreRules.controller';
 
-export const ignoreRulesRouter = Router();
+export const ignoreRulesRouter = Router({ mergeParams: true });
 
 ignoreRulesRouter.use(authenticate);
 
 ignoreRulesRouter.post('/', createIgnoreRuleHandler);
 ignoreRulesRouter.get('/', listIgnoreRulesHandler);
-ignoreRulesRouter.delete('/:id', deleteIgnoreRuleHandler);
+ignoreRulesRouter.delete('/:ruleId', deleteIgnoreRuleHandler);

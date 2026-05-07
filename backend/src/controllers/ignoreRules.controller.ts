@@ -10,10 +10,11 @@ export async function createIgnoreRuleHandler(
 ): Promise<void> {
     try {
         const userId = req.userId!;
-        const { repositoryId, findingType, file, codeSnippet } = req.body;
+        const { repositoryId } = req.params;
+        const { findingType, file, codeSnippet } = req.body;
 
         if (!repositoryId || !findingType || !file || !codeSnippet) {
-            res.status(400).json({ error: 'repositoryId, findingType, file, and codeSnippet are required.' });
+            res.status(400).json({ error: 'findingType, file, and codeSnippet are required.' });
             return;
         }
 
@@ -48,10 +49,10 @@ export async function listIgnoreRulesHandler(
 ): Promise<void> {
     try {
         const userId = req.userId!;
-        const { repositoryId } = req.query;
+        const { repositoryId } = req.params;
 
-        if (!repositoryId || typeof repositoryId !== 'string') {
-            res.status(400).json({ error: 'repositoryId query parameter is required.' });
+        if (!repositoryId) {
+            res.status(400).json({ error: 'repositoryId is required.' });
             return;
         }
 
@@ -95,10 +96,10 @@ export async function deleteIgnoreRuleHandler(
 ): Promise<void> {
     try {
         const userId = req.userId!;
-        const { id } = req.params;
+        const { ruleId } = req.params;
 
-        if (!id) {
-            res.status(400).json({ error: 'id param is required.' });
+        if (!ruleId) {
+            res.status(400).json({ error: 'ruleId param is required.' });
             return;
         }
 
@@ -106,7 +107,7 @@ export async function deleteIgnoreRuleHandler(
 
         const rows = await prisma.$queryRawUnsafe<FpRow[]>(
             `SELECT id, "repositoryId" FROM "FalsePositive" WHERE id = $1`,
-            id
+            ruleId
         );
 
         if (rows.length === 0) {
@@ -125,7 +126,7 @@ export async function deleteIgnoreRuleHandler(
 
         await prisma.$executeRawUnsafe(
             `DELETE FROM "FalsePositive" WHERE id = $1`,
-            id
+            ruleId
         );
 
         res.status(200).json({ message: 'Ignore rule deleted successfully.' });

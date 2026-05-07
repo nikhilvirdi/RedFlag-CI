@@ -68,6 +68,27 @@
 - **Problem**: JSON comments in tsconfig.json and doc comments in schema.prisma violated zero-comment policy.
 - **Fixed**: Stripped all comments from both files.
 
+### BUG-018: verifyGithubSignature middleware used res.status(500) directly
+- **Problem**: `verifyGithubSignature.middleware.ts` returned `res.status(500).json(...)` and `res.status(401).json(...)` directly, bypassing the centralized error handler and violating the services-throw, controllers-catch contract.
+- **Fixed**: Replaced all direct `res.status()` calls with `next(new Error(...))`. Auth errors attach `statusCode` property. `errorHandler.middleware.ts` updated to read `statusCode` from error object.
+
+### BUG-019: Three API route paths diverged from projectDocs.md contract
+- **Problem**: app.ts mounted ignore-rules at `/api/ignore-rules`, notifications at `/api/notifications/repositories/:id/notifications`, and outbound webhooks at `/api/outbound-webhooks`. All three differ from the documented API surface.
+- **Fixed**: Remounted to `/api/repositories/:repositoryId/ignore-rules`, `/api/repositories/:repositoryId/notifications`, and `/api/webhooks/outbound`. GitHub webhook moved to `/api/webhooks/github`. Route files updated with `mergeParams: true`. DECISIONS.md updated.
+
+### BUG-020: ScheduledScanLog model missing from schema.prisma
+- **Problem**: `projectDocs.md` Section 16 documents `ScheduledScanLog` but the model was never added to `prisma/schema.prisma`. The scheduler service did not write any log entries.
+- **Fixed**: Added `ScheduledScanLog` model and `ScheduledScanStatus` enum to `schema.prisma`. Updated `scheduler.service.ts` to create log entries on scan start and update them to COMPLETED or FAILED on resolution.
+
+### BUG-021: 14+ services had zero unit tests
+- **Problem**: `scan.service.ts`, `github.service.ts`, `notification.service.ts`, `outboundWebhook.service.ts`, `remediation.service.ts`, `falsePositive.service.ts`, `scheduler.service.ts`, `dashboard.service.ts` had no tests.
+- **Fixed**: Created test files for all 8 services with meaningful assertions covering core behavior paths.
+
+### BUG-022: projectDocs.md Section 16 contained stale model names
+- **Problem**: `IgnoreRule` and `BaselineSnapshot` were listed in docs but implemented as `FalsePositive` and `CodeEmbedding`. `ApiQuota` and `RuleSuggestion` models were undocumented.
+- **Fixed**: Updated Section 16 to reflect actual model names and added missing model descriptions.
+
+
 ## CRITICAL — Fix Before Stage 3
 (None)
 

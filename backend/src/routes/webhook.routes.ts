@@ -4,4 +4,4 @@ import { verifyGithubSignature } from '../middlewares/verifyGithubSignature.midd
 
 export const webhookRouter = Router();
 
-webhookRouter.post('/github', verifyGithubSignature, handleGithubWebhook);
+webhookRouter.post('/', verifyGithubSignature, handleGithubWebhook);

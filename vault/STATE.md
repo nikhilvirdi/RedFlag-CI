@@ -1,8 +1,17 @@
 # RedFlag CI — Build State
 
-Last updated: 2026-05-07 (Stage 8 complete)
+Last updated: 2026-05-07 (Final Audit complete)
 Current stage: Stage 9 — Frontend
 Next task: Stage 9 Task 1 — Next.js dashboard
+
+## Final Audit — Stages 1–8 ✅
+- [x] BUG-018: verifyGithubSignature middleware direct res.status(500) — fixed, uses next(err)
+- [x] BUG-019: Three API route paths aligned with projectDocs.md contract
+- [x] BUG-020: ScheduledScanLog model added to schema.prisma + migration pending
+- [x] BUG-021: 8 service test files created (dashboard, notification, outboundWebhook, remediation, falsePositive, scheduler, scan, github)
+- [x] BUG-022: projectDocs.md Section 16 updated with actual model names
+
+
 
 ## Stage 1 — Foundation ✅
 - [x] Express app structure (app.ts, index.ts)

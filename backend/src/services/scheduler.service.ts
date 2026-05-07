@@ -12,6 +12,13 @@ export function initializeScheduler(): void {
             logger.info(`[Scheduler] Found ${repositories.length} active repositories.`);
 
             for (const repo of repositories) {
+                const logEntry = await prisma.scheduledScanLog.create({
+                    data: {
+                        repositoryId: repo.id,
+                        status: 'STARTED',
+                    },
+                });
+
                 try {
                     const [owner, name] = repo.fullName.split('/');
                     const context = await getRepositoryContext(owner, name);
@@ -23,9 +30,18 @@ export function initializeScheduler(): void {
                         headSha: context.headSha,
                         baseRef: context.defaultBranch,
                     });
-                    
+
+                    await prisma.scheduledScanLog.update({
+                        where: { id: logEntry.id },
+                        data: { status: 'COMPLETED', completedAt: new Date() },
+                    });
+
                     logger.info(`[Scheduler] Enqueued full scan for ${repo.fullName}`);
                 } catch (error) {
+                    await prisma.scheduledScanLog.update({
+                        where: { id: logEntry.id },
+                        data: { status: 'FAILED', completedAt: new Date() },
+                    });
                     logger.error(`[Scheduler] Failed to enqueue scan for ${repo.fullName}`, { error });
                 }
             }
@@ -34,6 +50,6 @@ export function initializeScheduler(): void {
             logger.error('[Scheduler] Failed to fetch repositories for daily scan', { error });
         }
     });
-    
+
     logger.info('[Scheduler] Cron jobs initialized. Full-repo scan scheduled daily at 00:00.');
 }

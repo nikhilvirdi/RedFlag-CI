@@ -718,21 +718,17 @@ Centralized error handler middleware. Controllers never leak stack traces. Produ
 
 **Remediation** — The fix associated with a Finding. Stores type (AUTOMATIC or GUIDED), corrected code, and recommendation text.
 
-**IgnoreRule** — A developer-created suppression for a specific finding type in a repository. Stores finding type, optional file path scope, and optional reason.
+**IgnoreRule (implemented as FalsePositive)** — A developer-created suppression for a specific finding type in a repository. Stores finding type, file path, code snippet, dismissing user ID, and a vector embedding for similarity-based future suppression.
 
-**BaselineSnapshot** — Stores the security state of the default branch at a point in time. Used for diffing against PR findings to surface only new issues.
+**BaselineSnapshot (implemented as CodeEmbedding)** — Stores vector embeddings of code snippets per repository using the pgvector PostgreSQL extension. Fields: id, repositoryId, findingType, file, codeSnippet, embedding (vector 1536 dimensions), scanResultId, createdAt. Used by the Semantic Similarity Scanner and Codebase Memory system. Requires `pgvector` extension enabled in PostgreSQL.
 
-**CodeEmbedding** — Stores vector embeddings of code snippets per repository using the pgvector PostgreSQL extension. Fields: id, repositoryId, filePath, commitSha, embedding (vector 1536 dimensions), createdAt. Used by the Semantic Similarity Scanner and Codebase Memory system. Requires `pgvector` extension enabled in PostgreSQL.
-
-**AuditLog** — Immutable record of every significant system action. Stores actor, action type, target resource, and timestamp. Never updated or deleted.
-
-**NotificationConfig** — Per-repository Slack or Discord webhook URL with delivery preferences.
-
-**OutboundWebhook** — Per-repository URL to receive scan result payloads via HTTP POST after each scan.
-
-**CommunityRule** — A user-submitted detection rule in the public registry. Stores pattern, description, example vulnerable code, example safe code, contributor, and review status (PENDING / UNDER_REVIEW / ACTIVE / REJECTED).
+**FalsePositive** — Raw pgvector table storing dismissed finding embeddings. Created manually (see BUGS.md MANUAL-002). Used by the false positive learning model.
 
 **ScheduledScanLog** — Tracks scheduled full-repo scan execution. Stores repositoryId, status (STARTED / COMPLETED / FAILED), startedAt, completedAt. Used on server startup to re-queue any scans that started but never completed due to a server restart.
+
+**ApiQuota** — Per-user monthly request and scan quota tracking. Stores periodStart, periodEnd, requestCount, scanCount, requestLimit, scanLimit.
+
+**RuleSuggestion** — A user-submitted detection rule suggestion. Stores title, description, category, pattern, severity, status (PENDING / APPROVED / REJECTED), and a review note.
 
 ## 17. Boundaries & Exclusions
 

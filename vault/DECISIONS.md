@@ -110,3 +110,14 @@ Settled: yes.
 ## Stage 8: Multi-Stage Docker Build
 Four stages: base (node:20-alpine + python3), deps (npm ci --omit=dev), build (full npm ci + tsc), production (non-root user, healthcheck, minimal footprint). Prisma client generated at build time, .prisma directory copied to production stage.
 Settled: yes.
+
+## [2026-05-07] Route Path Alignment with projectDocs.md
+During final audit, three route mount points in app.ts diverged from the documented API contract.
+Corrections applied:
+- Ignore rules moved to /api/repositories/:repositoryId/ignore-rules (was /api/ignore-rules)
+- Notifications moved to /api/repositories/:repositoryId/notifications (was /api/notifications/repositories/:id/notifications)
+- Outbound webhooks moved to /api/webhooks/outbound (was /api/outbound-webhooks)
+- GitHub webhook moved to /api/webhooks/github (was /api/webhooks) to free the /api/webhooks namespace for outbound routes.
+Both notification and ignore-rules routers use mergeParams: true to inherit the repositoryId param from the parent mount.
+Settled: yes.
+

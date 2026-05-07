@@ -32,12 +32,12 @@ app.get('/healthcheck', (req: Request, res: Response) => {
   res.status(200).json({ status: 'OK', message: 'RedFlag CI Backend is running securely.' });
 });
 
-app.use('/api/webhooks', webhookRateLimiter, webhookRouter);
+app.use('/api/webhooks/github', webhookRateLimiter, webhookRouter);
+app.use('/api/webhooks/outbound', globalRateLimiter, enforceApiQuota, outboundWebhookRouter);
 app.use('/api/auth', authRateLimiter, authRouter);
 app.use('/api/dashboard', globalRateLimiter, enforceApiQuota, dashboardRouter);
-app.use('/api/ignore-rules', globalRateLimiter, enforceApiQuota, ignoreRulesRouter);
-app.use('/api/notifications', globalRateLimiter, enforceApiQuota, notificationRouter);
-app.use('/api/outbound-webhooks', globalRateLimiter, enforceApiQuota, outboundWebhookRouter);
+app.use('/api/repositories/:repositoryId/ignore-rules', globalRateLimiter, enforceApiQuota, ignoreRulesRouter);
+app.use('/api/repositories/:repositoryId/notifications', globalRateLimiter, enforceApiQuota, notificationRouter);
 app.use('/api/rules', globalRateLimiter, rulesRouter);
 app.use('/api/audit-log', globalRateLimiter, enforceApiQuota, auditRouter);
 app.use('/api/badge', badgeRateLimiter, badgeRouter);
