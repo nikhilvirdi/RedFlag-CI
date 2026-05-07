@@ -40,6 +40,34 @@
 - **Problem**: Confidence values were set to `'confidence_high'` and `'confidence_medium'` — not valid schema values.
 - **Fixed**: Replaced with `'high'` and `'medium'` respectively.
 
+### BUG-011: Invalid confidence values in semgrep, checkov, trufflehog analyzers
+- **Problem**: All three files had `confidence="confidence_high"` — invalid DB enum value.
+- **Fixed**: Replaced with `confidence="high"` in `semgrep_analyzer.py`, `checkov_analyzer.py`, `trufflehog_analyzer.py`.
+
+### BUG-012: Missing exception handling in license_risk_analyzer.py
+- **Problem**: `analyze()` had no top-level `try/except Exception` wrapping. Unhandled exception would crash the scan engine pipeline.
+- **Fixed**: Wrapped full body of `analyze()` in `try/except Exception as e:` with stderr logging. Returns partial findings on failure.
+
+### BUG-013: Hardcoded Postgres credentials in docker-compose.yml
+- **Problem**: `POSTGRES_PASSWORD: adminpassword`, `POSTGRES_USER: admin`, `POSTGRES_DB: redflag_db` hardcoded in committed file.
+- **Fixed**: Changed to `${POSTGRES_USER}`, `${POSTGRES_PASSWORD}`, `${POSTGRES_DB}` env var references. Created `.env.example` with placeholder values.
+
+### BUG-014: require('crypto') inside function body in auth.service.ts
+- **Problem**: `require('crypto')` called inline in `buildGitHubAuthUrl()` instead of top-level import.
+- **Fixed**: Added `import crypto from 'crypto'` at top-level. Replaced inline require call.
+
+### BUG-015: /suggestions routes missing authentication in rules.routes.ts
+- **Problem**: POST/GET/PATCH on `/suggestions` could be accessed without authentication.
+- **Fixed**: Confirmed `authenticate` middleware is applied to all suggestion routes. Added TODO for admin-only restriction when RBAC is implemented.
+
+### BUG-016: No unit tests existed
+- **Problem**: Jest and Supertest were in `package.json` but zero test files existed.
+- **Fixed**: Created `jest.config.js` and 5 test files: `auth.service.test.ts`, `chaining.service.test.ts`, `posture.service.test.ts`, `audit.service.test.ts`, `badge.service.test.ts`.
+
+### BUG-017: Comments in tsconfig.json and schema.prisma
+- **Problem**: JSON comments in tsconfig.json and doc comments in schema.prisma violated zero-comment policy.
+- **Fixed**: Stripped all comments from both files.
+
 ## CRITICAL — Fix Before Stage 3
 (None)
 

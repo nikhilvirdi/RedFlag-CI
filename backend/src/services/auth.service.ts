@@ -1,5 +1,6 @@
 import axios from 'axios';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import { prisma } from '../config/db';
 import { env } from '../config/env';
 import { logger } from '../utils/logger';
@@ -19,7 +20,7 @@ interface GitHubUserProfile {
 }
 
 export function buildGitHubAuthUrl(): { url: string; state: string } {
-    const state = require('crypto').randomBytes(16).toString('hex');
+    const state = crypto.randomBytes(16).toString('hex');
 
     const params = new URLSearchParams({
         client_id:    env.GITHUB_OAUTH_CLIENT_ID,

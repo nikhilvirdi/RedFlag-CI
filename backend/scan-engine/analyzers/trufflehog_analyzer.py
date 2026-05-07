@@ -33,7 +33,7 @@ def analyze(files: List[DiffFile]) -> List[ScanFinding]:
                     findings.append(ScanFinding(
                         type="TruffleHog Secret",
                         severity="high",
-                        confidence="confidence_high",
+                        confidence="high",
                         file=file_path,
                         line=line_num,
                         description=f"Secret detected by {detector} detector.",

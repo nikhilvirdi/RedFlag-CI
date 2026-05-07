@@ -62,7 +62,7 @@ def analyze(files: List[DiffFile]) -> List[ScanFinding]:
                     findings.append(ScanFinding(
                         type="Checkov IaC",
                         severity="high",
-                        confidence="confidence_high",
+                        confidence="high",
                         file=path,
                         line=start_line,
                         description=f"{check.get('check_id')}: {check.get('check_name')}",

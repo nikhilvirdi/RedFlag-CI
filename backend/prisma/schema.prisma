@@ -1,23 +1,18 @@
-/// This is a simplified schema for demonstration purposes.
-
 generator client {
   provider        = "prisma-client-js"
   engineType      = "library"
   previewFeatures = ["postgresqlExtensions"]
 }
-/// This is the database configuration.
-/// DATABASE_URL is loaded from the .env file at runtime — never hardcode it.
-/// Example: DATABASE_URL="postgresql://postgres:password@localhost:5432/redflagci"
+
 datasource db {
   provider   = "postgresql"
   url        = env("DATABASE_URL")
   extensions = [pgvector(map: "vector")]
 }
 
-/// Represents an authenticated user of the system.
 model User {
   id           String       @id @default(uuid())
-  githubId     String       @unique // OAuth provider reference
+  githubId     String       @unique
   email        String?      @unique
   name         String?
   avatarUrl    String?
@@ -30,44 +25,37 @@ model User {
   apiQuotas        ApiQuota[]
 }
 
-/// Represents a code repository associated with a user.
 model Repository {
   id          String       @id @default(uuid())
-  githubRepoId String      @unique // GitHub's internal repository ID
-  name        String       // e.g., "RedFlag-CI"
-  fullName    String       // e.g., "nikhilvirdi/RedFlag-CI"
+  githubRepoId String      @unique
+  name        String
+  fullName    String
   url         String
   isPrivate   Boolean      @default(false)
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
-  // Relationships
   userId              String
   owner               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   scanResults         ScanResult[]
   notificationConfigs NotificationConfig[]
 }
 
-/// Represents the complete analysis outcome for a given code change (e.g., a Pull Request).
 model ScanResult {
   id            String       @id @default(uuid())
-  pullRequestId String       // ID or number of the PR scanned
-  commitSha     String       // The specific commit hash scanned
+  pullRequestId String
+  commitSha     String
   status        ScanStatus   @default(PENDING)
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 
-  // Relationships
   repositoryId  String
   repository    Repository   @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
-  
-  riskScore     RiskScore?   // 1-to-1 relation with RiskScore
-  findings      Finding[]    // 1-to-many relation with Findings
+
+  riskScore     RiskScore?
+  findings      Finding[]
 }
-/// Represents the status of a scan.
-///enum is a data type that can have only a few possible values.
-///enum in typeScript is like a class with only constants.
-///enum in prisma is like a class with only constants.
+
 enum ScanStatus {
   PENDING
   IN_PROGRESS
@@ -75,20 +63,16 @@ enum ScanStatus {
   FAILED
 }
 
-/// Represents the evaluated security risk associated with a scan result.
 model RiskScore {
   id               String       @id @default(uuid())
-  totalScore       Float        // Final Security Risk Score
-  classification   RiskLevel    // Qualitative classification (Critical, High, Medium, Low)
-  contributionData Json         // Breakdown of how the score was calculated
+  totalScore       Float
+  classification   RiskLevel
+  contributionData Json
 
-  // Relationships
   scanResultId     String       @unique
   scanResult       ScanResult   @relation(fields: [scanResultId], references: [id], onDelete: Cascade)
 }
-/// Represents the level of risk associated with a scan result.
-/// CLEAN is included to match the Python engine's output when no findings are returned.
-/// This prevents a mapping error when trying to persist a clean scan result.
+
 enum RiskLevel {
   CRITICAL
   HIGH
@@ -97,22 +81,20 @@ enum RiskLevel {
   CLEAN
 }
 
-/// Represents a single detected vulnerability.
 model Finding {
   id             String       @id @default(uuid())
-  category       String       // e.g., "Credential Exposure", "Prompt Injection"
+  category       String
   description    String
-  file           String       // Affected file path
-  lineNumber     Int?         // Specific line number
+  file           String
+  lineNumber     Int?
   severity       RiskLevel
   confidence     ConfidenceLevel
-  codeSnippet    String?      // The original vulnerable code segment
+  codeSnippet    String?
 
-  // Relationships
   scanResultId   String
   scanResult     ScanResult   @relation(fields: [scanResultId], references: [id], onDelete: Cascade)
-  
-  remediation    Remediation? // 1-to-1 relation with Remediation
+
+  remediation    Remediation?
 }
 
 enum ConfidenceLevel {
@@ -121,14 +103,12 @@ enum ConfidenceLevel {
   LOW
 }
 
-/// Represents the corrective action associated with a finding.
 model Remediation {
   id             String       @id @default(uuid())
   type           RemediationType
-  correctedCode  String?      // The drop-in fix (if automatic)
-  recommendation String?      // Step-by-step guidance (if guided)
+  correctedCode  String?
+  recommendation String?
 
-  // Relationships
   findingId      String       @unique
   finding        Finding      @relation(fields: [findingId], references: [id], onDelete: Cascade)
 }
@@ -137,8 +117,6 @@ enum RemediationType {
   AUTOMATIC
   GUIDED
 }
-
-
 
 model CodeEmbedding {
   id           String   @id @default(dbgenerated("gen_random_uuid()"))

@@ -46,7 +46,7 @@ def analyze(files: List[DiffFile]) -> List[ScanFinding]:
                     findings.append(ScanFinding(
                         type="Semgrep SAST",
                         severity=mapped_severity,
-                        confidence="confidence_high",
+                        confidence="high",
                         file=path,
                         line=start_line,
                         description=extra.get("message", "Semgrep finding"),

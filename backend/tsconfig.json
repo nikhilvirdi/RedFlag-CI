@@ -1,13 +1,13 @@
 {
   "compilerOptions": {
-    "target": "es2022",                                  /* Set the JavaScript language version for emitted JavaScript. (es2022 is modern and well-supported in Node) */
-    "module": "commonjs",                                /* Specify what module code is generated. Node classically uses CommonJS. */
-    "rootDir": "./src",                                  /* Only compile files inside the /src folder */
-    "outDir": "./dist",                                  /* Output the compiled .js files into a /dist folder so they don't pollute our source code */
-    "esModuleInterop": true,                             /* Emit additional JavaScript to ease support for importing CommonJS modules. */
-    "forceConsistentCasingInFileNames": true,            /* Ensure that casing is correct in imports (prevents Linux/Windows path conflicts). */
-    "strict": true,                                      /* Enable all strict type-checking options. Crucial for catching bugs early. */
-    "skipLibCheck": true                                 /* Skip type checking all .d.ts files in node_modules to massively speed up compilation. */
+    "target": "es2022",
+    "module": "commonjs",
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "skipLibCheck": true
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "**/*.spec.ts", "**/*.test.ts"]

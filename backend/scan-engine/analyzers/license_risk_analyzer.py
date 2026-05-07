@@ -21,50 +21,53 @@ RESTRICTIVE_LICENSES = {'gpl', 'agpl', 'lgpl'}
 
 def analyze(files: List[DiffFile]) -> List[ScanFinding]:
     findings: List[ScanFinding] = []
-    npm_candidates: Dict[str, Tuple[str, int, str]] = {}
-    pypi_candidates: Dict[str, Tuple[str, int, str]] = {}
+    try:
+        npm_candidates: Dict[str, Tuple[str, int, str]] = {}
+        pypi_candidates: Dict[str, Tuple[str, int, str]] = {}
 
-    for diff_file in files:
-        filename = diff_file.filename
-        for diff_line in diff_file.added_lines:
-            line = diff_line.content
-            stripped = line.strip()
+        for diff_file in files:
+            filename = diff_file.filename
+            for diff_line in diff_file.added_lines:
+                line = diff_line.content
+                stripped = line.strip()
 
-            if not stripped or stripped.startswith('#') or stripped.startswith('//'):
+                if not stripped or stripped.startswith('#') or stripped.startswith('//'):
+                    continue
+
+                if filename.endswith('package.json'):
+                    for pkg in PKG_JSON_RE.findall(line):
+                        pkg_norm = pkg.strip()
+                        if pkg_norm and pkg_norm not in npm_candidates:
+                            npm_candidates[pkg_norm] = (filename, diff_line.line_number, stripped)
+
+                elif 'requirements' in filename and filename.endswith('.txt'):
+                    match = REQUIREMENTS_RE.match(stripped)
+                    if match:
+                        pkg_norm = match.group(1).strip()
+                        if pkg_norm and pkg_norm not in pypi_candidates:
+                            pypi_candidates[pkg_norm] = (filename, diff_line.line_number, stripped)
+
+        _log(f"Checking licenses for {len(npm_candidates)} npm package(s) and {len(pypi_candidates)} PyPI package(s)...")
+
+        for pkg_name, (filename, line_number, original_code) in npm_candidates.items():
+            license_name, err = _get_npm_license(pkg_name)
+            if err:
+                _log(f"npm license check skipped for '{pkg_name}': {err}")
                 continue
+            risk, reason = _evaluate_license(license_name)
+            if risk:
+                findings.append(_make_finding(pkg_name, 'npm', license_name, reason, filename, line_number, original_code))
 
-            if filename.endswith('package.json'):
-                for pkg in PKG_JSON_RE.findall(line):
-                    pkg_norm = pkg.strip()
-                    if pkg_norm and pkg_norm not in npm_candidates:
-                        npm_candidates[pkg_norm] = (filename, diff_line.line_number, stripped)
-
-            elif 'requirements' in filename and filename.endswith('.txt'):
-                match = REQUIREMENTS_RE.match(stripped)
-                if match:
-                    pkg_norm = match.group(1).strip()
-                    if pkg_norm and pkg_norm not in pypi_candidates:
-                        pypi_candidates[pkg_norm] = (filename, diff_line.line_number, stripped)
-
-    _log(f"Checking licenses for {len(npm_candidates)} npm package(s) and {len(pypi_candidates)} PyPI package(s)...")
-
-    for pkg_name, (filename, line_number, original_code) in npm_candidates.items():
-        license_name, err = _get_npm_license(pkg_name)
-        if err:
-            _log(f"npm license check skipped for '{pkg_name}': {err}")
-            continue
-        risk, reason = _evaluate_license(license_name)
-        if risk:
-            findings.append(_make_finding(pkg_name, 'npm', license_name, reason, filename, line_number, original_code))
-
-    for pkg_name, (filename, line_number, original_code) in pypi_candidates.items():
-        license_name, err = _get_pypi_license(pkg_name)
-        if err:
-            _log(f"PyPI license check skipped for '{pkg_name}': {err}")
-            continue
-        risk, reason = _evaluate_license(license_name)
-        if risk:
-            findings.append(_make_finding(pkg_name, 'PyPI', license_name, reason, filename, line_number, original_code))
+        for pkg_name, (filename, line_number, original_code) in pypi_candidates.items():
+            license_name, err = _get_pypi_license(pkg_name)
+            if err:
+                _log(f"PyPI license check skipped for '{pkg_name}': {err}")
+                continue
+            risk, reason = _evaluate_license(license_name)
+            if risk:
+                findings.append(_make_finding(pkg_name, 'PyPI', license_name, reason, filename, line_number, original_code))
+    except Exception as e:
+        _log(f"Unexpected error in license risk analysis: {str(e)}")
 
     return findings
 
