@@ -23,8 +23,45 @@ ALWAYS:
 - Throw from services, catch in controllers with next(error)
 - Use parameterized queries
 - Validate external input at boundaries
-- Write tests in the same session as implementation
 - Update vault at end of session
 - Use exact version pinning for dependencies
 - Use crypto.randomBytes() for tokens
 - Use python3 not python in spawn calls
+
+## Stage 7 API Surface
+
+Notifications:
+- GET /api/notifications/repositories/:repositoryId/notifications
+- POST /api/notifications/repositories/:repositoryId/notifications
+- DELETE /api/notifications/repositories/:repositoryId/notifications
+
+Outbound Webhooks:
+- POST /api/outbound-webhooks
+- GET /api/outbound-webhooks
+- DELETE /api/outbound-webhooks/:id
+
+Rules:
+- GET /api/rules (public)
+- POST /api/rules/suggest
+- GET /api/rules/suggestions
+- PATCH /api/rules/suggestions/:id/approve
+- PATCH /api/rules/suggestions/:id/reject
+
+Dashboard Extensions:
+- GET /api/dashboard/repositories/:id/sarif
+- GET /api/dashboard/repositories/:id/precommit-config
+
+Badge:
+- GET /api/badge/:repositoryId (public, SVG)
+
+Audit:
+- GET /api/audit-log
+
+## Stage 8 Rate Limits
+
+Global API: 100 req/15min (Redis-backed)
+Auth routes: 20 req/15min
+Webhook ingest: 60 req/min
+Badge endpoint: 120 req/min
+Claude API: 60 calls/hour, 500k tokens/hour, circuit breaker at 5 failures
+User quota: 1000 API requests/month, 100 scans/month (ApiQuota table)

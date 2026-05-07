@@ -8,6 +8,9 @@ import {
 } from '../services/dashboard.service';
 import { addScanJob } from '../queues/scan.queue';
 import { getRepositoryContext } from '../services/github.service';
+import { generateSarifForRepository } from '../services/sarif.service';
+import { generatePrecommitConfig } from '../services/precommit.service';
+import { recordAuditEvent } from '../services/audit.service';
 
 export async function getDashboardStatsHandler(
     req: Request,
@@ -143,6 +146,14 @@ export async function rescanRepositoryHandler(
             pullRequestNumber: 0,
             headSha: context.headSha,
             baseRef: context.defaultBranch,
+        });
+
+        await recordAuditEvent({
+            userId,
+            action: 'scan.triggered',
+            entity: 'Repository',
+            entityId: repositoryId,
+            metadata: { type: 'rescan', branch: context.defaultBranch, commit: context.headSha },
         });
 
         res.status(202).json({
@@ -284,6 +295,65 @@ export async function getSecurityDebtHandler(
         const securityDebt = await getSecurityDebtForRepository(repository.id);
 
         res.status(200).json({ securityDebt });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function getSarifHandler(
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> {
+    try {
+        const userId = req.userId!;
+        const { repositoryId } = req.params;
+
+        if (!repositoryId) {
+            res.status(400).json({ error: 'repositoryId is required.' });
+            return;
+        }
+
+        const repository = await getRepositoryByIdForUser(repositoryId, userId);
+
+        if (!repository) {
+            res.status(404).json({ error: 'Repository not found or access denied.' });
+            return;
+        }
+
+        const sarif = await generateSarifForRepository(repository.id);
+
+        res.status(200).json(sarif);
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function getPrecommitConfigHandler(
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> {
+    try {
+        const userId = req.userId!;
+        const { repositoryId } = req.params;
+
+        if (!repositoryId) {
+            res.status(400).json({ error: 'repositoryId is required.' });
+            return;
+        }
+
+        const repository = await getRepositoryByIdForUser(repositoryId, userId);
+
+        if (!repository) {
+            res.status(404).json({ error: 'Repository not found or access denied.' });
+            return;
+        }
+
+        const config = await generatePrecommitConfig(repository.id);
+
+        res.setHeader('Content-Type', 'text/yaml');
+        res.status(200).send(config);
     } catch (error) {
         next(error);
     }

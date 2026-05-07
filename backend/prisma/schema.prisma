@@ -24,8 +24,10 @@ model User {
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
-  // Relationships
-  repositories Repository[]
+  repositories    Repository[]
+  outboundWebhooks OutboundWebhook[]
+  ruleSuggestions  RuleSuggestion[]
+  apiQuotas        ApiQuota[]
 }
 
 /// Represents a code repository associated with a user.
@@ -40,9 +42,10 @@ model Repository {
   updatedAt   DateTime     @updatedAt
 
   // Relationships
-  userId      String
-  owner       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  scanResults ScanResult[]
+  userId              String
+  owner               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scanResults         ScanResult[]
+  notificationConfigs NotificationConfig[]
 }
 
 /// Represents the complete analysis outcome for a given code change (e.g., a Pull Request).
@@ -161,4 +164,87 @@ model FalsePositive {
   createdAt    DateTime @default(now())
 
   @@index([repositoryId, findingType])
+}
+
+model NotificationConfig {
+  id           String   @id @default(uuid())
+  repositoryId String
+  repository   Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  platform     NotificationPlatform
+  webhookUrl   String
+  enabled      Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([repositoryId, platform])
+}
+
+enum NotificationPlatform {
+  SLACK
+  DISCORD
+}
+
+model OutboundWebhook {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  url          String
+  secret       String
+  events       String[]
+  enabled      Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  action    String
+  entity    String
+  entityId  String?
+  metadata  Json?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+model RuleSuggestion {
+  id          String             @id @default(uuid())
+  userId      String
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  description String
+  category    String
+  pattern     String
+  severity    RiskLevel
+  status      RuleSuggestionStatus @default(PENDING)
+  reviewNote  String?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+}
+
+enum RuleSuggestionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model ApiQuota {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  periodStart  DateTime
+  periodEnd    DateTime
+  requestCount Int      @default(0)
+  scanCount    Int      @default(0)
+  requestLimit Int      @default(1000)
+  scanLimit    Int      @default(100)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([userId, periodStart])
+  @@index([userId])
 }

@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../config/db';
 import { recordFalsePositive } from '../services/falsePositive.service';
+import { recordAuditEvent } from '../services/audit.service';
 
 export async function createIgnoreRuleHandler(
     req: Request,
@@ -26,6 +27,13 @@ export async function createIgnoreRuleHandler(
         }
 
         await recordFalsePositive(repositoryId, findingType, file, codeSnippet, userId);
+
+        await recordAuditEvent({
+            userId,
+            action: 'ignoreRule.created',
+            entity: 'FalsePositive',
+            metadata: { repositoryId, findingType, file },
+        });
 
         res.status(201).json({ message: 'Ignore rule created successfully.' });
     } catch (error) {

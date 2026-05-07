@@ -2,16 +2,14 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../config/db';
 import { buildGitHubAuthUrl, handleGitHubOAuthCallback } from '../services/auth.service';
+import { storeOAuthState, validateAndConsumeOAuthState } from '../services/oauthState.service';
 import { logger } from '../utils/logger';
-
-const pendingOAuthStates = new Map<string, number>();
-const STATE_TTL_MS = 10 * 60 * 1000;
 
 export async function redirectToGitHub(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const { url, state } = buildGitHubAuthUrl();
 
-        pendingOAuthStates.set(state, Date.now());
+        await storeOAuthState(state);
 
         logger.info(`[AuthController] Initiating GitHub OAuth redirect. State: ${state.slice(0, 8)}...`);
 
@@ -37,21 +35,12 @@ export async function handleOAuthCallback(req: Request, res: Response, next: Nex
             return;
         }
 
-        const stateTimestamp = pendingOAuthStates.get(state);
-        if (!stateTimestamp) {
-            logger.warn(`[AuthController] OAuth state not found: ${state.slice(0, 8)}...`);
+        const isValid = await validateAndConsumeOAuthState(state);
+        if (!isValid) {
+            logger.warn(`[AuthController] OAuth state invalid or expired: ${state.slice(0, 8)}...`);
             res.status(400).json({ error: 'Invalid or expired OAuth state. Please try logging in again.' });
             return;
         }
-
-        if (Date.now() - stateTimestamp > STATE_TTL_MS) {
-            pendingOAuthStates.delete(state);
-            logger.warn('[AuthController] OAuth state expired.');
-            res.status(400).json({ error: 'OAuth state expired. Please try logging in again.' });
-            return;
-        }
-
-        pendingOAuthStates.delete(state);
 
         logger.info('[AuthController] OAuth state validated. Processing callback...');
 

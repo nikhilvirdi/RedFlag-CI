@@ -189,3 +189,56 @@
   - Verified repository-level security for all intelligence management actions.
 - **Current Status**: Backend now supports regression detection, semantic similarity scanning, and AI-driven false positive suppression.
 - **Next**: Moving to Stage 6 for platform features (Re-scan, User Management, etc.).
+
+---
+
+### Session — 2026-05-07 (Stage 7: Community & Integration)
+
+- **Scope**: Full Stage 7 implementation in a single session.
+- **Schema**: Added NotificationConfig, OutboundWebhook, AuditLog, RuleSuggestion models to Prisma schema.
+- **Services Created** (7 new files):
+  - `notification.service.ts` — Slack/Discord webhook payloads and delivery.
+  - `outboundWebhook.service.ts` — User-managed webhook CRUD, HMAC-signed delivery.
+  - `audit.service.ts` — Event logging and paginated retrieval.
+  - `sarif.service.ts` — SARIF 2.1.0 JSON export from scan findings.
+  - `badge.service.ts` — SVG badge generation from posture score.
+  - `rules.service.ts` — Analyzer rule registry + community suggestion queue.
+  - `precommit.service.ts` — .pre-commit-config.yaml generation from scan profile.
+- **Controllers Created** (4 new files):
+  - `notification.controller.ts`, `outboundWebhook.controller.ts`, `rules.controller.ts`, `audit.controller.ts`.
+- **Routes Created** (5 new files):
+  - `notification.routes.ts`, `outboundWebhook.routes.ts`, `rules.routes.ts`, `audit.routes.ts`, `badge.routes.ts`.
+- **Modified Files**:
+  - `app.ts` — Mounted 5 new routers.
+  - `dashboard.controller.ts` — Added SARIF and precommit-config handlers + audit logging on rescan.
+  - `dashboard.routes.ts` — Added SARIF and precommit-config routes.
+  - `scan.worker.ts` — Post-scan hooks: notifications, outbound webhooks, audit events.
+  - `ignoreRules.controller.ts` — Audit logging on ignore rule creation.
+- **Audit Coverage**: scan.completed, scan.triggered, webhook.created/deleted, notification.configured/removed, rule.suggested/approved/rejected, ignoreRule.created.
+- **Current Status**: Stage 7 complete. All community and integration features implemented.
+- **Next**: Stage 8 — Hardening (rate limiting, input validation, CORS tightening).
+
+---
+
+### Session — 2026-05-07 (Stage 8: Hardening)
+
+- **Scope**: Full Stage 8 implementation in a single session.
+- **Schema**: Added ApiQuota model (per-user monthly request/scan tracking) to Prisma schema. Added apiQuotas relation to User.
+- **New Files Created** (8):
+  - `src/middlewares/rateLimit.middleware.ts` — express-rate-limit with Redis store. 4 tiers: global (100/15min), auth (20/15min), webhook (60/min), badge (120/min).
+  - `src/middlewares/quota.middleware.ts` — DB-backed per-user monthly API quota enforcement. Upsert on each request, 429 when exceeded.
+  - `src/services/oauthState.service.ts` — Redis-backed OAuth state store with TTL=600s. Replaces in-memory Map.
+  - `src/services/claudeRateLimit.service.ts` — Claude API rate limiter: 60 calls/hour, 500k tokens/hour, circuit breaker (5 failures → 300s cooldown).
+  - `backend/Dockerfile` — Multi-stage production build: base → deps → build → production. Non-root user, healthcheck, Python3.
+  - `backend/.dockerignore` — Excludes node_modules, dist, .env, .git from build context.
+  - `.github/workflows/ci.yml` — 4-job CI pipeline: security audit (npm/pip/TruffleHog), TypeScript strict, Jest, Docker build validation.
+  - `.pre-commit-config.yaml` — Pre-commit hooks: trailing whitespace, secret detection, ESLint, TypeScript check, npm audit, console.log guard.
+- **Modified Files** (4):
+  - `src/app.ts` — Mounted rate limiters per route group; added quota middleware on authenticated routes.
+  - `src/controllers/auth.controller.ts` — Replaced in-memory Map with Redis storeOAuthState/validateAndConsumeOAuthState.
+  - `src/services/remediation.service.ts` — Integrated canCallClaude/recordClaudeUsage/tripCircuitBreaker. Max tokens capped at 4096.
+  - `package.json` — Added express-rate-limit ^7.5.0, rate-limit-redis ^4.2.0.
+  - `prisma/schema.prisma` — Added ApiQuota model + User relation.
+- **Vault Updated**: STATE.md, DECISIONS.md, CONTRACTS.md, SESSION_LOG.md.
+- **Current Status**: Stage 8 complete. All hardening tasks implemented.
+- **Next**: Stage 9 — Frontend (Next.js dashboard).

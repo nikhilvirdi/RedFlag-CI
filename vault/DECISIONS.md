@@ -74,3 +74,39 @@ Decision: Use pattern-based heuristics. A finding is triggered if:
 3. No known sanitizer (parseInt, DOMPurify, Joi, etc.) is present in the same line as the sink.
 Limitation: This may result in false positives if sanitization happens in lines not included in the diff.
 Settled: yes.
+
+## Stage 7: Notification and Webhook Architecture
+Slack and Discord notifications use platform-native payload formats (Slack Block Kit, Discord embeds). Delivery is fire-and-forget with Promise.allSettled — a failed notification never blocks the scan pipeline. Outbound webhooks include HMAC-SHA256 signature via X-RedFlag-Signature header for payload verification. Secret is generated server-side via crypto.randomBytes and shown once at creation.
+Settled: yes.
+
+## Stage 7: Badge API — Public Endpoint
+GET /api/badge/:repositoryId is unauthenticated by design so SVG badges can be embedded in GitHub READMEs. Cache-Control is set to no-cache to always reflect current posture. Trade-off: repository IDs are UUIDs so enumeration risk is minimal.
+Settled: yes.
+
+## Stage 7: Rules Registry — Static vs Dynamic
+Analyzer rules are defined as a static array in rules.service.ts rather than stored in the database. This avoids an unnecessary migration path and keeps the registry fast. Community suggestions go through a separate RuleSuggestion table with a review workflow.
+Settled: yes.
+
+## Stage 7: Audit Log — Fire-and-Forget
+recordAuditEvent wraps the Prisma create in a try-catch with logger.warn on failure. This ensures audit logging never throws and never interrupts the request flow. Trade-off: audit entries can silently fail, but this is acceptable for a non-critical observability layer.
+Settled: yes.
+
+## Stage 8: Rate Limiting — Tiered by Route Group
+Global API routes: 100 req/15min. Auth routes: 20 req/15min (prevents brute force). Webhook ingest: 60 req/min (accommodates burst PR activity). Badge endpoint: 120 req/min (high traffic from README embeds). All backed by Redis store for horizontal scaling.
+Settled: yes.
+
+## Stage 8: OAuth State — Redis over In-Memory Map
+In-memory Map does not survive process restarts and breaks in multi-instance deployments. Redis with TTL=600s (10 min) provides atomic consume-on-validate via GET+DEL pattern. Zero code change required in auth.service.ts — only auth.controller.ts updated.
+Settled: yes.
+
+## Stage 8: Claude Circuit Breaker Pattern
+5 consecutive API failures or a 429 response trips the circuit breaker for 300 seconds. During open circuit, all remediation calls are skipped gracefully (findings returned without remediation). Hourly limits: 60 calls, 500k tokens. Token usage tracked via Redis INCR with TTL-based window expiry.
+Settled: yes.
+
+## Stage 8: API Quota Enforcement — Monthly Rolling Window
+Per-user monthly quotas tracked in ApiQuota table with upsert on each request. Default limits: 1000 API requests/month, 100 scans/month. Quota middleware runs after auth but before route handlers. Headers X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset set on every response. Scan quota checked separately in scan pipeline.
+Settled: yes.
+
+## Stage 8: Multi-Stage Docker Build
+Four stages: base (node:20-alpine + python3), deps (npm ci --omit=dev), build (full npm ci + tsc), production (non-root user, healthcheck, minimal footprint). Prisma client generated at build time, .prisma directory copied to production stage.
+Settled: yes.

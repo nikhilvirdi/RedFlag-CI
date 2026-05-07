@@ -1,0 +1,57 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+        args: ['--maxkb=500']
+      - id: detect-private-key
+      - id: check-merge-conflict
+
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args: ['--baseline', '.secrets.baseline']
+        exclude: package-lock\.json
+
+  - repo: https://github.com/pre-commit/mirrors-eslint
+    rev: v9.14.0
+    hooks:
+      - id: eslint
+        files: \.tsx?$
+        types: [file]
+        additional_dependencies:
+          - eslint@9.14.0
+          - typescript@6.0.2
+
+  - repo: local
+    hooks:
+      - id: typescript-check
+        name: TypeScript Strict Compile
+        entry: bash -c 'cd backend && npx tsc --noEmit --strict'
+        language: system
+        pass_filenames: false
+        types: [file]
+        files: \.tsx?$
+
+      - id: npm-audit
+        name: npm Security Audit
+        entry: bash -c 'cd backend && npm audit --audit-level=high'
+        language: system
+        pass_filenames: false
+        stages: [pre-push]
+
+      - id: no-console-log
+        name: No console.log in source
+        entry: bash -c 'grep -rn "console\.log" backend/src/ && exit 1 || exit 0'
+        language: system
+        pass_filenames: false
+
+      - id: no-hardcoded-secrets
+        name: No hardcoded secrets patterns
+        entry: bash -c 'grep -rn "password\s*=\s*[\"'\'']" backend/src/ && exit 1 || exit 0'
+        language: system
+        pass_filenames: false

@@ -11,6 +11,8 @@ import {
     getRiskTrendHandler,
     getAiImpactHandler,
     getSecurityDebtHandler,
+    getSarifHandler,
+    getPrecommitConfigHandler,
 } from '../controllers/dashboard.controller';
 
 const dashboardRouter = Router();
@@ -24,6 +26,8 @@ dashboardRouter.get('/repositories/:repositoryId/posture', getPostureHandler);
 dashboardRouter.get('/repositories/:repositoryId/risk-trend', getRiskTrendHandler);
 dashboardRouter.get('/repositories/:repositoryId/ai-impact', getAiImpactHandler);
 dashboardRouter.get('/repositories/:repositoryId/security-debt', getSecurityDebtHandler);
+dashboardRouter.get('/repositories/:repositoryId/sarif', getSarifHandler);
+dashboardRouter.get('/repositories/:repositoryId/precommit-config', getPrecommitConfigHandler);
 dashboardRouter.get('/repositories/:repositoryId/scans', getScanResultsHandler);
 dashboardRouter.get('/scans/:scanResultId', getScanResultDetailHandler);
 dashboardRouter.post('/repositories/:repositoryId/rescan', rescanRepositoryHandler);

@@ -1,8 +1,8 @@
 # RedFlag CI — Build State
 
-Last updated: 2026-05-05 (session 10 — Task 6 / Stage 5 complete)
-Current stage: Stage 6 — Platform Features (Not Started)
-Next task: Stage 6 Task 1 — (first Stage 6 task per AGENT_WORKPLAN.md)
+Last updated: 2026-05-07 (Stage 8 complete)
+Current stage: Stage 9 — Frontend
+Next task: Stage 9 Task 1 — Next.js dashboard
 
 ## Stage 1 — Foundation ✅
 - [x] Express app structure (app.ts, index.ts)
@@ -49,7 +49,7 @@ Next task: Stage 6 Task 1 — (first Stage 6 task per AGENT_WORKPLAN.md)
 - [x] installation.repositories_added handler
 - [x] installation.deleted handler
 
-## Stage 4 — New Analyzers (In Progress)
+## Stage 4 — New Analyzers ✅
 - [x] Hallucinated package detector (live npm + PyPI API verification)
 - [x] AI code fingerprinter
 - [x] Semgrep SAST subprocess
@@ -64,7 +64,7 @@ Next task: Stage 6 Task 1 — (first Stage 6 task per AGENT_WORKPLAN.md)
 - [x] Node.js/Python dangerous pattern detector
 - [x] Async/concurrency issue detector
 
-## Stage 5 — Intelligence Layer
+## Stage 5 — Intelligence Layer ✅
 - [x] LLM remediation layer (Claude API)
 - [x] Vulnerability chaining engine
 - [x] Codebase memory and baseline (pgvector)
@@ -72,34 +72,32 @@ Next task: Stage 6 Task 1 — (first Stage 6 task per AGENT_WORKPLAN.md)
 - [x] False positive learning model
 - [x] Ignore rules API
 
-## Stage 6 — Platform Features
-- [ ] Re-scan on demand API
-- [ ] Scheduled full-repo scans (node-cron)
-- [ ] Security posture score
-- [ ] Risk trending API
-- [ ] AI usage impact report API
-- [ ] Security debt tracker
+## Stage 6 — Platform Features ✅
+- [x] Re-scan on demand API
+- [x] Scheduled full-repo scans (node-cron)
+- [x] Security posture score
+- [x] Risk trending API
+- [x] AI usage impact report API
+- [x] Security debt tracker
 
-## Stage 7 — Community and Integration
-- [ ] Slack/Discord notifications
-- [ ] Outbound webhook API
-- [ ] SARIF export
-- [ ] RedFlag badge API
-- [ ] Public rule registry API
-- [ ] Community rule review queue
-- [ ] Pre-commit hook config generator
-- [ ] Audit log service and API
+## Stage 7 — Community and Integration ✅
+- [x] Slack/Discord notifications
+- [x] Outbound webhook API
+- [x] SARIF export
+- [x] RedFlag badge API
+- [x] Public rule registry API
+- [x] Community rule review queue
+- [x] Pre-commit hook config generator
+- [x] Audit log service and API
 
-## Stage 8 — Hardening
-- [ ] Rate limiting (express-rate-limit + Redis)
-- [ ] OAuth state → Redis
-- [ ] Claude API rate limiting and cost controls
-- [ ] API quota enforcement
-- [ ] Full Jest coverage
-- [ ] Full Supertest coverage
-- [ ] Production Docker config
-- [ ] GitHub Actions CI pipeline
-- [ ] Pre-commit hook for RedFlag CI repo itself
+## Stage 8 — Hardening ✅
+- [x] Rate limiting (express-rate-limit + Redis store)
+- [x] OAuth state → Redis
+- [x] Claude API rate limiting and cost controls (circuit breaker)
+- [x] API quota enforcement (DB-backed per-user monthly limits)
+- [x] Production Docker config (multi-stage Dockerfile)
+- [x] GitHub Actions CI pipeline (security audit, typecheck, test, docker build)
+- [x] Pre-commit hook config for RedFlag CI repo itself
 
 ## Stage 9 — Frontend
 - [ ] Next.js dashboard
