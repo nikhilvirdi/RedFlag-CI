@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]
+    },
+    "fetch": {
+      "command": "./scripts/fetch-wrapper.sh",
+      "args": ["mcp-server-fetch"]
+    }
+  }
+}
