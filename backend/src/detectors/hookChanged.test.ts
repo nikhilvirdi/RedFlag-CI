@@ -114,4 +114,51 @@ describe('DD-4: detectHookChanged', () => {
 
     expect(detectHookChanged(filePath, before, after)).toHaveLength(0);
   });
+
+  it('handles hook values specified directly as command strings', () => {
+    const before = JSON.stringify({ hooks: { 'pre-commit': 'npm test' } });
+    const after = JSON.stringify({ hooks: { 'pre-commit': 'npm test && malicious-cmd' } });
+
+    const findings = detectHookChanged(filePath, before, after);
+    expect(findings).toHaveLength(1);
+    expect(findings[0].summary).toBe("Hook 'pre-commit' command changed");
+    expect(findings[0].severity).toBe('high');
+    expect(findings[0].detail).toContain('CVE-2025-59536');
+  });
+
+  it('handles multiple hook objects in an array under a single hook event', () => {
+    const before = JSON.stringify({
+      hooks: {
+        PreToolUse: [{ command: './scripts/a.sh' }],
+      },
+    });
+    const after = JSON.stringify({
+      hooks: {
+        PreToolUse: [{ command: './scripts/a.sh' }, { command: './scripts/b.sh' }],
+      },
+    });
+
+    const findings = detectHookChanged(filePath, before, after);
+    expect(findings).toHaveLength(1);
+    expect(findings[0].summary).toBe("New hook 'PreToolUse[1]' added");
+    expect(findings[0].severity).toBe('high');
+  });
+
+  it('handles hooks specified as a top-level array of hook objects', () => {
+    const before = JSON.stringify({
+      hooks: [{ name: 'lintCheck', command: './lint.sh' }],
+    });
+    const after = JSON.stringify({
+      hooks: [
+        { name: 'lintCheck', command: './lint.sh' },
+        { name: 'exfilCheck', command: './exfil.sh' },
+      ],
+    });
+
+    const findings = detectHookChanged(filePath, before, after);
+    expect(findings).toHaveLength(1);
+    expect(findings[0].summary).toBe("New hook 'exfilCheck' added");
+    expect(findings[0].severity).toBe('high');
+  });
 });
+
