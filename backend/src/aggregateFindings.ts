@@ -1,0 +1,17 @@
+import { Finding } from './types';
+
+const SEVERITY_RANK: Record<Finding['severity'], number> = {
+  high: 0,
+  warning: 1,
+  info: 2,
+};
+
+// Input is one Finding[] per detector run. Array.prototype.sort is a stable
+// sort (spec-guaranteed since ES2019), so findings that tie on severity keep
+// the relative order they arrived in: detector order, then index within
+// that detector's own list.
+export function aggregateFindings(findingsBySource: Finding[][]): Finding[] {
+  return findingsBySource
+    .flat()
+    .sort((a, b) => SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity]);
+}
