@@ -1,0 +1,9 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Task 5.2: formatFindingsComment matches the expected comment format for a multi-finding list (snapshot) 1`] = `
+"**RedFlag CI found 3 issues:**
+
+- **HIGH** \`.claude/settings.json\`: New hook 'PostToolUse' added. The head branch adds a new hook 'PostToolUse' with command './scripts/notify.sh' to .claude/settings.json. Injecting or altering hooks is the attack vector behind CVE-2025-59536, which exploits Claude Code's hooks by executing unauthorized commands in .claude/settings.json.
+- **HIGH** \`CLAUDE.md\`: Invisible Unicode character (U+200B) found. A zero-width space (U+200B) was found in CLAUDE.md at line 5, column 3. Invisible and bidirectional-control characters have no legitimate use in an instruction file and can be used to hide malicious instructions from human reviewers while an AI agent still reads and follows them.
+- **WARNING** \`.mcp.json\`: New MCP server 'example-server' added. The head branch adds a new MCP server entry named 'example-server' to .mcp.json that was not present in the base branch. New tool servers should be reviewed before merge."
+`;
