@@ -64,3 +64,19 @@ It does not hold for RF-2. The `near-miss-legit-cyrillic-text` result -- one leg
 Accepted, for v1. The three false-positive patterns and the one false-negative pattern documented above are recorded as known, accepted limitations of a deliberate design choice -- not as bugs to be silently patched to make a future benchmark run look better. Any change that measurably improves one of these numbers should be evaluated against whether it reintroduces the noise this decision exists to avoid, per the same standard applied here.
 
 This decision is superseded in scope, not overridden, once v2's opt-in LLM adjudication tier ships (architecture.md section 8): v1's deterministic behavior and this ADR's reasoning both continue to apply by default, since v2 is additive and off unless a user explicitly enables it.
+
+## Addendum: benchmark expansion and fixes (2026-08-06)
+
+The 18-scenario corpus above was the first measurement of this decision, not the last. Before considering v1 ready to rely on, the corpus grew to 120 scenarios across six rounds of deliberate stress-testing, aimed specifically at finding edge cases the original 18 didn't cover: deeper per-detector coverage, explicit judgment calls, fail-open behavior under malformed input, realistic scale, unusual character encodings, multiple detectors colliding on one change, and adversarial evasion attempts.
+
+That expansion did its job. It surfaced one real detector defect during construction -- DD-3's wildcard-escalation check was a plain substring match, so it flagged any permission containing a literal asterisk as an unrestricted grant, including narrow, legitimate glob-scoped paths like `Read(src/**)`. That was fixed immediately, since it was a genuine bug rather than a documented tradeoff. Once the full 120-scenario run was complete, it also surfaced five further gaps, none of them bugs in the sense of the code failing its own spec, but real, fixable limits worth closing anyway:
+
+- RF-1 was missing two invisible characters with no legitimate reason to appear in an instruction file: the soft hyphen and the standalone right-to-left mark.
+- RF-2's confusable table didn't cover fullwidth Latin letters, mathematical alphanumeric symbols, Armenian, or Cherokee -- four entire scripts of Latin look-alikes.
+- DD-2 compared command, arguments, and version, but not environment variables, even though an env-var swap carries the same MCPoison-shaped risk as a command swap.
+- DD-3 recognized `Bash(*)` as an unrestricted grant but not the equally broad `Bash` with no arguments at all, since that shape contains no literal asterisk.
+- DD-4 had no whitespace normalization on hook-command comparison, and never compared a hook's matcher/trigger scope, only its command.
+
+All five were fixed, each verified individually against the specific scenario that found it, with the rest of the test suite confirmed unaffected. `architecture.md` section 5 was updated to reflect DD-2's and DD-4's expanded scope. Re-running the full 120-scenario corpus afterward: **precision rose to 0.926, recall to 0.949** (see `backend/benchmark/RESULTS.md`).
+
+What this addendum does not claim: the three false positives and one false negative documented above, in the original 18-scenario run, are unchanged. The arg-reorder, legitimate-Cyrillic-text, and server-rename false positives are still there, for the same structural reasons already given -- fixing them would mean DD-1/DD-2 correlating removals with additions, or RF-2 gaining natural-language awareness, both of which remain the kind of judgment call this decision keeps out of v1's deterministic detectors. The RF-2 qualification to architecture.md's "near-zero false-positive rate" claim, above, also still stands; it was not addressed by this round and remains open for whoever next revises that section.

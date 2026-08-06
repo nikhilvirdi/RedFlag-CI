@@ -1,4 +1,4 @@
-# RedFlag CI
+﻿# RedFlag CI
 
 <img width="1369" height="339" alt="RedFlag-CI Dark Theme Logo" src="https://github.com/user-attachments/assets/ad35a7f3-71ee-494c-8b32-ea207069ae8a" />
 
@@ -34,14 +34,24 @@ No dashboard. No auto-fix. No LLM-based semantic analysis. Those are on the road
 
 ## Status
 
-Early development, not yet installable. See `workplan.md` for build progress.
+v1 is complete and running. All six detectors work end to end, from a GitHub webhook to a posted PR comment and check run, verified against a real pull request on a live repository. It's also been stress-tested against a 120-scenario adversarial benchmark, built specifically to find the tool's real limits -- see `docs/STRESS_TESTING.md` for what that testing found and `docs/adr/0001-deterministic-only-v1.md` for what the numbers below actually mean.
+
+| Version | Precision | Recall | Benchmark corpus |
+|---|---|---|---|
+| v1.0.0 | 0.727 | 0.889 | 18 scenarios |
+| v1.1.0 | 0.926 | 0.949 | 120 scenarios |
+
+Full breakdown: `backend/benchmark/RESULTS.md`.
 
 ## Documentation
 
 - `architecture.md`: full system design, every detector, every decision, and the roadmap through v4
-- `workplan.md`: phase-by-phase build plan
 - `docs/PROBLEM_SPACE.md`: the research behind why this exists
 - `docs/COMPETITIVE_LANDSCAPE.md`: what else is out there, and where the gaps are
+- `docs/adr/0001-deterministic-only-v1.md`: why v1 is deterministic-only, and what that costs in practice
+- `docs/STRESS_TESTING.md`: how the benchmark grew from 18 to 120 scenarios, and what it found
+- `backend/benchmark/RESULTS.md`: the full benchmark corpus and results
+- `backend/benchmark/COMPARISON.md`: a live comparison against Snyk Agent Scan (formerly mcp-scan)
 
 ## License
 

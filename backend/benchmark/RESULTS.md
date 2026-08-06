@@ -4,13 +4,16 @@ Generated: 2026-08-06T14:54:55.847Z
 
 ## Methodology
 
-18 synthetic PR scenarios, each a before/after file pair for one monitored file, stored under `benchmark/corpus/<scenario-id>/`. `benchmark/run.ts` runs the actual production detector functions and `aggregateFindings` against each pair -- the same dispatch logic `processPullRequestEvent.ts` uses (diff-drift files get DD-1 through DD-4; rule-file files get RF-1/RF-2 against head content only) -- with no GitHub API, webhook, or posting involved. Each scenario carries a ground-truth label (`positive` = should produce at least one finding, `negative` = should produce none). A scenario "fires" if the aggregated findings array is non-empty. No detector logic was modified to produce these numbers.
+120 synthetic PR scenarios, each a before/after file pair for one monitored file, stored under `benchmark/corpus/<scenario-id>/`. The corpus started at 18 scenarios -- one clean example per detector, plus a handful of benign and near-miss cases -- and grew across five further rounds of deliberate stress-testing aimed at surfacing real edge cases rather than producing a clean-looking report: deeper per-detector coverage, explicit judgment calls, fail-open and scale stress tests, unusual character encodings and multi-detector collisions, and benign changes paired with adversarial evasion attempts.
+
+`benchmark/run.ts` runs the actual production detector functions and `aggregateFindings` against each pair -- the same dispatch logic `processPullRequestEvent.ts` uses (diff-drift files get DD-1 through DD-4; rule-file files get RF-1/RF-2 against head content only) -- with no GitHub API, webhook, or posting involved. Each scenario carries a ground-truth label (`positive` = should produce at least one finding, `negative` = should produce none). A scenario "fires" if the aggregated findings array is non-empty. No detector logic was modified to produce these numbers.
 
 Classification:
 - **TP**: positive label, fired
 - **FN**: positive label, did not fire
 - **FP**: negative label, fired
 - **TN**: negative label, did not fire
+
 
 ## Headline numbers
 
