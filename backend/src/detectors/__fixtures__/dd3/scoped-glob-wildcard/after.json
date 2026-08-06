@@ -1,0 +1,6 @@
+{
+  "permissions": {
+    "allow": ["Bash(npm run test)", "Read(README.md)", "Read(src/**)"],
+    "deny": ["Bash(curl:evil.example.com)"]
+  }
+}
