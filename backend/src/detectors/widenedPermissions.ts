@@ -1,9 +1,25 @@
 import { Finding } from '../types';
 
-// A permission string is "widened by wildcard" when it contains this character:
-// a wildcard grants an open-ended class of actions rather than a single reviewed
-// one, so an added allow entry carrying it escalates from warning to high.
-const WILDCARD_CHAR = '*';
+// A wildcard escalates an added allow entry from warning to high only when
+// we can be CONFIDENT it grants an unrestricted, open-ended class of actions:
+// either the whole entry is nothing but wildcard characters ("*", "**"), or
+// it has the shape Tool(...) and everything inside the parentheses is
+// nothing but wildcard characters (e.g. "Bash(*)"). A wildcard embedded in a
+// longer, scoped pattern -- "Read(*.log)", "Read(src/**)" -- is a narrow,
+// bounded grant, not an unrestricted one. Staying at warning for those is
+// deliberate: the detector cannot confirm how broad a mixed pattern actually
+// is, and manufacturing false HIGH-severity confidence on a case it can't
+// verify is worse than underconfidence -- severity calls must reflect the
+// detector's real epistemic limits, not just "did a '*' appear anywhere."
+const UNRESTRICTED_WILDCARD_BODY = /^\*+$/;
+const TOOL_CALL_SHAPE = /^[^()]+\(([^()]*)\)$/;
+
+function isUnrestrictedWildcard(entry: string): boolean {
+  const trimmed = entry.trim();
+  const match = trimmed.match(TOOL_CALL_SHAPE);
+  const body = (match ? match[1] : trimmed).trim();
+  return body.length > 0 && UNRESTRICTED_WILDCARD_BODY.test(body);
+}
 
 interface Permissions {
   allow: string[];
@@ -73,7 +89,7 @@ export function detectWidenedPermissions(
       continue;
     }
 
-    if (entry.includes(WILDCARD_CHAR)) {
+    if (isUnrestrictedWildcard(entry)) {
       findings.push({
         detectorId: 'diff-drift.widened-permissions',
         severity: 'high',

@@ -70,6 +70,32 @@ describe('DD-3: detectWidenedPermissions', () => {
     });
   });
 
+  it('keeps a scoped glob pattern at warning, not high, even though it contains "*" (fixture)', () => {
+    // Regression coverage for the wildcard-escalation bug found via benchmark
+    // stress-testing (dd3-narrowing-syntax-rewrite): a wildcard embedded in a
+    // longer, scoped pattern like "Read(src/**)" is a narrow, bounded grant,
+    // not the same thing as "Bash(*)" being wide open. Escalating both to the
+    // same HIGH severity would manufacture false confidence the detector
+    // cannot back up.
+    const findings = detectWidenedPermissions(
+      filePath,
+      readFixture('scoped-glob-wildcard', 'before.json'),
+      readFixture('scoped-glob-wildcard', 'after.json')
+    );
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0]).toEqual({
+      detectorId: 'diff-drift.widened-permissions',
+      severity: 'warning',
+      file: filePath,
+      summary: "Permission 'Read(src/**)' added to allow-list",
+      detail:
+        "The head branch adds 'Read(src/**)' to the allow-list in .claude/settings.json. " +
+        'This widens what the agent is permitted to do without approval; a broader ' +
+        'allow-list means more actions run unprompted.',
+    });
+  });
+
   it('does NOT fire on a narrowing change: allow entry removed and deny rule added (fixture)', () => {
     const findings = detectWidenedPermissions(
       filePath,
@@ -142,6 +168,30 @@ describe('DD-3: detectWidenedPermissions', () => {
     expect(findings).toHaveLength(1);
     expect(findings[0].severity).toBe('high');
     expect(findings[0].summary).toBe("Wildcard permission '*' added to allow-list");
+  });
+
+  it('escalates a bare recursive-glob entry ("**") the same as a single "*"', () => {
+    // Generalization of the "entire body is wildcard characters" rule: a bare
+    // "**" is just as unrestricted as "*", since nothing scopes it.
+    const before = JSON.stringify({ permissions: { allow: ['Read(a)'], deny: [] } });
+    const after = JSON.stringify({ permissions: { allow: ['Read(a)', '**'], deny: [] } });
+
+    const findings = detectWidenedPermissions(filePath, before, after);
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0].severity).toBe('high');
+  });
+
+  it('does not escalate wildcards scoped by an extension or a directory prefix', () => {
+    const before = JSON.stringify({ permissions: { allow: [], deny: [] } });
+    const after = JSON.stringify({
+      permissions: { allow: ['Read(*.log)', 'Bash(npm run *)'], deny: [] },
+    });
+
+    const findings = detectWidenedPermissions(filePath, before, after);
+
+    expect(findings).toHaveLength(2);
+    expect(findings.every((f) => f.severity === 'warning')).toBe(true);
   });
 
   it('ignores non-string entries in the permission arrays', () => {
