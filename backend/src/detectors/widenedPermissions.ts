@@ -11,14 +11,30 @@ import { Finding } from '../types';
 // is, and manufacturing false HIGH-severity confidence on a case it can't
 // verify is worse than underconfidence -- severity calls must reflect the
 // detector's real epistemic limits, not just "did a '*' appear anywhere."
+//
+// A bare tool name with no parentheses at all ("Bash") is unrestricted for
+// the same reason: with nothing scoping it, it grants that whole tool,
+// unconditionally -- just as open-ended as "Bash(*)", even though it
+// contains no literal "*" character.
 const UNRESTRICTED_WILDCARD_BODY = /^\*+$/;
 const TOOL_CALL_SHAPE = /^[^()]+\(([^()]*)\)$/;
 
 function isUnrestrictedWildcard(entry: string): boolean {
   const trimmed = entry.trim();
+  if (trimmed.length === 0) {
+    return false;
+  }
+
   const match = trimmed.match(TOOL_CALL_SHAPE);
-  const body = (match ? match[1] : trimmed).trim();
-  return body.length > 0 && UNRESTRICTED_WILDCARD_BODY.test(body);
+  if (match) {
+    const body = match[1].trim();
+    return body.length > 0 && UNRESTRICTED_WILDCARD_BODY.test(body);
+  }
+
+  // No Tool(...) shape: a bare entry with no parentheses at all is either a
+  // literal wildcard ("*", "**") or an unscoped tool name ("Bash") -- both
+  // grant access with nothing to bound them, so both are unrestricted.
+  return !trimmed.includes('(') && !trimmed.includes(')');
 }
 
 interface Permissions {

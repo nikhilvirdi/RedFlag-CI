@@ -1,9 +1,11 @@
 import { Finding } from '../types';
 
 // Fields on a single MCP server entry that pin its identity: what runs
-// (command), how it runs (args), and any explicit version/hash pin. A change
-// to any of these on an already-approved entry is the MCPoison rug-pull.
-const PINNED_FIELDS = ['command', 'args', 'version', 'hash'] as const;
+// (command), how it runs (args and env), and any explicit version/hash pin.
+// A change to any of these on an already-approved entry is the MCPoison
+// rug-pull -- an env-var swap (e.g. redirecting a server to a different
+// endpoint) is functionally the same risk as a command/args swap.
+const PINNED_FIELDS = ['command', 'args', 'version', 'hash', 'env'] as const;
 
 function parseMcpServerEntries(content: string): Record<string, unknown> | null {
   try {

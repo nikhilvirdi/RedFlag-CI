@@ -5,6 +5,15 @@ interface HookEntry {
   eventName: string;
   arrayIndex?: number;
   command: string;
+  matcher?: string;
+}
+
+// Purely cosmetic formatting changes (an extra space, trailing whitespace)
+// carry no semantic difference in what a hook actually runs, so both sides
+// of the command comparison are normalized before comparing; the raw values
+// are still what gets shown in the finding text.
+function normalizeWhitespace(value: string): string {
+  return value.trim().replace(/\s+/g, ' ');
 }
 
 // Reads the hooks array out of .claude/settings.json. Returns null on
@@ -45,10 +54,12 @@ function parseHooks(content: string): HookEntry[] | null {
               : `hook[${i}]`;
           const cmd =
             typeof itemObj.command === 'string' ? itemObj.command : JSON.stringify(itemObj);
+          const matcher = typeof itemObj.matcher === 'string' ? itemObj.matcher : undefined;
           entries.push({
             key,
             eventName: key,
             command: cmd,
+            matcher,
           });
         }
       }
@@ -82,11 +93,13 @@ function parseHooks(content: string): HookEntry[] | null {
             const elemObj = elem as Record<string, unknown>;
             const cmd =
               typeof elemObj.command === 'string' ? elemObj.command : JSON.stringify(elemObj);
+            const matcher = typeof elemObj.matcher === 'string' ? elemObj.matcher : undefined;
             entries.push({
               key: entryKey,
               eventName: key,
               arrayIndex: i,
               command: cmd,
+              matcher,
             });
           }
         }
@@ -94,10 +107,12 @@ function parseHooks(content: string): HookEntry[] | null {
         const valObj = val as Record<string, unknown>;
         const cmd =
           typeof valObj.command === 'string' ? valObj.command : JSON.stringify(valObj);
+        const matcher = typeof valObj.matcher === 'string' ? valObj.matcher : undefined;
         entries.push({
           key,
           eventName: key,
           command: cmd,
+          matcher,
         });
       }
     }
@@ -170,14 +185,36 @@ export function detectHookChanged(
         summary: `New hook '${displayName}' added`,
         detail: `The head branch adds a new hook '${displayName}' with command '${headEntry.command}' to ${filePath}. Injecting or altering hooks is the attack vector behind CVE-2025-59536, which exploits Claude Code's hooks by executing unauthorized commands in .claude/settings.json.`,
       });
-    } else if (baseEntry.command !== headEntry.command) {
-      findings.push({
-        detectorId: 'diff-drift.hook-changed',
-        severity: 'high',
-        file: filePath,
-        summary: `Hook '${displayName}' command changed`,
-        detail: `The command for hook '${displayName}' in ${filePath} was modified from '${baseEntry.command}' to '${headEntry.command}'. Injecting or altering hooks is the attack vector behind CVE-2025-59536, which exploits Claude Code's hooks by executing unauthorized commands in .claude/settings.json.`,
-      });
+    } else {
+      const commandChanged =
+        normalizeWhitespace(baseEntry.command) !== normalizeWhitespace(headEntry.command);
+      const matcherChanged = baseEntry.matcher !== headEntry.matcher;
+
+      if (commandChanged && matcherChanged) {
+        findings.push({
+          detectorId: 'diff-drift.hook-changed',
+          severity: 'high',
+          file: filePath,
+          summary: `Hook '${displayName}' command and matcher changed`,
+          detail: `The command for hook '${displayName}' in ${filePath} was modified from '${baseEntry.command}' to '${headEntry.command}', and its matcher was modified from '${baseEntry.matcher ?? '(none)'}' to '${headEntry.matcher ?? '(none)'}'. Injecting or altering hooks, or broadening what they apply to, is the attack vector behind CVE-2025-59536, which exploits Claude Code's hooks by executing unauthorized commands in .claude/settings.json.`,
+        });
+      } else if (commandChanged) {
+        findings.push({
+          detectorId: 'diff-drift.hook-changed',
+          severity: 'high',
+          file: filePath,
+          summary: `Hook '${displayName}' command changed`,
+          detail: `The command for hook '${displayName}' in ${filePath} was modified from '${baseEntry.command}' to '${headEntry.command}'. Injecting or altering hooks is the attack vector behind CVE-2025-59536, which exploits Claude Code's hooks by executing unauthorized commands in .claude/settings.json.`,
+        });
+      } else if (matcherChanged) {
+        findings.push({
+          detectorId: 'diff-drift.hook-changed',
+          severity: 'high',
+          file: filePath,
+          summary: `Hook '${displayName}' matcher changed`,
+          detail: `The matcher for hook '${displayName}' in ${filePath} was modified from '${baseEntry.matcher ?? '(none)'}' to '${headEntry.matcher ?? '(none)'}'. Broadening what a hook applies to widens its effective reach even when the command itself is unchanged, independent of the command-injection vector behind CVE-2025-59536 that this detector also watches for in .claude/settings.json.`,
+        });
+      }
     }
   }
 
