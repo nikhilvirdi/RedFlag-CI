@@ -2,6 +2,7 @@ import { createHmac } from 'crypto';
 import { Express } from 'express';
 import request from 'supertest';
 import { createApp } from './app';
+import { GitHubApp } from './githubApp';
 
 const WEBHOOK_SECRET = 'test-secret';
 const payload = JSON.stringify({ action: 'opened' });
@@ -15,7 +16,11 @@ describe('POST /webhook', () => {
 
   beforeAll(() => {
     process.env.GITHUB_WEBHOOK_SECRET = WEBHOOK_SECRET;
-    app = createApp();
+    // This suite only exercises signature verification; the test payload has
+    // no pull_request/repository/installation, so processPullRequestEvent
+    // returns immediately without touching the app, per its own tests.
+    const githubApp = { getInstallationOctokit: jest.fn() } as unknown as GitHubApp;
+    app = createApp(githubApp);
   });
 
   it('returns 200 for a request with a valid signature', async () => {
