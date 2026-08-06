@@ -1,9 +1,11 @@
 import { Finding } from '../types';
 
 const CHARACTER_NAMES: Record<number, string> = {
+  0x00ad: 'soft hyphen',
   0x200b: 'zero-width space',
   0x200c: 'zero-width non-joiner',
   0x200d: 'zero-width joiner',
+  0x200f: 'right-to-left mark',
   0x202a: 'left-to-right embedding',
   0x202b: 'right-to-left embedding',
   0x202c: 'pop directional formatting',
@@ -15,7 +17,7 @@ const CHARACTER_NAMES: Record<number, string> = {
   0x2069: 'pop directional isolate',
 };
 
-const INVISIBLE_CHAR_PATTERN = /[\u200B-\u200D\u202A-\u202E\u2066-\u2069]/g;
+const INVISIBLE_CHAR_PATTERN = /[\u00AD\u200B-\u200D\u200F\u202A-\u202E\u2066-\u2069]/g;
 
 function locate(content: string, index: number): { line: number; column: number } {
   const before = content.slice(0, index);

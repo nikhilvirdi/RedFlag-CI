@@ -92,11 +92,11 @@ interface Finding {
 
 **DD-1: New MCP server added.** Compares the set of server entries between base and head. Any entry present in head but absent from base is a finding. Severity: `warning`.
 
-**DD-2: Pinned tool or version swapped.** For a server entry present in both base and head, compares the command, arguments, and any pinned version or hash. A change to any of these on an existing entry is a finding. This is the MCPoison pattern: a trusted, already-approved tool silently repointed to something else. Severity: `high`.
+**DD-2: Pinned tool or version swapped.** For a server entry present in both base and head, compares the command, arguments, any pinned version or hash, and any environment variables. A change to any of these on an existing entry is a finding, since an env-var swap (for example, redirecting a server to a different endpoint) is functionally the same MCPoison-shaped risk as a command or argument swap. This is the MCPoison pattern: a trusted, already-approved tool silently repointed to something else. Severity: `high`.
 
 **DD-3: Permission or allow-list widened.** Compares the permissions and allow-list arrays in `.claude/settings.json`. A finding fires when the head version adds entries not present in base, removes a deny rule present in base, or introduces a wildcard where none existed. Severity: `warning`, escalated to `high` if a wildcard is introduced.
 
-**DD-4: Hook added or changed.** Compares the hooks section of `.claude/settings.json`. A new hook, or a change to an existing hook's command, is a finding. This is the vector behind CVE-2025-59536. Severity: `high`.
+**DD-4: Hook added or changed.** Compares the hooks section of `.claude/settings.json`. A new hook, a change to an existing hook's command, or a change to its matcher/trigger scope, is a finding, since broadening what a hook applies to (for example, from "Bash" to "*") is a real widening of the hook's effective reach independent of whether the command itself changed. This is the vector behind CVE-2025-59536. Severity: `high`.
 
 ### Rule-file engine
 

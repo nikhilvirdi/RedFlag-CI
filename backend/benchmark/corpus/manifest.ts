@@ -331,8 +331,8 @@ export const SCENARIOS: CorpusScenario[] = [
     filePath: '.claude/settings.json',
     engine: 'diff-drift',
     detectorUnderTest: 'diff-drift.hook-changed',
-    groundTruth: 'negative',
-    note: "JUDGMENT CALL, documented rather than fixed: broadening a hook's matcher is a real widening of when it fires, but DD-4's spec (architecture.md 5) names only 'a change to an existing hook's command' -- matcher is never read for comparison. Labeled negative for spec-consistency with near-miss-hook-removed's reasoning, but arguably debatable; see task report.",
+    groundTruth: 'positive',
+    note: "Label corrected: this was originally 'negative' because DD-4's spec (architecture.md 5) named only 'a change to an existing hook's command' -- matcher was never read for comparison, so under that old spec this genuinely shouldn't fire. The spec has since been updated to explicitly cover 'a change to [a hook's] matcher/trigger scope' as well, since broadening a hook's matcher (e.g. 'Bash' to '*') is a real widening of the hook's effective reach independent of its command. hookChanged.ts was fixed to match. The stale 'negative' label was a leftover from the pre-fix spec, not a reflection of correct detector behavior; the detector's current firing on this scenario is correct, and the label now says so.",
   },
   {
     id: 'dd4-command-whitespace-only-change',
