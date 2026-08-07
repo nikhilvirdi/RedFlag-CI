@@ -17,7 +17,18 @@ const CHARACTER_NAMES: Record<number, string> = {
   0x2069: 'pop directional isolate',
 };
 
-const INVISIBLE_CHAR_PATTERN = /[\u00AD\u200B-\u200D\u200F\u202A-\u202E\u2066-\u2069]/g;
+// Combining Diacritical Marks (U+0300-U+036F): zero-width combining marks
+// that render invisibly when not paired with a base character they modify,
+// or stacked past what any legitimate diacritic use needs -- the same
+// "invisible to a human reviewer, still read by an AI agent" risk as the
+// zero-width and bidi-control ranges above. U+034F (combining grapheme
+// joiner) is the specific gap this closes: it's defined to have no visible
+// rendering at all, even paired with a base character.
+// The combining marks in \u0300-\u036F are exactly what this detector
+// targets, not an accidental base+combining-mark grapheme cluster the rule
+// below warns about, hence the disable.
+// eslint-disable-next-line no-misleading-character-class
+const INVISIBLE_CHAR_PATTERN = /[\u00AD\u200B-\u200D\u200F\u202A-\u202E\u2066-\u2069\u0300-\u036F]/g;
 
 function locate(content: string, index: number): { line: number; column: number } {
   const before = content.slice(0, index);
