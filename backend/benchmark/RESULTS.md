@@ -1,6 +1,6 @@
 # RedFlag CI v1 Benchmark Results
 
-Generated: 2026-08-07T05:46:00.366Z
+Generated: 2026-08-07T06:49:07.870Z
 
 ## Methodology
 
@@ -14,12 +14,12 @@ Classification:
 
 ## Headline numbers
 
-- True positives: 76
+- True positives: 77
 - False positives: 6
 - True negatives: 35
-- False negatives: 3
-- **Precision** = TP / (TP + FP) = 76 / 82 = 0.927
-- **Recall** = TP / (TP + FN) = 76 / 79 = 0.962
+- False negatives: 2
+- **Precision** = TP / (TP + FP) = 77 / 83 = 0.928
+- **Recall** = TP / (TP + FN) = 77 / 79 = 0.975
 
 These numbers describe this 18-scenario corpus, not a statistically representative sample of real-world PRs. The corpus intentionally includes near-miss and known-gap cases designed to surface the detectors' actual limits (see below) rather than a set chosen to look clean.
 
@@ -34,7 +34,7 @@ These numbers describe this 18-scenario corpus, not a statistically representati
 | `diff-drift.widened-permissions` | 14 | 14 | 4 | 2 |
 | `diff-drift.widened-permissions + diff-drift.hook-changed` | 2 | 2 | 1 | 0 |
 | `rule-file.homoglyph` | 12 | 12 | 2 | 2 |
-| `rule-file.invisible-unicode` | 11 | 9 | 7 | 0 |
+| `rule-file.invisible-unicode` | 11 | 10 | 7 | 0 |
 | `rule-file.invisible-unicode + rule-file.homoglyph` | 2 | 2 | 3 | 0 |
 
 ## Full scenario results
@@ -123,13 +123,13 @@ These numbers describe this 18-scenario corpus, not a statistically representati
 | `encoding-utf16-bom-be` | `CLAUDE.md` | negative | false | **TN** | (none) |
 | `encoding-bom-not-at-start` | `CLAUDE.md` | negative | false | **TN** | (none) |
 | `encoding-mixed-crlf-lf` | `CLAUDE.md` | negative | false | **TN** | (none) |
-| `encoding-nfc-vs-nfd-homoglyph` | `.cursor/rules/security.md` | positive | true | **TP** | rule-file.homoglyph [high]: Greek look-alike character (U+03BF) found |
+| `encoding-nfc-vs-nfd-homoglyph` | `.cursor/rules/security.md` | positive | true | **TP** | rule-file.invisible-unicode [high]: Invisible Unicode character (U+0301) found; rule-file.homoglyph [high]: Greek look-alike character (U+03BF) found |
 | `encoding-fullwidth-latin-homoglyph` | `.cursor/rules/security.md` | positive | true | **TP** | rule-file.homoglyph [high]: Fullwidth Latin look-alike character (U+FF41) found |
 | `encoding-mathematical-alphanumeric-symbol` | `.cursor/rules/security.md` | positive | true | **TP** | rule-file.homoglyph [high]: Mathematical Bold look-alike character (U+1D41A) found |
 | `encoding-zwsp-in-diffdrift-file` | `.mcp.json` | negative | false | **TN** | (none) |
 | `encoding-armenian-homoglyph` | `.cursor/rules/security.md` | positive | true | **TP** | rule-file.homoglyph [high]: Armenian look-alike character (U+0585) found |
 | `encoding-cherokee-homoglyph` | `.cursor/rules/security.md` | positive | true | **TP** | rule-file.homoglyph [high]: Cherokee look-alike character (U+13DA) found |
-| `encoding-combining-diacritical-invisible` | `.cursor/rules/security.md` | positive | false | **FN** | (none) |
+| `encoding-combining-diacritical-invisible` | `.cursor/rules/security.md` | positive | true | **TP** | rule-file.invisible-unicode [high]: Invisible Unicode character (U+034F) found |
 | `encoding-rlm-standalone` | `.cursor/rules/security.md` | positive | true | **TP** | rule-file.invisible-unicode [high]: Invisible Unicode character (U+200F) found |
 | `encoding-soft-hyphen` | `.cursor/rules/security.md` | positive | true | **TP** | rule-file.invisible-unicode [high]: Invisible Unicode character (U+00AD) found |
 | `encoding-unicode-tag-characters` | `.cursor/rules/security.md` | positive | false | **FN** | (none) |
@@ -164,7 +164,7 @@ These numbers describe this 18-scenario corpus, not a statistically representati
 
 ## False positives and false negatives, explained honestly
 
-9 of 18 scenarios were misclassified by the tool relative to this corpus's ground truth. None of these are implementation bugs in the sense of "the code does not match its own spec" -- each is the detector behaving exactly as designed, on a case where that design has a real, documented limit. They are recorded here, not fixed, per this task's scope.
+8 of 18 scenarios were misclassified by the tool relative to this corpus's ground truth. None of these are implementation bugs in the sense of "the code does not match its own spec" -- each is the detector behaving exactly as designed, on a case where that design has a real, documented limit. They are recorded here, not fixed, per this task's scope.
 
 ### `near-miss-args-reorder` (FP)
 
@@ -221,14 +221,6 @@ A genuine Russian sentence ("Команда для сохранения:") corre
 **Why**: JUDGMENT, symmetric to near-miss-legit-cyrillic-text: RF-2's character class only matches Cyrillic/Greek code points, never Latin ones, so the embedded "git commit" loanword itself cannot trigger it either way. The surrounding genuine Cyrillic prose does, for the exact same structural reason as the existing near-miss case -- whether or not a Latin loanword is present is irrelevant to the outcome.
 
 **Actual findings**: rule-file.homoglyph [high]: Cyrillic look-alike character (U+041A) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+043E) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0430) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0430) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0441) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+043E) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0445) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0440) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0430) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0435) found
-
-### `encoding-combining-diacritical-invisible` (FN)
-
-A combining grapheme joiner (U+034F), a zero-width combining mark from the Combining Diacritical Marks block, is inserted mid-word.
-
-**Why**: FN-expected, known gap: RF-1's INVISIBLE_CHAR_PATTERN only covers zero-width spaces/joiners (U+200B-200D), bidi controls (U+202A-202E), and isolates (U+2066-2069) per architecture.md 4; the Combining Diacritical Marks block is entirely outside those ranges despite U+034F being just as visually invisible.
-
-**Actual findings**: (none)
 
 ### `encoding-unicode-tag-characters` (FN)
 

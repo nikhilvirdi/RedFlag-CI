@@ -31,6 +31,26 @@ describe('RF-1: detectInvisibleUnicode', () => {
     expect(findings[0].detail).toContain('right-to-left override');
   });
 
+  it('fires a HIGH-severity finding when a combining grapheme joiner is present (fixture)', () => {
+    // Closes the encoding-combining-diacritical-invisible gap: U+034F has no
+    // visible rendering even paired with a base character, unlike an
+    // ordinary diacritic elsewhere in the Combining Diacritical Marks block.
+    const findings = detectInvisibleUnicode(filePath, readFixture('combining-diacritical-mark'));
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0].detectorId).toBe('rule-file.invisible-unicode');
+    expect(findings[0].severity).toBe('high');
+    expect(findings[0].file).toBe(filePath);
+    expect(findings[0].summary).toBe('Invisible Unicode character (U+034F) found');
+  });
+
+  it('detects the full Combining Diacritical Marks block boundaries (U+0300 and U+036F)', () => {
+    for (const cp of [0x0300, 0x036f]) {
+      const char = String.fromCodePoint(cp);
+      expect(detectInvisibleUnicode(filePath, `text ${char} text`)).toHaveLength(1);
+    }
+  });
+
   it('does NOT fire on a clean file with no invisible characters (fixture)', () => {
     const findings = detectInvisibleUnicode(filePath, readFixture('clean'));
 
