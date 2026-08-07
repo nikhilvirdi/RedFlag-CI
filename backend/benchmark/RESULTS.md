@@ -1,6 +1,6 @@
 # RedFlag CI v1 Benchmark Results
 
-Generated: 2026-08-07T09:55:47.570Z
+Generated: 2026-08-07T16:24:11.459Z
 
 ## Methodology
 
@@ -15,10 +15,10 @@ Classification:
 ## Headline numbers
 
 - True positives: 79
-- False positives: 2
-- True negatives: 39
+- False positives: 0
+- True negatives: 41
 - False negatives: 0
-- **Precision** = TP / (TP + FP) = 79 / 81 = 0.975
+- **Precision** = TP / (TP + FP) = 79 / 79 = 1.000
 - **Recall** = TP / (TP + FN) = 79 / 79 = 1.000
 
 These numbers describe this 18-scenario corpus, not a statistically representative sample of real-world PRs. The corpus intentionally includes near-miss and known-gap cases designed to surface the detectors' actual limits (see below) rather than a set chosen to look clean.
@@ -33,7 +33,7 @@ These numbers describe this 18-scenario corpus, not a statistically representati
 | `diff-drift.swapped-mcp-server` | 10 | 10 | 2 | 0 |
 | `diff-drift.widened-permissions` | 14 | 14 | 4 | 0 |
 | `diff-drift.widened-permissions + diff-drift.hook-changed` | 2 | 2 | 1 | 0 |
-| `rule-file.homoglyph` | 12 | 12 | 2 | 2 |
+| `rule-file.homoglyph` | 12 | 12 | 2 | 0 |
 | `rule-file.invisible-unicode` | 11 | 11 | 7 | 0 |
 | `rule-file.invisible-unicode + rule-file.homoglyph` | 2 | 2 | 3 | 0 |
 
@@ -56,7 +56,7 @@ These numbers describe this 18-scenario corpus, not a statistically representati
 | `near-miss-args-reorder` | `.mcp.json` | negative | false | **TN** | (none) |
 | `near-miss-hook-removed` | `.claude/settings.json` | negative | false | **TN** | (none) |
 | `near-miss-bom` | `CLAUDE.md` | negative | false | **TN** | (none) |
-| `near-miss-legit-cyrillic-text` | `CLAUDE.md` | negative | true | **FP** | rule-file.homoglyph [high]: Cyrillic look-alike character (U+0440) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0435) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0420) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0430) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0435) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0430) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0441) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0435) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0441) found |
+| `near-miss-legit-cyrillic-text` | `CLAUDE.md` | negative | false | **TN** | (none) |
 | `near-miss-mcp-server-rename` | `.mcp.json` | negative | false | **TN** | (none) |
 | `known-gap-uncommon-homoglyph` | `.cursor/rules/deploy.md` | positive | true | **TP** | rule-file.homoglyph [high]: Cyrillic look-alike character (U+0501) found |
 | `dd1-servers-key-variant` | `.mcp.json` | positive | true | **TP** | diff-drift.new-mcp-server [warning]: New MCP server 'docs' added |
@@ -96,7 +96,7 @@ These numbers describe this 18-scenario corpus, not a statistically representati
 | `judgment-dd1-both-schema-keys-present` | `.mcp.json` | positive | true | **TP** | diff-drift.new-mcp-server [warning]: New MCP server 'browser' added |
 | `judgment-rf1-invisible-char-in-security-docs` | `CLAUDE.md` | positive | true | **TP** | rule-file.invisible-unicode [high]: Invisible Unicode character (U+200B) found |
 | `judgment-dd3-wildcard-added-then-narrowed-same-pr` | `.claude/settings.json` | positive | true | **TP** | diff-drift.widened-permissions [high]: Wildcard permission 'Write(*)' added to allow-list |
-| `judgment-rf2-latin-loanword-in-cyrillic-context` | `CLAUDE.md` | negative | true | **FP** | rule-file.homoglyph [high]: Cyrillic look-alike character (U+041A) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+043E) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0430) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0430) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0441) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+043E) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0445) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0440) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0430) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0435) found |
+| `judgment-rf2-latin-loanword-in-cyrillic-context` | `CLAUDE.md` | negative | false | **TN** | (none) |
 | `judgment-dd4-hook-command-becomes-empty-string` | `.claude/settings.json` | positive | true | **TP** | diff-drift.hook-changed [high]: Hook 'PreToolUse' command changed |
 | `judgment-dd3-permission-entry-case-difference` | `.claude/settings.json` | positive | true | **TP** | diff-drift.widened-permissions [warning]: Permission 'Bash(NPM TEST)' added to allow-list |
 | `failopen-truncated-json-head` | `.mcp.json` | negative | false | **TN** | (none) |
@@ -164,20 +164,4 @@ These numbers describe this 18-scenario corpus, not a statistically representati
 
 ## False positives and false negatives, explained honestly
 
-2 of 18 scenarios were misclassified by the tool relative to this corpus's ground truth. None of these are implementation bugs in the sense of "the code does not match its own spec" -- each is the detector behaving exactly as designed, on a case where that design has a real, documented limit. They are recorded here, not fixed, per this task's scope.
-
-### `near-miss-legit-cyrillic-text` (FP)
-
-A genuine Russian-language example sentence is added to CLAUDE.md as localization documentation -- not an attack.
-
-**Why**: RF-2 is a pure character-class check with no natural-language awareness (architecture.md 5), so it cannot distinguish a homoglyph substituted into Latin text from a legitimate sentence written entirely in Cyrillic.
-
-**Actual findings**: rule-file.homoglyph [high]: Cyrillic look-alike character (U+0440) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0435) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0420) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0430) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0435) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0430) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0441) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0435) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0441) found
-
-### `judgment-rf2-latin-loanword-in-cyrillic-context` (FP)
-
-A genuine Russian sentence ("Команда для сохранения:") correctly embeds an English technical term ("git commit") in Latin script, as is standard practice for CLI command names in non-English technical writing.
-
-**Why**: JUDGMENT, symmetric to near-miss-legit-cyrillic-text: RF-2's character class only matches Cyrillic/Greek code points, never Latin ones, so the embedded "git commit" loanword itself cannot trigger it either way. The surrounding genuine Cyrillic prose does, for the exact same structural reason as the existing near-miss case -- whether or not a Latin loanword is present is irrelevant to the outcome.
-
-**Actual findings**: rule-file.homoglyph [high]: Cyrillic look-alike character (U+041A) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+043E) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0430) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0430) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0441) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+043E) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0445) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0440) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0430) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0435) found
+0 of 18 scenarios were misclassified by the tool relative to this corpus's ground truth. None of these are implementation bugs in the sense of "the code does not match its own spec" -- each is the detector behaving exactly as designed, on a case where that design has a real, documented limit. They are recorded here, not fixed, per this task's scope.

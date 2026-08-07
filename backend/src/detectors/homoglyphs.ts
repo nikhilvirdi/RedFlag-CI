@@ -494,20 +494,41 @@ const HOMOGLYPHS: Record<number, HomoglyphInfo> = {
   0xa6df: { latin: 'V', script: 'Bamum' }, // BAMUM LETTER KO
 };
 
-// The "u" flag is required once the table contains astral-plane code points
-// (the Mathematical Bold and several historic-script entries, all above
-// U+FFFF): without it, a character class built from a surrogate-pair string
-// matches each surrogate half as an independent BMP character instead of the
-// intended single code point, which would both mis-fire on unrelated astral
-// characters sharing that surrogate and crash the lookup below (HOMOGLYPHS
-// has no entry for a lone surrogate). It has no effect on the existing
-// BMP-only entries' matching behavior.
-const HOMOGLYPH_PATTERN = new RegExp(
-  `[${Object.keys(HOMOGLYPHS)
-    .map((cp) => String.fromCodePoint(Number(cp)))
-    .join('')}]`,
-  'gu'
-);
+// Every code point HOMOGLYPHS covers, as a literal character-class string.
+// The "u" flag on both patterns built from it below is required once the
+// table contains astral-plane code points (the Mathematical Bold and
+// several historic-script entries, all above U+FFFF): without it, a
+// character class built from a surrogate-pair string matches each surrogate
+// half as an independent BMP character instead of the intended single code
+// point, which would both mis-fire on unrelated astral characters sharing
+// that surrogate and crash the lookup below (HOMOGLYPHS has no entry for a
+// lone surrogate). It has no effect on the existing BMP-only entries'
+// matching behavior.
+const HOMOGLYPH_CHARS = Object.keys(HOMOGLYPHS)
+  .map((cp) => String.fromCodePoint(Number(cp)))
+  .join('');
+
+// A "word" is a maximal run of letters, plus any combining marks riding on
+// them (e.g. the NFD-decomposed accent in encoding-nfc-vs-nfd-homoglyph) --
+// the unit the per-word script-majority check below operates on. Matching
+// on "\p{L} or a HOMOGLYPHS character" rather than "\p{L}" alone closes a
+// real gap: 2 of the table's 403 code points (Beria Erfe, U+16EAA/U+16EB6)
+// aren't classified as \p{L} by this Node runtime's bundled Unicode data
+// (likely unassigned in this ICU version, despite being valid
+// confusables.txt entries) -- without the union, those two specific
+// characters would fall outside every word boundary and never be examined
+// at all, regardless of context. The other 401 entries already match \p{L}
+// on their own; this only protects future table entries sourced the same
+// way, generalizing past whatever happens to be true of today's table
+// rather than needing revisiting each time it grows (Task 5.x).
+const WORD_PATTERN = new RegExp(`[\\p{L}${HOMOGLYPH_CHARS}][\\p{L}\\p{M}${HOMOGLYPH_CHARS}]*`, 'gu');
+
+const PLAIN_ASCII_LATIN = /^[a-zA-Z]$/;
+const COMBINING_MARK = /\p{M}/u;
+
+function isPlainAsciiLatin(ch: string): boolean {
+  return PLAIN_ASCII_LATIN.test(ch);
+}
 
 function locate(content: string, index: number): { line: number; column: number } {
   const before = content.slice(0, index);
@@ -515,23 +536,115 @@ function locate(content: string, index: number): { line: number; column: number 
   return { line: before.split('\n').length, column: index - lastNewline };
 }
 
+// RF-2's word-level script-majority check (docs/adr/0001-deterministic-only-v1.md,
+// addendum: "a word that's mostly one non-Latin script is treated as real
+// language, and a word that's Latin except for one substituted character is
+// treated as a probable attack"; workplan.md Phase 4). A pure per-character
+// scan can't tell a single homoglyph smuggled into Latin text apart from a
+// whole word legitimately written in another script, because at the
+// character level those two things are identical -- that's the direct,
+// structural cause of the near-miss-legit-cyrillic-text and
+// judgment-rf2-latin-loanword-in-cyrillic-context false positives.
+//
+// For each word, every letter goes into one of three buckets:
+//   - "Latin": a plain ASCII a-z/A-Z character.
+//   - "confusable": a HOMOGLYPHS key -- a look-alike character.
+//   - "other non-Latin": a letter that's neither -- a script's own ordinary
+//     letters with no Latin look-alike at all, e.g. Cyrillic "и"/"в"/"т",
+//     which were never candidates for a finding either way.
+// A word's confusable characters are suppressed only when the word contains
+// at least one "other non-Latin" letter AND non-Latin (confusable + other)
+// outnumbers Latin -- a tie still flags. Both conditions matter: requiring
+// "other non-Latin > 0" means a word made ENTIRELY of confusable
+// characters, with nothing to corroborate "this is real text in another
+// script," gets no benefit of the doubt just because it also contains zero
+// Latin letters -- a single isolated confusable character (the degenerate
+// case: no Latin, no corroborating other-non-Latin letters either) stays
+// flagged rather than defaulting to suppressed, since with nothing else in
+// the word, "it's non-Latin" and "it's a disguised Latin character" are
+// indistinguishable. The count comparison on top of that gate is what
+// separates near-miss-legit-cyrillic-text and
+// judgment-rf2-latin-loanword-in-cyrillic-context (words that are
+// overwhelmingly genuine non-Latin letters) from a real attack (a Latin
+// majority with a small substitution): a genuine homoglyph attack keeps
+// the substitution a small minority to stay disguised, and a legitimate
+// non-Latin word is never split down the middle by design. Combining marks
+// attach to whichever base letter precedes them and aren't counted as
+// letters of their own.
+//
+// This generalizes across every script HOMOGLYPHS covers -- Cyrillic,
+// Cherokee, Fullwidth Latin, Mathematical Bold, and everything else --
+// without any per-script special-casing: the only two tests it ever runs
+// are "is this one specific character a HOMOGLYPHS key" and "is this one
+// specific character plain ASCII a-z/A-Z," both already-exact and
+// script-agnostic. Fullwidth Latin and Mathematical Bold characters in
+// particular are never counted as "Latin" here even though Unicode's own
+// Script property classifies some of them that way (Fullwidth as Latin,
+// Mathematical Bold as Common) -- membership in HOMOGLYPHS always takes
+// precedence over the character's real script for this classification,
+// which is exactly why encoding-fullwidth-latin-homoglyph and
+// encoding-mathematical-alphanumeric-symbol still fire: their words are
+// otherwise 100% plain ASCII, an unambiguous Latin majority regardless.
 export function detectHomoglyphs(filePath: string, content: string): Finding[] {
   const findings: Finding[] = [];
-  let match: RegExpExecArray | null;
+  let wordMatch: RegExpExecArray | null;
 
-  while ((match = HOMOGLYPH_PATTERN.exec(content)) !== null) {
-    const codePoint = match[0].codePointAt(0) as number;
-    const hex = codePoint.toString(16).toUpperCase().padStart(4, '0');
-    const info = HOMOGLYPHS[codePoint];
-    const { line, column } = locate(content, match.index);
+  while ((wordMatch = WORD_PATTERN.exec(content)) !== null) {
+    const word = wordMatch[0];
+    const wordStart = wordMatch.index;
 
-    findings.push({
-      detectorId: 'rule-file.homoglyph',
-      severity: 'high',
-      file: filePath,
-      summary: `${info.script} look-alike character (U+${hex}) found`,
-      detail: `A ${info.script} character (U+${hex}) visually identical to Latin '${info.latin}' was found in ${filePath} at line ${line}, column ${column}. Homoglyphs can be used to disguise malicious instructions as ordinary text so a human reviewer skims past them while an AI agent still reads and follows them.`,
-    });
+    let latinCount = 0;
+    let otherNonLatinCount = 0;
+    const confusablesInWord: Array<{ offset: number; codePoint: number }> = [];
+    let offset = 0;
+
+    for (const ch of word) {
+      if (COMBINING_MARK.test(ch)) {
+        offset += ch.length;
+        continue;
+      }
+
+      const codePoint = ch.codePointAt(0) as number;
+      if (HOMOGLYPHS[codePoint]) {
+        confusablesInWord.push({ offset, codePoint });
+      } else if (isPlainAsciiLatin(ch)) {
+        latinCount++;
+      } else {
+        otherNonLatinCount++;
+      }
+      offset += ch.length;
+    }
+
+    // Suppression requires otherNonLatinCount > 0, not just a non-Latin
+    // majority by count alone: a word made ENTIRELY of confusable
+    // characters -- no genuine, non-look-alike foreign letter anywhere in
+    // it to corroborate "this is real text in another script" -- gets no
+    // benefit of the doubt just because it also contains zero Latin
+    // letters. A single isolated confusable character (nonLatin=1, latin=0,
+    // otherNonLatin=0) is the degenerate case of exactly this: with nothing
+    // else in the word, "it's non-Latin" and "it's a disguised Latin
+    // character" are indistinguishable, so it stays flagged rather than
+    // defaulting to suppressed.
+    const nonLatinCount = confusablesInWord.length + otherNonLatinCount;
+    const looksLikeGenuineForeignWord = otherNonLatinCount > 0 && nonLatinCount > latinCount;
+
+    if (confusablesInWord.length === 0 || looksLikeGenuineForeignWord) {
+      continue;
+    }
+
+    for (const { offset: charOffset, codePoint } of confusablesInWord) {
+      const hex = codePoint.toString(16).toUpperCase().padStart(4, '0');
+      const info = HOMOGLYPHS[codePoint];
+      const { line, column } = locate(content, wordStart + charOffset);
+
+      findings.push({
+        detectorId: 'rule-file.homoglyph',
+        severity: 'high',
+        file: filePath,
+        summary: `${info.script} look-alike character (U+${hex}) found`,
+        detail: `A ${info.script} character (U+${hex}) visually identical to Latin '${info.latin}' was found in ${filePath} at line ${line}, column ${column}. Homoglyphs can be used to disguise malicious instructions as ordinary text so a human reviewer skims past them while an AI agent still reads and follows them.`,
+      });
+    }
   }
 
   return findings;
