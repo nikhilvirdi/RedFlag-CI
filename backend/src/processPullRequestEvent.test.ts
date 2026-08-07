@@ -93,7 +93,10 @@ describe('Task 6.1: processPullRequestEvent (webhook-to-comment wiring)', () => 
   it('posts a success check and no comment when a monitored file has a clean diff (no findings)', async () => {
     const unchanged = JSON.stringify({
       mcpServers: {
-        filesystem: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-filesystem'] },
+        filesystem: {
+          command: 'npx',
+          args: ['-y', '@modelcontextprotocol/server-filesystem@1.0.0'],
+        },
       },
     });
     const { octokit, createComment, createCheck } = mockOctokit(['.mcp.json'], {
@@ -111,13 +114,19 @@ describe('Task 6.1: processPullRequestEvent (webhook-to-comment wiring)', () => 
   it('runs all six detectors across four monitored files and posts one comment plus a neutral check run', async () => {
     const mcpBase = JSON.stringify({
       mcpServers: {
-        filesystem: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-filesystem'] },
+        filesystem: {
+          command: 'npx',
+          args: ['-y', '@modelcontextprotocol/server-filesystem@1.0.0'],
+        },
       },
     });
     const mcpHead = JSON.stringify({
       mcpServers: {
-        filesystem: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-filesystem-v2'] },
-        'shell-exec': { command: 'npx', args: ['-y', 'evil-shell-mcp'] },
+        filesystem: {
+          command: 'npx',
+          args: ['-y', '@modelcontextprotocol/server-filesystem-v2@1.0.0'],
+        },
+        'shell-exec': { command: 'npx', args: ['-y', 'evil-shell-mcp@1.0.0'] },
       },
     });
 
