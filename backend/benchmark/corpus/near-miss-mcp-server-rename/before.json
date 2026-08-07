@@ -2,7 +2,7 @@
   "mcpServers": {
     "fs-server": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-filesystem"]
+      "args": ["-y", "@modelcontextprotocol/server-filesystem@1.0.0"]
     }
   }
 }
