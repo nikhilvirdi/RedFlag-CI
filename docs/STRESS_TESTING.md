@@ -52,11 +52,11 @@ Fixing any of these properly means giving a detector judgment it currently doesn
 
 A few of the adversarial scenarios weren't testing for a bug. They were testing the edges of what a diff-scoped, stateless tool can see at all:
 
-- A hook that calls an external script can be flagged for being added, but nothing here can see what that script actually does, because the script itself isn't a monitored file.
-- Renaming a server and swapping its command in the same change gets flagged as "new server added" -- correct, but it doesn't specifically call out that the command was also swapped, since the old key never existed in the base branch's data to compare against.
-- Two small, individually unremarkable permission widenings across two separate pull requests each look fine on their own. Nothing here tracks a pattern across pull requests, because v1 has no memory beyond the current diff.
+- A hook that calls an external script can be flagged for being added, but nothing here can see what that script actually does, because the script itself isn't a monitored file. This one stays out of scope permanently: watching arbitrary script contents means watching arbitrary code, which is a different, much larger problem than the config-file supply chain this project targets, and it's the kind of scope creep the project's own competitive research (`docs/COMPETITIVE_LANDSCAPE.md`) warns against chasing.
+- Renaming a server and swapping its command in the same change gets flagged as "new server added" -- correct, but it doesn't specifically call out that the command was also swapped, since the old key never existed in the base branch's data to compare against. This is closed in v1.2.0: shared remove/add correlation logic lets DD-1 recognize a paired rename and, when the paired entry's command or args also changed, say so explicitly instead of only reporting "new server."
+- Two small, individually unremarkable permission widenings across two separate pull requests each look fine on their own. Nothing here tracks a pattern across pull requests, because v1 has no memory beyond the current diff. This is closed in v2: a small git-native baseline snapshot (not a database) gives the tool enough memory to track cumulative widening across merges, without breaking the zero-config, stateless design for everything short of that one capability.
 
-These are structural, not incidental. They're also exactly the reason a persistence layer and broader behavioral scanning are on the roadmap for later versions rather than something bolted onto v1.
+The first of these three is structural and permanent. The other two turned out not to need the heavier persistence layer and behavioral-scanning tier an earlier draft of the roadmap planned for them -- see `architecture.md` section 8 for the full reasoning on what was cut from that draft and what was kept in a lighter form instead.
 
 ## The numbers, start to finish
 
@@ -80,3 +80,5 @@ We ran the same original benchmark against Snyk Agent Scan (the tool most people
 - `backend/benchmark/COMPARISON.md` -- the live comparison against Snyk Agent Scan.
 - `docs/adr/0001-deterministic-only-v1.md` -- why v1 is deterministic-only, and the honest cost of that choice.
 - `CHANGELOG.md` -- the exact fixes that shipped in v1.1.0.
+
+This corpus isn't final. v1.2.0 and v2 (the project's last planned version, see `architecture.md` section 8) each expand it further, with the same philosophy: hunt for real gaps deliberately, document what's found honestly, and don't stop once the numbers look clean.
