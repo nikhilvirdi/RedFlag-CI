@@ -240,4 +240,113 @@ describe('DD-3: detectWidenedPermissions', () => {
     expect(detectWidenedPermissions(filePath, '"hello"', valid)).toHaveLength(0);
     expect(detectWidenedPermissions(filePath, valid, '123')).toHaveLength(0);
   });
+
+  it('produces zero findings when a wildcard is narrowed to a specific command (fixture)', () => {
+    // Closes the dd3-wildcard-narrowed-to-specific false positive:
+    // "Bash(*)" -> "Bash(npm test)" correlates as a narrowing via
+    // correlateRemovedAdded, per this task's documented decision to report
+    // nothing rather than a distinct "narrowed" finding.
+    const findings = detectWidenedPermissions(
+      filePath,
+      readFixture('wildcard-narrowed-to-specific', 'before.json'),
+      readFixture('wildcard-narrowed-to-specific', 'after.json')
+    );
+
+    expect(findings).toHaveLength(0);
+  });
+
+  it('produces zero findings when a wildcard is narrowed to a scoped glob (fixture)', () => {
+    // Closes the dd3-narrowing-syntax-rewrite false positive: "Write(*)" ->
+    // "Write(./dist/**)" correlates as a narrowing even though the
+    // replacement string still contains a literal "*" -- the replacement
+    // itself is not an unrestricted wildcard, which is what matters.
+    const findings = detectWidenedPermissions(
+      filePath,
+      readFixture('narrowing-syntax-rewrite', 'before.json'),
+      readFixture('narrowing-syntax-rewrite', 'after.json')
+    );
+
+    expect(findings).toHaveLength(0);
+  });
+
+  it('reports the genuine widening but stays silent on the correlated narrowing, in the same diff (fixture)', () => {
+    // The critical case: "Bash(*)" -> "Bash(npm test)" is a narrowing
+    // (silent), while "Write(*)" is a brand-new, unrelated wildcard grant
+    // with nothing removed to correlate against (must still fire, high
+    // severity). The narrowing correlation must never swallow a genuine,
+    // simultaneous widening just because both changes touch the same file.
+    const findings = detectWidenedPermissions(
+      filePath,
+      readFixture('wildcard-added-then-narrowed-same-pr', 'before.json'),
+      readFixture('wildcard-added-then-narrowed-same-pr', 'after.json')
+    );
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0].severity).toBe('high');
+    expect(findings[0].summary).toBe("Wildcard permission 'Write(*)' added to allow-list");
+  });
+
+  it('does not correlate a narrowing across two different tools', () => {
+    // "Bash(*)" removed and "Write(npm test)" added share nothing but both
+    // being present in the same diff -- different tool names must never
+    // correlate, regardless of how narrow the added entry looks.
+    const before = JSON.stringify({ permissions: { allow: ['Bash(*)'], deny: [] } });
+    const after = JSON.stringify({ permissions: { allow: ['Write(npm test)'], deny: [] } });
+
+    const findings = detectWidenedPermissions(filePath, before, after);
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0].severity).toBe('warning');
+    expect(findings[0].summary).toBe("Permission 'Write(npm test)' added to allow-list");
+  });
+
+  it('does not correlate wildcard-to-wildcard as a narrowing (no actual narrowing occurred)', () => {
+    const before = JSON.stringify({ permissions: { allow: ['Bash(*)'], deny: [] } });
+    const after = JSON.stringify({ permissions: { allow: ['Bash(**)'], deny: [] } });
+
+    const findings = detectWidenedPermissions(filePath, before, after);
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0].severity).toBe('high');
+    expect(findings[0].summary).toBe("Wildcard permission 'Bash(**)' added to allow-list");
+  });
+
+  it('does not correlate narrowing FROM an already-scoped entry (nothing to narrow from)', () => {
+    // "Bash(npm test)" was never unrestricted, so its replacement by
+    // "Bash(npm run build)" is a genuine change of grant, not a narrowing --
+    // the detector cannot confirm one is a subset of the other.
+    const before = JSON.stringify({ permissions: { allow: ['Bash(npm test)'], deny: [] } });
+    const after = JSON.stringify({ permissions: { allow: ['Bash(npm run build)'], deny: [] } });
+
+    const findings = detectWidenedPermissions(filePath, before, after);
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0].severity).toBe('warning');
+    expect(findings[0].summary).toBe("Permission 'Bash(npm run build)' added to allow-list");
+  });
+
+  it('correlates a bare unscoped tool name narrowed to a scoped call under the same tool', () => {
+    const before = JSON.stringify({ permissions: { allow: ['Bash'], deny: [] } });
+    const after = JSON.stringify({ permissions: { allow: ['Bash(npm test)'], deny: [] } });
+
+    const findings = detectWidenedPermissions(filePath, before, after);
+
+    expect(findings).toHaveLength(0);
+  });
+
+  it('leaves deny-rule-removal findings completely unaffected by allow-list narrowing correlation', () => {
+    const before = JSON.stringify({
+      permissions: { allow: ['Bash(*)'], deny: ['Bash(rm)'] },
+    });
+    const after = JSON.stringify({
+      permissions: { allow: ['Bash(npm test)'], deny: [] },
+    });
+
+    const findings = detectWidenedPermissions(filePath, before, after);
+
+    // The allow-list change is a pure narrowing (silent); the deny rule
+    // removal is a genuine widening and must still fire, unaffected.
+    expect(findings).toHaveLength(1);
+    expect(findings[0].summary).toBe("Deny rule 'Bash(rm)' removed");
+  });
 });

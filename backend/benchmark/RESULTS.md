@@ -1,6 +1,6 @@
 # RedFlag CI v1 Benchmark Results
 
-Generated: 2026-08-07T07:40:55.368Z
+Generated: 2026-08-07T07:56:28.897Z
 
 ## Methodology
 
@@ -15,10 +15,10 @@ Classification:
 ## Headline numbers
 
 - True positives: 79
-- False positives: 5
-- True negatives: 36
+- False positives: 3
+- True negatives: 38
 - False negatives: 0
-- **Precision** = TP / (TP + FP) = 79 / 84 = 0.940
+- **Precision** = TP / (TP + FP) = 79 / 82 = 0.963
 - **Recall** = TP / (TP + FN) = 79 / 79 = 1.000
 
 These numbers describe this 18-scenario corpus, not a statistically representative sample of real-world PRs. The corpus intentionally includes near-miss and known-gap cases designed to surface the detectors' actual limits (see below) rather than a set chosen to look clean.
@@ -31,7 +31,7 @@ These numbers describe this 18-scenario corpus, not a statistically representati
 | `diff-drift.new-mcp-server` | 13 | 13 | 17 | 0 |
 | `diff-drift.new-mcp-server + diff-drift.swapped-mcp-server` | 3 | 3 | 0 | 0 |
 | `diff-drift.swapped-mcp-server` | 10 | 10 | 2 | 1 |
-| `diff-drift.widened-permissions` | 14 | 14 | 4 | 2 |
+| `diff-drift.widened-permissions` | 14 | 14 | 4 | 0 |
 | `diff-drift.widened-permissions + diff-drift.hook-changed` | 2 | 2 | 1 | 0 |
 | `rule-file.homoglyph` | 12 | 12 | 2 | 2 |
 | `rule-file.invisible-unicode` | 11 | 11 | 7 | 0 |
@@ -72,8 +72,8 @@ These numbers describe this 18-scenario corpus, not a statistically representati
 | `dd3-multiple-allow-added` | `.claude/settings.json` | positive | true | **TP** | diff-drift.widened-permissions [warning]: Permission 'Write(/tmp)' added to allow-list; diff-drift.widened-permissions [warning]: Permission 'Bash(git status)' added to allow-list |
 | `dd3-permissions-block-newly-created` | `.claude/settings.json` | positive | true | **TP** | diff-drift.widened-permissions [warning]: Permission 'Bash(npm test)' added to allow-list |
 | `dd3-allow-and-deny-both-changed` | `.claude/settings.json` | positive | true | **TP** | diff-drift.widened-permissions [warning]: Permission 'Write(/tmp)' added to allow-list; diff-drift.widened-permissions [warning]: Deny rule 'Bash(rm)' removed |
-| `dd3-wildcard-narrowed-to-specific` | `.claude/settings.json` | negative | true | **FP** | diff-drift.widened-permissions [warning]: Permission 'Bash(npm test)' added to allow-list |
-| `dd3-narrowing-syntax-rewrite` | `.claude/settings.json` | negative | true | **FP** | diff-drift.widened-permissions [warning]: Permission 'Write(./dist/**)' added to allow-list |
+| `dd3-wildcard-narrowed-to-specific` | `.claude/settings.json` | negative | false | **TN** | (none) |
+| `dd3-narrowing-syntax-rewrite` | `.claude/settings.json` | negative | false | **TN** | (none) |
 | `dd4-multiple-hooks-changed` | `.claude/settings.json` | positive | true | **TP** | diff-drift.hook-changed [high]: Hook 'PreToolUse[0]' command changed; diff-drift.hook-changed [high]: Hook 'PreToolUse[1]' command changed |
 | `dd4-hook-removed-single` | `.claude/settings.json` | negative | false | **TN** | (none) |
 | `dd4-matcher-changed-command-same` | `.claude/settings.json` | positive | true | **TP** | diff-drift.hook-changed [high]: Hook 'PreToolUse' matcher changed |
@@ -95,7 +95,7 @@ These numbers describe this 18-scenario corpus, not a statistically representati
 | `judgment-dd4-hook-whitespace-only` | `.claude/settings.json` | negative | false | **TN** | (none) |
 | `judgment-dd1-both-schema-keys-present` | `.mcp.json` | positive | true | **TP** | diff-drift.new-mcp-server [warning]: New MCP server 'browser' added |
 | `judgment-rf1-invisible-char-in-security-docs` | `CLAUDE.md` | positive | true | **TP** | rule-file.invisible-unicode [high]: Invisible Unicode character (U+200B) found |
-| `judgment-dd3-wildcard-added-then-narrowed-same-pr` | `.claude/settings.json` | positive | true | **TP** | diff-drift.widened-permissions [high]: Wildcard permission 'Write(*)' added to allow-list; diff-drift.widened-permissions [warning]: Permission 'Bash(npm test)' added to allow-list |
+| `judgment-dd3-wildcard-added-then-narrowed-same-pr` | `.claude/settings.json` | positive | true | **TP** | diff-drift.widened-permissions [high]: Wildcard permission 'Write(*)' added to allow-list |
 | `judgment-rf2-latin-loanword-in-cyrillic-context` | `CLAUDE.md` | negative | true | **FP** | rule-file.homoglyph [high]: Cyrillic look-alike character (U+041A) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+043E) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0430) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0430) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0441) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+043E) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0445) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0440) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0430) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0435) found |
 | `judgment-dd4-hook-command-becomes-empty-string` | `.claude/settings.json` | positive | true | **TP** | diff-drift.hook-changed [high]: Hook 'PreToolUse' command changed |
 | `judgment-dd3-permission-entry-case-difference` | `.claude/settings.json` | positive | true | **TP** | diff-drift.widened-permissions [warning]: Permission 'Bash(NPM TEST)' added to allow-list |
@@ -164,7 +164,7 @@ These numbers describe this 18-scenario corpus, not a statistically representati
 
 ## False positives and false negatives, explained honestly
 
-5 of 18 scenarios were misclassified by the tool relative to this corpus's ground truth. None of these are implementation bugs in the sense of "the code does not match its own spec" -- each is the detector behaving exactly as designed, on a case where that design has a real, documented limit. They are recorded here, not fixed, per this task's scope.
+3 of 18 scenarios were misclassified by the tool relative to this corpus's ground truth. None of these are implementation bugs in the sense of "the code does not match its own spec" -- each is the detector behaving exactly as designed, on a case where that design has a real, documented limit. They are recorded here, not fixed, per this task's scope.
 
 ### `near-miss-args-reorder` (FP)
 
@@ -181,22 +181,6 @@ A genuine Russian-language example sentence is added to CLAUDE.md as localizatio
 **Why**: RF-2 is a pure character-class check with no natural-language awareness (architecture.md 5), so it cannot distinguish a homoglyph substituted into Latin text from a legitimate sentence written entirely in Cyrillic.
 
 **Actual findings**: rule-file.homoglyph [high]: Cyrillic look-alike character (U+0440) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0435) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0420) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0430) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0435) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0430) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0441) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0435) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0441) found
-
-### `dd3-wildcard-narrowed-to-specific` (FP)
-
-An existing "Bash(*)" allow entry is replaced with the narrower "Bash(npm test)".
-
-**Why**: Intended as a narrowing (a wildcard replaced by one specific command) that should not fire. DD-3 only checks whether each head allow string is present in base's allow set -- it does not correlate a removal with an addition, so "Bash(npm test)" reads as a brand-new allow entry regardless of what it replaced. See task report for whether this reproduced.
-
-**Actual findings**: diff-drift.widened-permissions [warning]: Permission 'Bash(npm test)' added to allow-list
-
-### `dd3-narrowing-syntax-rewrite` (FP)
-
-An existing "Write(*)" allow entry is reworded to "Write(./dist/**)", scoping writes to one directory.
-
-**Why**: Intended as a narrowing. The replacement string still contains a literal "*" character (from the "**" glob), so if it fires at all, WILDCARD_CHAR's substring check would escalate it to high severity. See task report for whether this reproduced.
-
-**Actual findings**: diff-drift.widened-permissions [warning]: Permission 'Write(./dist/**)' added to allow-list
 
 ### `judgment-rf2-latin-loanword-in-cyrillic-context` (FP)
 

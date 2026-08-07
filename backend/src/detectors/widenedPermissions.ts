@@ -1,4 +1,5 @@
 import { Finding } from '../types';
+import { correlateRemovedAdded } from '../correlateRemovedAdded';
 
 // A wildcard escalates an added allow entry from warning to high only when
 // we can be CONFIDENT it grants an unrestricted, open-ended class of actions:
@@ -35,6 +36,42 @@ function isUnrestrictedWildcard(entry: string): boolean {
   // literal wildcard ("*", "**") or an unscoped tool name ("Bash") -- both
   // grant access with nothing to bound them, so both are unrestricted.
   return !trimmed.includes('(') && !trimmed.includes(')');
+}
+
+// The tool-name portion of an entry, for narrowing comparison: the text
+// before "(" in a Tool(...) shape, or the whole trimmed entry for a bare
+// token ("Bash", "*"). Two entries only correlate as a narrowing of each
+// other if they scope the SAME tool -- correlating across different tools
+// (e.g. "Bash(*)" narrowed by an unrelated "Write(*.log)" addition in the
+// same diff) would be guessing at intent this detector has no way to confirm.
+function toolName(entry: string): string {
+  const trimmed = entry.trim();
+  if (!TOOL_CALL_SHAPE.test(trimmed)) {
+    return trimmed;
+  }
+  return trimmed.slice(0, trimmed.indexOf('(')).trim();
+}
+
+// A removed allow entry and an added one correlate as a narrowing -- not a
+// new grant -- only when: the removed entry was already an unrestricted
+// wildcard for its tool (there's nothing to narrow FROM otherwise), the
+// added entry is NOT itself an unrestricted wildcard (an actual narrowing
+// has to narrow; wildcard-to-wildcard is no change in scope), and both
+// scope the same tool. This can never misclassify a genuine widening as a
+// narrowing: if the removed entry already grants everything for that tool,
+// no possible added entry under the same tool can be broader than it -- the
+// added entry is either equally unrestricted (excluded above) or strictly
+// narrower (the only remaining case, which is exactly what this exists to
+// catch). This reuses the same isUnrestrictedWildcard heuristic already
+// established above rather than attempting full glob-subset semantics,
+// which this detector -- like the rest of v1 -- deliberately does not try
+// to do (architecture.md 2).
+function isNarrowing(removed: string, added: string): boolean {
+  return (
+    isUnrestrictedWildcard(removed) &&
+    !isUnrestrictedWildcard(added) &&
+    toolName(removed) === toolName(added)
+  );
 }
 
 interface Permissions {
@@ -94,17 +131,29 @@ export function detectWidenedPermissions(
   }
 
   const findings: Finding[] = [];
-  const baseAllow = new Set(base.allow);
+  const baseAllowSet = new Set(base.allow);
+  const headAllowSet = new Set(head.allow);
   const headDeny = new Set(head.deny);
 
-  // Widening (1) & (3): allow entries present in head but not base. A wildcard
-  // in the newly added entry escalates the finding to high; anything else is a
-  // warning. Removing an allow entry is a narrowing change and is ignored.
-  for (const entry of new Set(head.allow)) {
-    if (baseAllow.has(entry)) {
-      continue;
-    }
+  const removedAllow = [...baseAllowSet].filter((entry) => !headAllowSet.has(entry));
+  const addedAllow = [...headAllowSet].filter((entry) => !baseAllowSet.has(entry));
 
+  // Widening (1) & (3): allow entries genuinely new to head, after pulling
+  // out any pair correlated as a narrowing (Task 3.3) -- e.g. "Bash(*)"
+  // replaced by the narrower "Bash(npm test)" must not read as a brand-new
+  // grant just because the exact string wasn't in base. DECISION (matching
+  // Task 3.2's precedent, and this scenario's own documented ground truth
+  // in benchmark/corpus/manifest.ts): a correlated narrowing pair produces
+  // NO finding at all, not a distinct "permission narrowed" finding --
+  // architecture.md 5's DD-3 spec has no such finding type, and a
+  // provably-narrower grant on the same tool isn't itself a risk DD-3
+  // exists to catch. An allow entry that's simply removed with no
+  // correlated addition is a pure narrowing and stays silent, unchanged
+  // from before. A wildcard in a genuinely new (uncorrelated) entry still
+  // escalates the finding to high; anything else is a warning.
+  const { unmatchedAdded } = correlateRemovedAdded(removedAllow, addedAllow, isNarrowing);
+
+  for (const entry of unmatchedAdded) {
     if (isUnrestrictedWildcard(entry)) {
       findings.push({
         detectorId: 'diff-drift.widened-permissions',
@@ -124,8 +173,9 @@ export function detectWidenedPermissions(
     }
   }
 
-  // Widening (2): deny rules present in base but removed in head. Adding a deny
-  // rule is a narrowing change and is ignored.
+  // Widening (2): deny rules present in base but removed in head. Unchanged
+  // by Task 3.3 -- no correlation involved, a different code path entirely.
+  // Adding a deny rule is a narrowing change and is ignored.
   for (const entry of new Set(base.deny)) {
     if (!headDeny.has(entry)) {
       findings.push({
