@@ -28,24 +28,28 @@ RedFlag CI runs two checks. Both are fully deterministic, no LLM calls, no netwo
 
 If a PR doesn't touch any of these files, RedFlag CI does nothing: no comment, no noise. That's deliberate. The most common complaint about existing AI-code review tools is alert fatigue; some report false-positive rates as high as 87%. RedFlag CI would rather miss something subtle than train you to ignore it.
 
-## What it doesn't do, yet
+## What it doesn't do, and why
 
-No dashboard. No auto-fix. No LLM-based semantic analysis. Those are on the roadmap (see `architecture.md`), but v1 is deliberately narrow: a small, deterministic tool that does one job well before it tries to do five jobs adequately.
+No dashboard. No auto-fix. No LLM-based or ML-based semantic analysis, anywhere in the roadmap. These weren't left out for lack of time -- they were considered and deliberately rejected, because each one would trade away the thing that makes this tool different: deterministic, zero-noise, zero-config detection. `architecture.md` section 8 has the full reasoning.
+
+Two things are still planned, in the project's final version, v2: memory of drift across multiple pull requests (still no database -- a small git-native snapshot, not a hosted service), and SARIF/JSON export so teams that want a dashboard can get one for free via GitHub's own Security tab, without this project building one. After v2 ships, this roadmap is closed.
 
 ## Status
 
-v1 is complete and running. All six detectors work end to end, from a GitHub webhook to a posted PR comment and check run, verified against a real pull request on a live repository. It's also been stress-tested against a 120-scenario adversarial benchmark, built specifically to find the tool's real limits -- see `docs/STRESS_TESTING.md` for what that testing found and `docs/adr/0001-deterministic-only-v1.md` for what the numbers below actually mean.
+v1.1.0 is complete and running. All six detectors work end to end, from a GitHub webhook to a posted PR comment and check run, verified against a real pull request on a live repository. It's also been stress-tested against a 120-scenario adversarial benchmark, built specifically to find the tool's real limits -- see `docs/STRESS_TESTING.md` for what that testing found and `docs/adr/0001-deterministic-only-v1.md` for what the numbers below actually mean.
 
 | Version | Precision | Recall | Benchmark corpus |
 |---|---|---|---|
 | v1.0.0 | 0.727 | 0.889 | 18 scenarios |
 | v1.1.0 | 0.926 | 0.949 | 120 scenarios |
 
+The benchmark corpus grows with every release: v1.2.0 (detector hardening and new detectors) and v2 (cross-PR drift memory, SARIF/JSON export -- the final planned version) will each expand it further. Exact scenario counts for those versions are recorded here once each one ships, not projected in advance.
+
 Full breakdown: `backend/benchmark/RESULTS.md`.
 
 ## Documentation
 
-- `architecture.md`: full system design, every detector, every decision, and the roadmap through v4
+- `architecture.md`: full system design, every detector, every decision, and the roadmap through v2, the project's final planned version
 - `docs/PROBLEM_SPACE.md`: the research behind why this exists
 - `docs/COMPETITIVE_LANDSCAPE.md`: what else is out there, and where the gaps are
 - `docs/adr/0001-deterministic-only-v1.md`: why v1 is deterministic-only, and what that costs in practice

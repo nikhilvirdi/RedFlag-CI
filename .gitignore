@@ -4,9 +4,9 @@ dist/
 .env
 
 # Internal/local-only docs — not meant for public repo readers
-AGENTS.md
-CLAUDE.md
-workplan.md
+/AGENTS.md
+/CLAUDE.md
+/workplan.md
 backend/TASK_REPORT.md
 backend/benchmark/testcase_v1report.md
 
