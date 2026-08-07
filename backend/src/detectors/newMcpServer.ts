@@ -8,13 +8,28 @@ function parseMcpServers(content: string): Set<string> | null {
     }
 
     const obj = parsed as Record<string, unknown>;
-    const serverObj = obj.mcpServers ?? obj.servers;
+    const merged: Record<string, unknown> = {};
 
-    if (!serverObj || typeof serverObj !== 'object' || Array.isArray(serverObj)) {
-      return new Set<string>();
+    // Both "mcpServers" and "servers" are real top-level key names different
+    // MCP clients use (architecture.md 5); a config carrying both must have
+    // both read, not just the first one found. `??` here previously
+    // short-circuited on any non-nullish `mcpServers` -- including `{}` --
+    // so a real entry added under "servers" went completely undetected
+    // whenever "mcpServers" was present at all, even empty (the
+    // judgment-dd1-both-schema-keys-present gap). Iterating "servers" first
+    // and "mcpServers" second means a name collision between the two
+    // resolves to "mcpServers" winning: an explicit, deterministic
+    // precedence rather than depending on object key insertion order. Either
+    // side being malformed (not an object, or an array) is skipped rather
+    // than discarding the whole parse, consistent with this detector's
+    // fail-open design (architecture.md 2) applying per-key, not per-file.
+    for (const candidate of [obj.servers, obj.mcpServers]) {
+      if (candidate && typeof candidate === 'object' && !Array.isArray(candidate)) {
+        Object.assign(merged, candidate);
+      }
     }
 
-    return new Set<string>(Object.keys(serverObj));
+    return new Set<string>(Object.keys(merged));
   } catch {
     return null;
   }

@@ -1,6 +1,6 @@
 # RedFlag CI v1 Benchmark Results
 
-Generated: 2026-08-07T07:09:27.761Z
+Generated: 2026-08-07T07:20:59.341Z
 
 ## Methodology
 
@@ -14,12 +14,12 @@ Classification:
 
 ## Headline numbers
 
-- True positives: 78
+- True positives: 79
 - False positives: 6
 - True negatives: 35
-- False negatives: 1
-- **Precision** = TP / (TP + FP) = 78 / 84 = 0.929
-- **Recall** = TP / (TP + FN) = 78 / 79 = 0.987
+- False negatives: 0
+- **Precision** = TP / (TP + FP) = 79 / 85 = 0.929
+- **Recall** = TP / (TP + FN) = 79 / 79 = 1.000
 
 These numbers describe this 18-scenario corpus, not a statistically representative sample of real-world PRs. The corpus intentionally includes near-miss and known-gap cases designed to surface the detectors' actual limits (see below) rather than a set chosen to look clean.
 
@@ -28,7 +28,7 @@ These numbers describe this 18-scenario corpus, not a statistically representati
 | Detector | Positive scenarios | Caught (TP) | Negative scenarios | Misfired (FP) |
 |---|---|---|---|---|
 | `diff-drift.hook-changed` | 12 | 12 | 5 | 0 |
-| `diff-drift.new-mcp-server` | 13 | 12 | 17 | 1 |
+| `diff-drift.new-mcp-server` | 13 | 13 | 17 | 1 |
 | `diff-drift.new-mcp-server + diff-drift.swapped-mcp-server` | 3 | 3 | 0 | 0 |
 | `diff-drift.swapped-mcp-server` | 10 | 10 | 2 | 1 |
 | `diff-drift.widened-permissions` | 14 | 14 | 4 | 2 |
@@ -93,7 +93,7 @@ These numbers describe this 18-scenario corpus, not a statistically representati
 | `judgment-dd1-server-re-added-identically` | `.mcp.json` | positive | true | **TP** | diff-drift.new-mcp-server [warning]: New MCP server 'cache' added |
 | `judgment-dd2-args-reorder-with-real-semantics` | `.mcp.json` | positive | true | **TP** | diff-drift.swapped-mcp-server [high]: MCP server 'deploy' definition changed (args) |
 | `judgment-dd4-hook-whitespace-only` | `.claude/settings.json` | negative | false | **TN** | (none) |
-| `judgment-dd1-both-schema-keys-present` | `.mcp.json` | positive | false | **FN** | (none) |
+| `judgment-dd1-both-schema-keys-present` | `.mcp.json` | positive | true | **TP** | diff-drift.new-mcp-server [warning]: New MCP server 'browser' added |
 | `judgment-rf1-invisible-char-in-security-docs` | `CLAUDE.md` | positive | true | **TP** | rule-file.invisible-unicode [high]: Invisible Unicode character (U+200B) found |
 | `judgment-dd3-wildcard-added-then-narrowed-same-pr` | `.claude/settings.json` | positive | true | **TP** | diff-drift.widened-permissions [high]: Wildcard permission 'Write(*)' added to allow-list; diff-drift.widened-permissions [warning]: Permission 'Bash(npm test)' added to allow-list |
 | `judgment-rf2-latin-loanword-in-cyrillic-context` | `CLAUDE.md` | negative | true | **FP** | rule-file.homoglyph [high]: Cyrillic look-alike character (U+041A) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+043E) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0430) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0430) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0441) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+043E) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0445) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0440) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0430) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0435) found |
@@ -164,7 +164,7 @@ These numbers describe this 18-scenario corpus, not a statistically representati
 
 ## False positives and false negatives, explained honestly
 
-7 of 18 scenarios were misclassified by the tool relative to this corpus's ground truth. None of these are implementation bugs in the sense of "the code does not match its own spec" -- each is the detector behaving exactly as designed, on a case where that design has a real, documented limit. They are recorded here, not fixed, per this task's scope.
+6 of 18 scenarios were misclassified by the tool relative to this corpus's ground truth. None of these are implementation bugs in the sense of "the code does not match its own spec" -- each is the detector behaving exactly as designed, on a case where that design has a real, documented limit. They are recorded here, not fixed, per this task's scope.
 
 ### `near-miss-args-reorder` (FP)
 
@@ -205,14 +205,6 @@ An existing "Write(*)" allow entry is reworded to "Write(./dist/**)", scoping wr
 **Why**: Intended as a narrowing. The replacement string still contains a literal "*" character (from the "**" glob), so if it fires at all, WILDCARD_CHAR's substring check would escalate it to high severity. See task report for whether this reproduced.
 
 **Actual findings**: diff-drift.widened-permissions [warning]: Permission 'Write(./dist/**)' added to allow-list
-
-### `judgment-dd1-both-schema-keys-present` (FN)
-
-A file has both "mcpServers" and "servers" top-level keys simultaneously; a new server is added under "servers" while "mcpServers" (present but empty) is unchanged.
-
-**Why**: JUDGMENT, and the most surprising Session 2 result: parseMcpServers uses obj.mcpServers ?? obj.servers. Nullish coalescing means an EMPTY mcpServers object ({}) still short-circuits the fallback -- "servers" is never even read once "mcpServers" exists at all, regardless of its content. A new entry added under the non-precedent key is completely invisible to DD-1. This is a contrived, low-realism construction (no mainstream tool writes both keys with divergent content), so it is documented as a judgment call rather than escalated as a defect, but it is worth knowing about.
-
-**Actual findings**: (none)
 
 ### `judgment-rf2-latin-loanword-in-cyrillic-context` (FP)
 

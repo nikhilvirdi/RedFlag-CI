@@ -113,4 +113,53 @@ describe('DD-1: detectNewMcpServer', () => {
     expect(findings).toHaveLength(1);
     expect(findings[0].summary).toBe("New MCP server 's2' added");
   });
+
+  it('merges "mcpServers" and "servers" instead of the first present short-circuiting the other (fixture)', () => {
+    // Closes the judgment-dd1-both-schema-keys-present gap: an empty
+    // "mcpServers" ({}) previously made "servers" invisible entirely via
+    // `mcpServers ?? servers`, since `??` only falls through on
+    // null/undefined, not on an empty-but-present object.
+    const beforeContent = fs.readFileSync(
+      path.join(fixturesDir, 'both-schema-keys-present', 'before.json'),
+      'utf-8'
+    );
+    const afterContent = fs.readFileSync(
+      path.join(fixturesDir, 'both-schema-keys-present', 'after.json'),
+      'utf-8'
+    );
+
+    const findings = detectNewMcpServer('.mcp.json', beforeContent, afterContent);
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0].summary).toBe("New MCP server 'browser' added");
+  });
+
+  it('treats a server name present under both keys as one entry, not a duplicate or a crash', () => {
+    const beforeContent = JSON.stringify({
+      mcpServers: { shared: { command: 'a' } },
+      servers: { shared: { command: 'b' } },
+    });
+    const afterContent = JSON.stringify({
+      mcpServers: { shared: { command: 'a' }, newOne: {} },
+      servers: { shared: { command: 'b' } },
+    });
+
+    const findings = detectNewMcpServer('.mcp.json', beforeContent, afterContent);
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0].summary).toBe("New MCP server 'newOne' added");
+  });
+
+  it('still reads "servers" when "mcpServers" is present but malformed (not an object)', () => {
+    const beforeContent = JSON.stringify({ mcpServers: 'not-an-object', servers: { s1: {} } });
+    const afterContent = JSON.stringify({
+      mcpServers: 'not-an-object',
+      servers: { s1: {}, s2: {} },
+    });
+
+    const findings = detectNewMcpServer('.mcp.json', beforeContent, afterContent);
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0].summary).toBe("New MCP server 's2' added");
+  });
 });
