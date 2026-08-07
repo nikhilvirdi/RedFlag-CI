@@ -20,6 +20,19 @@ describe('RF-2: detectHomoglyphs', () => {
     expect(findings[0].detail).toContain("visually identical to Latin 'a'");
   });
 
+  it('fires on the previously-uncommon Cyrillic Komi De homoglyph, U+0501 (fixture)', () => {
+    // Closes the known-gap-uncommon-homoglyph case from
+    // docs/adr/0001-deterministic-only-v1.md: U+0501 wasn't in the old
+    // hand-picked table; it is in Unicode's official confusables.txt.
+    const findings = detectHomoglyphs(filePath, readFixture('uncommon-homoglyph-komi-de'));
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0].detectorId).toBe('rule-file.homoglyph');
+    expect(findings[0].severity).toBe('high');
+    expect(findings[0].summary).toBe('Cyrillic look-alike character (U+0501) found');
+    expect(findings[0].detail).toContain("visually identical to Latin 'd'");
+  });
+
   it('does NOT fire on a clean file using only standard Latin characters (fixture)', () => {
     const findings = detectHomoglyphs(filePath, readFixture('clean'));
 

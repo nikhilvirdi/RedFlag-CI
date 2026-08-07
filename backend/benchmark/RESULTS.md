@@ -1,12 +1,10 @@
 # RedFlag CI v1 Benchmark Results
 
-Generated: 2026-08-06T14:54:55.847Z
+Generated: 2026-08-07T05:46:00.366Z
 
 ## Methodology
 
-120 synthetic PR scenarios, each a before/after file pair for one monitored file, stored under `benchmark/corpus/<scenario-id>/`. The corpus started at 18 scenarios -- one clean example per detector, plus a handful of benign and near-miss cases -- and grew across five further rounds of deliberate stress-testing aimed at surfacing real edge cases rather than producing a clean-looking report: deeper per-detector coverage, explicit judgment calls, fail-open and scale stress tests, unusual character encodings and multi-detector collisions, and benign changes paired with adversarial evasion attempts.
-
-`benchmark/run.ts` runs the actual production detector functions and `aggregateFindings` against each pair -- the same dispatch logic `processPullRequestEvent.ts` uses (diff-drift files get DD-1 through DD-4; rule-file files get RF-1/RF-2 against head content only) -- with no GitHub API, webhook, or posting involved. Each scenario carries a ground-truth label (`positive` = should produce at least one finding, `negative` = should produce none). A scenario "fires" if the aggregated findings array is non-empty. No detector logic was modified to produce these numbers.
+18 synthetic PR scenarios, each a before/after file pair for one monitored file, stored under `benchmark/corpus/<scenario-id>/`. `benchmark/run.ts` runs the actual production detector functions and `aggregateFindings` against each pair -- the same dispatch logic `processPullRequestEvent.ts` uses (diff-drift files get DD-1 through DD-4; rule-file files get RF-1/RF-2 against head content only) -- with no GitHub API, webhook, or posting involved. Each scenario carries a ground-truth label (`positive` = should produce at least one finding, `negative` = should produce none). A scenario "fires" if the aggregated findings array is non-empty. No detector logic was modified to produce these numbers.
 
 Classification:
 - **TP**: positive label, fired
@@ -14,15 +12,14 @@ Classification:
 - **FP**: negative label, fired
 - **TN**: negative label, did not fire
 
-
 ## Headline numbers
 
-- True positives: 75
+- True positives: 76
 - False positives: 6
 - True negatives: 35
-- False negatives: 4
-- **Precision** = TP / (TP + FP) = 75 / 81 = 0.926
-- **Recall** = TP / (TP + FN) = 75 / 79 = 0.949
+- False negatives: 3
+- **Precision** = TP / (TP + FP) = 76 / 82 = 0.927
+- **Recall** = TP / (TP + FN) = 76 / 79 = 0.962
 
 These numbers describe this 18-scenario corpus, not a statistically representative sample of real-world PRs. The corpus intentionally includes near-miss and known-gap cases designed to surface the detectors' actual limits (see below) rather than a set chosen to look clean.
 
@@ -36,7 +33,7 @@ These numbers describe this 18-scenario corpus, not a statistically representati
 | `diff-drift.swapped-mcp-server` | 10 | 10 | 2 | 1 |
 | `diff-drift.widened-permissions` | 14 | 14 | 4 | 2 |
 | `diff-drift.widened-permissions + diff-drift.hook-changed` | 2 | 2 | 1 | 0 |
-| `rule-file.homoglyph` | 12 | 11 | 2 | 2 |
+| `rule-file.homoglyph` | 12 | 12 | 2 | 2 |
 | `rule-file.invisible-unicode` | 11 | 9 | 7 | 0 |
 | `rule-file.invisible-unicode + rule-file.homoglyph` | 2 | 2 | 3 | 0 |
 
@@ -61,7 +58,7 @@ These numbers describe this 18-scenario corpus, not a statistically representati
 | `near-miss-bom` | `CLAUDE.md` | negative | false | **TN** | (none) |
 | `near-miss-legit-cyrillic-text` | `CLAUDE.md` | negative | true | **FP** | rule-file.homoglyph [high]: Cyrillic look-alike character (U+0440) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0435) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0420) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0430) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0435) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0430) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0441) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0435) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0441) found |
 | `near-miss-mcp-server-rename` | `.mcp.json` | negative | true | **FP** | diff-drift.new-mcp-server [warning]: New MCP server 'filesystem-server' added |
-| `known-gap-uncommon-homoglyph` | `.cursor/rules/deploy.md` | positive | false | **FN** | (none) |
+| `known-gap-uncommon-homoglyph` | `.cursor/rules/deploy.md` | positive | true | **TP** | rule-file.homoglyph [high]: Cyrillic look-alike character (U+0501) found |
 | `dd1-servers-key-variant` | `.mcp.json` | positive | true | **TP** | diff-drift.new-mcp-server [warning]: New MCP server 'docs' added |
 | `dd1-minimal-config` | `.mcp.json` | positive | true | **TP** | diff-drift.new-mcp-server [warning]: New MCP server 'notify' added |
 | `dd1-multiple-servers-added` | `.mcp.json` | positive | true | **TP** | diff-drift.new-mcp-server [warning]: New MCP server 'browser' added; diff-drift.new-mcp-server [warning]: New MCP server 'database' added |
@@ -167,7 +164,7 @@ These numbers describe this 18-scenario corpus, not a statistically representati
 
 ## False positives and false negatives, explained honestly
 
-10 of 18 scenarios were misclassified by the tool relative to this corpus's ground truth. None of these are implementation bugs in the sense of "the code does not match its own spec" -- each is the detector behaving exactly as designed, on a case where that design has a real, documented limit. They are recorded here, not fixed, per this task's scope.
+9 of 18 scenarios were misclassified by the tool relative to this corpus's ground truth. None of these are implementation bugs in the sense of "the code does not match its own spec" -- each is the detector behaving exactly as designed, on a case where that design has a real, documented limit. They are recorded here, not fixed, per this task's scope.
 
 ### `near-miss-args-reorder` (FP)
 
@@ -192,14 +189,6 @@ An existing MCP server is renamed to a clearer key; command and args are byte-fo
 **Why**: DD-1 diffs by key name only, so it cannot tell a rename of a trusted entry apart from a genuinely new, unreviewed one.
 
 **Actual findings**: diff-drift.new-mcp-server [warning]: New MCP server 'filesystem-server' added
-
-### `known-gap-uncommon-homoglyph` (FN)
-
-A homoglyph attack using Cyrillic U+0501 ('d' look-alike), a code point not in RF-2's confusable table.
-
-**Why**: This is a real attack pattern. RF-2's table covers well-documented confusables, not the full Unicode confusables database, per architecture.md 2's accepted precision-over-recall tradeoff: RedFlag CI will miss cleverly obfuscated attacks outside its deterministic checks.
-
-**Actual findings**: (none)
 
 ### `dd3-wildcard-narrowed-to-specific` (FP)
 
