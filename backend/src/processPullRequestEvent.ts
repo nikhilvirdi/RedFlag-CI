@@ -5,6 +5,7 @@ import { detectNewMcpServer } from './detectors/newMcpServer';
 import { detectSwappedMcpServer } from './detectors/swappedMcpServer';
 import { detectWidenedPermissions } from './detectors/widenedPermissions';
 import { detectHookChanged } from './detectors/hookChanged';
+import { detectUnpinnedMcpDependency } from './detectors/unpinnedMcpDependency';
 import { detectInvisibleUnicode } from './detectors/invisibleUnicode';
 import { detectHomoglyphs } from './detectors/homoglyphs';
 import { aggregateFindings } from './aggregateFindings';
@@ -78,6 +79,7 @@ function runDiffDriftDetectors(filePath: string, base: string | null, head: stri
     ...detectSwappedMcpServer(filePath, base, head),
     ...detectWidenedPermissions(filePath, base, head),
     ...detectHookChanged(filePath, base, head),
+    ...detectUnpinnedMcpDependency(filePath, head),
   ];
 }
 
