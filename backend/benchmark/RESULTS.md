@@ -1,6 +1,6 @@
 # RedFlag CI v1 Benchmark Results
 
-Generated: 2026-08-07T06:49:07.870Z
+Generated: 2026-08-07T07:09:27.761Z
 
 ## Methodology
 
@@ -14,12 +14,12 @@ Classification:
 
 ## Headline numbers
 
-- True positives: 77
+- True positives: 78
 - False positives: 6
 - True negatives: 35
-- False negatives: 2
-- **Precision** = TP / (TP + FP) = 77 / 83 = 0.928
-- **Recall** = TP / (TP + FN) = 77 / 79 = 0.975
+- False negatives: 1
+- **Precision** = TP / (TP + FP) = 78 / 84 = 0.929
+- **Recall** = TP / (TP + FN) = 78 / 79 = 0.987
 
 These numbers describe this 18-scenario corpus, not a statistically representative sample of real-world PRs. The corpus intentionally includes near-miss and known-gap cases designed to surface the detectors' actual limits (see below) rather than a set chosen to look clean.
 
@@ -34,7 +34,7 @@ These numbers describe this 18-scenario corpus, not a statistically representati
 | `diff-drift.widened-permissions` | 14 | 14 | 4 | 2 |
 | `diff-drift.widened-permissions + diff-drift.hook-changed` | 2 | 2 | 1 | 0 |
 | `rule-file.homoglyph` | 12 | 12 | 2 | 2 |
-| `rule-file.invisible-unicode` | 11 | 10 | 7 | 0 |
+| `rule-file.invisible-unicode` | 11 | 11 | 7 | 0 |
 | `rule-file.invisible-unicode + rule-file.homoglyph` | 2 | 2 | 3 | 0 |
 
 ## Full scenario results
@@ -132,7 +132,7 @@ These numbers describe this 18-scenario corpus, not a statistically representati
 | `encoding-combining-diacritical-invisible` | `.cursor/rules/security.md` | positive | true | **TP** | rule-file.invisible-unicode [high]: Invisible Unicode character (U+034F) found |
 | `encoding-rlm-standalone` | `.cursor/rules/security.md` | positive | true | **TP** | rule-file.invisible-unicode [high]: Invisible Unicode character (U+200F) found |
 | `encoding-soft-hyphen` | `.cursor/rules/security.md` | positive | true | **TP** | rule-file.invisible-unicode [high]: Invisible Unicode character (U+00AD) found |
-| `encoding-unicode-tag-characters` | `.cursor/rules/security.md` | positive | false | **FN** | (none) |
+| `encoding-unicode-tag-characters` | `.cursor/rules/security.md` | positive | true | **TP** | rule-file.invisible-unicode [high]: Invisible Unicode character (U+E0001) found |
 | `multi-new-and-modified-server` | `.mcp.json` | positive | true | **TP** | diff-drift.swapped-mcp-server [high]: MCP server 'filesystem' definition changed (command, args); diff-drift.new-mcp-server [warning]: New MCP server 'browser' added |
 | `multi-wildcard-and-hook` | `.claude/settings.json` | positive | true | **TP** | diff-drift.widened-permissions [high]: Wildcard permission 'Bash(*)' added to allow-list; diff-drift.hook-changed [high]: New hook 'PostToolUse' added |
 | `multi-deny-removed-and-allow-added` | `.claude/settings.json` | positive | true | **TP** | diff-drift.widened-permissions [warning]: Permission 'Write(/tmp)' added to allow-list; diff-drift.widened-permissions [warning]: Deny rule 'Bash(rm)' removed |
@@ -164,7 +164,7 @@ These numbers describe this 18-scenario corpus, not a statistically representati
 
 ## False positives and false negatives, explained honestly
 
-8 of 18 scenarios were misclassified by the tool relative to this corpus's ground truth. None of these are implementation bugs in the sense of "the code does not match its own spec" -- each is the detector behaving exactly as designed, on a case where that design has a real, documented limit. They are recorded here, not fixed, per this task's scope.
+7 of 18 scenarios were misclassified by the tool relative to this corpus's ground truth. None of these are implementation bugs in the sense of "the code does not match its own spec" -- each is the detector behaving exactly as designed, on a case where that design has a real, documented limit. They are recorded here, not fixed, per this task's scope.
 
 ### `near-miss-args-reorder` (FP)
 
@@ -221,11 +221,3 @@ A genuine Russian sentence ("Команда для сохранения:") corre
 **Why**: JUDGMENT, symmetric to near-miss-legit-cyrillic-text: RF-2's character class only matches Cyrillic/Greek code points, never Latin ones, so the embedded "git commit" loanword itself cannot trigger it either way. The surrounding genuine Cyrillic prose does, for the exact same structural reason as the existing near-miss case -- whether or not a Latin loanword is present is irrelevant to the outcome.
 
 **Actual findings**: rule-file.homoglyph [high]: Cyrillic look-alike character (U+041A) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+043E) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0430) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0430) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0441) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+043E) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0445) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0440) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0430) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0435) found
-
-### `encoding-unicode-tag-characters` (FN)
-
-A Unicode tag character (U+E0001, LANGUAGE TAG, from the astral-plane Tags block once used for steganographic prompt injection) is inserted mid-sentence.
-
-**Why**: FN-expected, known gap: the Tags block (U+E0000-E007F) is entirely outside RF-1's covered ranges. Astral-plane code point; confirmed the surrogate pair round-trips correctly and the regex (no 'u' flag) simply fails to match either surrogate half rather than throwing or false-matching.
-
-**Actual findings**: (none)

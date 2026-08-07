@@ -51,6 +51,36 @@ describe('RF-1: detectInvisibleUnicode', () => {
     }
   });
 
+  it('fires a HIGH-severity finding when a Unicode Tags LANGUAGE TAG character is present (fixture)', () => {
+    // Closes the encoding-unicode-tag-characters gap: U+E0001 is astral-plane
+    // (a surrogate pair in UTF-16), which is why the regex needed the "u"
+    // flag as well as the new range -- without it, this fixture would fail
+    // to match rather than false-match, per the note in the code comment.
+    const findings = detectInvisibleUnicode(filePath, readFixture('unicode-tag-language-tag'));
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0].detectorId).toBe('rule-file.invisible-unicode');
+    expect(findings[0].severity).toBe('high');
+    expect(findings[0].file).toBe(filePath);
+    expect(findings[0].summary).toBe('Invisible Unicode character (U+E0001) found');
+  });
+
+  it('detects the full Unicode Tags block boundaries (U+E0000 and U+E007F)', () => {
+    for (const cp of [0xe0000, 0xe007f]) {
+      const char = String.fromCodePoint(cp);
+      expect(detectInvisibleUnicode(filePath, `text ${char} text`)).toHaveLength(1);
+    }
+  });
+
+  it('does not false-match on unrelated astral-plane characters outside the Tags block', () => {
+    // Regression guard for the "u" flag's known risk: it must not turn any
+    // arbitrary surrogate pair into a match, only the specific new range.
+    const emoji = String.fromCodePoint(0x1f600); // outside U+E0000-U+E007F
+    const mathBold = String.fromCodePoint(0x1d400); // astral, handled by RF-2 not RF-1
+    expect(detectInvisibleUnicode(filePath, `text ${emoji} text`)).toHaveLength(0);
+    expect(detectInvisibleUnicode(filePath, `text ${mathBold} text`)).toHaveLength(0);
+  });
+
   it('does NOT fire on a clean file with no invisible characters (fixture)', () => {
     const findings = detectInvisibleUnicode(filePath, readFixture('clean'));
 
