@@ -101,4 +101,75 @@ describe('RF-2: detectHomoglyphs', () => {
     expect(detectHomoglyphs(filePath, clean)).toHaveLength(0);
     expect(detectHomoglyphs(filePath, withMatch)).toHaveLength(1);
   });
+
+  describe('per-word script-majority check (Task 4.1)', () => {
+    it('does NOT fire on a genuine sentence written entirely in Cyrillic (fixture)', () => {
+      // Closes the near-miss-legit-cyrillic-text false positive: every word
+      // is overwhelmingly (here, entirely) Cyrillic, including several
+      // letters that also happen to be Latin look-alikes (Cyrillic а/е/о
+      // etc.) -- previously 9 separate findings, one per matching letter.
+      const findings = detectHomoglyphs(filePath, readFixture('legit-cyrillic-text'));
+
+      expect(findings).toHaveLength(0);
+    });
+
+    it('does NOT fire on a Cyrillic sentence containing a genuine Latin loanword (fixture)', () => {
+      // Closes the judgment-rf2-latin-loanword-in-cyrillic-context false
+      // positive: "git commit" is plain ASCII (nothing to flag in those two
+      // words at all), and the surrounding Cyrillic prose is suppressed by
+      // the same script-majority logic as legit-cyrillic-text -- whether or
+      // not a Latin loanword is present elsewhere in the sentence doesn't
+      // change the verdict on the Cyrillic words themselves.
+      const findings = detectHomoglyphs(
+        filePath,
+        readFixture('latin-loanword-in-cyrillic-context')
+      );
+
+      expect(findings).toHaveLength(0);
+    });
+
+    it('still flags a Latin-majority word with a single substituted character', () => {
+      // "mаy" (Cyrillic а) inside an otherwise all-Latin sentence -- the
+      // core case this whole detector exists for, unaffected by the
+      // majority check since the word is overwhelmingly Latin.
+      const cyrillicA = String.fromCodePoint(0x0430);
+      const findings = detectHomoglyphs(filePath, `You m${cyrillicA}y run any command.`);
+
+      expect(findings).toHaveLength(1);
+      expect(findings[0].summary).toBe('Cyrillic look-alike character (U+0430) found');
+    });
+
+    it('still flags every character in a word made entirely of look-alikes, with no Latin and no corroborating foreign letters', () => {
+      // Degenerate case at the other end from the two FP fixtures above: a
+      // word that is 100% HOMOGLYPHS characters, with nothing else in it,
+      // has no genuine non-look-alike letter to corroborate "this is real
+      // text in another script" -- it gets no benefit of the doubt just
+      // because it also contains zero Latin letters.
+      const cyrillicA = String.fromCodePoint(0x0430);
+      const cyrillicE = String.fromCodePoint(0x0435);
+      const cyrillicC = String.fromCodePoint(0x0441);
+      const word = `${cyrillicA}${cyrillicE}${cyrillicC}`;
+
+      const findings = detectHomoglyphs(filePath, `${word} text`);
+
+      expect(findings).toHaveLength(3);
+    });
+
+    it('still flags a single isolated look-alike character with no surrounding word', () => {
+      // The single-character version of the same degenerate case: a lone
+      // confusable character, standing alone, has nothing to corroborate
+      // legitimacy either.
+      const cyrillicA = String.fromCodePoint(0x0430);
+
+      expect(detectHomoglyphs(filePath, `text ${cyrillicA} text`)).toHaveLength(1);
+    });
+
+    it('does not flag a genuinely non-Latin word with no look-alike characters at all', () => {
+      // "для" ("for") uses only Cyrillic letters (д, л, я) that have no
+      // entry in HOMOGLYPHS at all -- there's nothing to flag regardless of
+      // the majority check, since no character in the word is a look-alike
+      // in the first place.
+      expect(detectHomoglyphs(filePath, 'для')).toHaveLength(0);
+    });
+  });
 });
