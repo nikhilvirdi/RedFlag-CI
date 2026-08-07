@@ -1,6 +1,6 @@
 # RedFlag CI v1 Benchmark Results
 
-Generated: 2026-08-07T07:30:38.402Z
+Generated: 2026-08-07T07:40:55.368Z
 
 ## Methodology
 
@@ -15,10 +15,10 @@ Classification:
 ## Headline numbers
 
 - True positives: 79
-- False positives: 6
-- True negatives: 35
+- False positives: 5
+- True negatives: 36
 - False negatives: 0
-- **Precision** = TP / (TP + FP) = 79 / 85 = 0.929
+- **Precision** = TP / (TP + FP) = 79 / 84 = 0.940
 - **Recall** = TP / (TP + FN) = 79 / 79 = 1.000
 
 These numbers describe this 18-scenario corpus, not a statistically representative sample of real-world PRs. The corpus intentionally includes near-miss and known-gap cases designed to surface the detectors' actual limits (see below) rather than a set chosen to look clean.
@@ -28,7 +28,7 @@ These numbers describe this 18-scenario corpus, not a statistically representati
 | Detector | Positive scenarios | Caught (TP) | Negative scenarios | Misfired (FP) |
 |---|---|---|---|---|
 | `diff-drift.hook-changed` | 12 | 12 | 5 | 0 |
-| `diff-drift.new-mcp-server` | 13 | 13 | 17 | 1 |
+| `diff-drift.new-mcp-server` | 13 | 13 | 17 | 0 |
 | `diff-drift.new-mcp-server + diff-drift.swapped-mcp-server` | 3 | 3 | 0 | 0 |
 | `diff-drift.swapped-mcp-server` | 10 | 10 | 2 | 1 |
 | `diff-drift.widened-permissions` | 14 | 14 | 4 | 2 |
@@ -57,7 +57,7 @@ These numbers describe this 18-scenario corpus, not a statistically representati
 | `near-miss-hook-removed` | `.claude/settings.json` | negative | false | **TN** | (none) |
 | `near-miss-bom` | `CLAUDE.md` | negative | false | **TN** | (none) |
 | `near-miss-legit-cyrillic-text` | `CLAUDE.md` | negative | true | **FP** | rule-file.homoglyph [high]: Cyrillic look-alike character (U+0440) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0435) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0420) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0430) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0435) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0430) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0441) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0435) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0441) found |
-| `near-miss-mcp-server-rename` | `.mcp.json` | negative | true | **FP** | diff-drift.new-mcp-server [warning]: New MCP server 'filesystem-server' added |
+| `near-miss-mcp-server-rename` | `.mcp.json` | negative | false | **TN** | (none) |
 | `known-gap-uncommon-homoglyph` | `.cursor/rules/deploy.md` | positive | true | **TP** | rule-file.homoglyph [high]: Cyrillic look-alike character (U+0501) found |
 | `dd1-servers-key-variant` | `.mcp.json` | positive | true | **TP** | diff-drift.new-mcp-server [warning]: New MCP server 'docs' added |
 | `dd1-minimal-config` | `.mcp.json` | positive | true | **TP** | diff-drift.new-mcp-server [warning]: New MCP server 'notify' added |
@@ -164,7 +164,7 @@ These numbers describe this 18-scenario corpus, not a statistically representati
 
 ## False positives and false negatives, explained honestly
 
-6 of 18 scenarios were misclassified by the tool relative to this corpus's ground truth. None of these are implementation bugs in the sense of "the code does not match its own spec" -- each is the detector behaving exactly as designed, on a case where that design has a real, documented limit. They are recorded here, not fixed, per this task's scope.
+5 of 18 scenarios were misclassified by the tool relative to this corpus's ground truth. None of these are implementation bugs in the sense of "the code does not match its own spec" -- each is the detector behaving exactly as designed, on a case where that design has a real, documented limit. They are recorded here, not fixed, per this task's scope.
 
 ### `near-miss-args-reorder` (FP)
 
@@ -181,14 +181,6 @@ A genuine Russian-language example sentence is added to CLAUDE.md as localizatio
 **Why**: RF-2 is a pure character-class check with no natural-language awareness (architecture.md 5), so it cannot distinguish a homoglyph substituted into Latin text from a legitimate sentence written entirely in Cyrillic.
 
 **Actual findings**: rule-file.homoglyph [high]: Cyrillic look-alike character (U+0440) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0435) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0420) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0430) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0435) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0430) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0441) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0435) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0441) found
-
-### `near-miss-mcp-server-rename` (FP)
-
-An existing MCP server is renamed to a clearer key; command and args are byte-for-byte identical.
-
-**Why**: DD-1 diffs by key name only, so it cannot tell a rename of a trusted entry apart from a genuinely new, unreviewed one.
-
-**Actual findings**: diff-drift.new-mcp-server [warning]: New MCP server 'filesystem-server' added
 
 ### `dd3-wildcard-narrowed-to-specific` (FP)
 
