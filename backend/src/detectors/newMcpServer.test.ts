@@ -162,4 +162,90 @@ describe('DD-1: detectNewMcpServer', () => {
     expect(findings).toHaveLength(1);
     expect(findings[0].summary).toBe("New MCP server 's2' added");
   });
+
+  it('produces zero findings when a server is renamed with byte-identical command/args (fixture)', () => {
+    // Closes the near-miss-mcp-server-rename false positive: 'fs-server' ->
+    // 'filesystem-server', same command and args. Correlated as a rename via
+    // correlateRemovedAdded, per this task's documented decision to report
+    // nothing rather than a distinct "renamed" finding.
+    const beforeContent = fs.readFileSync(
+      path.join(fixturesDir, 'server-renamed', 'before.json'),
+      'utf-8'
+    );
+    const afterContent = fs.readFileSync(
+      path.join(fixturesDir, 'server-renamed', 'after.json'),
+      'utf-8'
+    );
+
+    const findings = detectNewMcpServer('.mcp.json', beforeContent, afterContent);
+
+    expect(findings).toHaveLength(0);
+  });
+
+  it('still reports a new server when a rename-shaped pair differs in command', () => {
+    const beforeContent = JSON.stringify({
+      mcpServers: { old: { command: 'npx', args: ['-y', 'pkg'] } },
+    });
+    const afterContent = JSON.stringify({
+      mcpServers: { renamed: { command: 'uvx', args: ['-y', 'pkg'] } },
+    });
+
+    const findings = detectNewMcpServer('.mcp.json', beforeContent, afterContent);
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0].summary).toBe("New MCP server 'renamed' added");
+  });
+
+  it('still reports a new server when a rename-shaped pair differs in args', () => {
+    const beforeContent = JSON.stringify({
+      mcpServers: { old: { command: 'npx', args: ['-y', 'pkg'] } },
+    });
+    const afterContent = JSON.stringify({
+      mcpServers: { renamed: { command: 'npx', args: ['-y', 'pkg', '--extra'] } },
+    });
+
+    const findings = detectNewMcpServer('.mcp.json', beforeContent, afterContent);
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0].summary).toBe("New MCP server 'renamed' added");
+  });
+
+  it('still reports a new server when a rename-shaped pair differs in env', () => {
+    const beforeContent = JSON.stringify({
+      mcpServers: { old: { command: 'npx', args: ['pkg'], env: { API_URL: 'https://a.example' } } },
+    });
+    const afterContent = JSON.stringify({
+      mcpServers: {
+        renamed: { command: 'npx', args: ['pkg'], env: { API_URL: 'https://evil.example' } },
+      },
+    });
+
+    const findings = detectNewMcpServer('.mcp.json', beforeContent, afterContent);
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0].summary).toBe("New MCP server 'renamed' added");
+  });
+
+  it('correlates only one rename pair when multiple servers are removed and added, one genuinely new', () => {
+    const beforeContent = JSON.stringify({
+      mcpServers: {
+        'old-fs': { command: 'npx', args: ['-y', 'server-filesystem'] },
+        'old-git': { command: 'npx', args: ['-y', 'server-git'] },
+      },
+    });
+    const afterContent = JSON.stringify({
+      mcpServers: {
+        filesystem: { command: 'npx', args: ['-y', 'server-filesystem'] },
+        'brand-new': { command: 'node', args: ['index.js'] },
+      },
+    });
+
+    const findings = detectNewMcpServer('.mcp.json', beforeContent, afterContent);
+
+    // 'old-fs' -> 'filesystem' correlates as a rename (silent); 'old-git' is
+    // simply gone (DD-1 never reports removals); 'brand-new' has no
+    // correlated removal, so it still reports.
+    expect(findings).toHaveLength(1);
+    expect(findings[0].summary).toBe("New MCP server 'brand-new' added");
+  });
 });
