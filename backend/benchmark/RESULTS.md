@@ -1,6 +1,6 @@
 # RedFlag CI v1 Benchmark Results
 
-Generated: 2026-08-07T07:56:28.897Z
+Generated: 2026-08-07T09:55:47.570Z
 
 ## Methodology
 
@@ -15,10 +15,10 @@ Classification:
 ## Headline numbers
 
 - True positives: 79
-- False positives: 3
-- True negatives: 38
+- False positives: 2
+- True negatives: 39
 - False negatives: 0
-- **Precision** = TP / (TP + FP) = 79 / 82 = 0.963
+- **Precision** = TP / (TP + FP) = 79 / 81 = 0.975
 - **Recall** = TP / (TP + FN) = 79 / 79 = 1.000
 
 These numbers describe this 18-scenario corpus, not a statistically representative sample of real-world PRs. The corpus intentionally includes near-miss and known-gap cases designed to surface the detectors' actual limits (see below) rather than a set chosen to look clean.
@@ -30,7 +30,7 @@ These numbers describe this 18-scenario corpus, not a statistically representati
 | `diff-drift.hook-changed` | 12 | 12 | 5 | 0 |
 | `diff-drift.new-mcp-server` | 13 | 13 | 17 | 0 |
 | `diff-drift.new-mcp-server + diff-drift.swapped-mcp-server` | 3 | 3 | 0 | 0 |
-| `diff-drift.swapped-mcp-server` | 10 | 10 | 2 | 1 |
+| `diff-drift.swapped-mcp-server` | 10 | 10 | 2 | 0 |
 | `diff-drift.widened-permissions` | 14 | 14 | 4 | 0 |
 | `diff-drift.widened-permissions + diff-drift.hook-changed` | 2 | 2 | 1 | 0 |
 | `rule-file.homoglyph` | 12 | 12 | 2 | 2 |
@@ -53,7 +53,7 @@ These numbers describe this 18-scenario corpus, not a statistically representati
 | `benign-claude-md-doc-addition` | `CLAUDE.md` | negative | false | **TN** | (none) |
 | `benign-permissions-narrowing` | `.claude/settings.json` | negative | false | **TN** | (none) |
 | `benign-copilot-instructions-edit` | `.github/copilot-instructions.md` | negative | false | **TN** | (none) |
-| `near-miss-args-reorder` | `.mcp.json` | negative | true | **FP** | diff-drift.swapped-mcp-server [high]: MCP server 'filesystem' definition changed (args) |
+| `near-miss-args-reorder` | `.mcp.json` | negative | false | **TN** | (none) |
 | `near-miss-hook-removed` | `.claude/settings.json` | negative | false | **TN** | (none) |
 | `near-miss-bom` | `CLAUDE.md` | negative | false | **TN** | (none) |
 | `near-miss-legit-cyrillic-text` | `CLAUDE.md` | negative | true | **FP** | rule-file.homoglyph [high]: Cyrillic look-alike character (U+0440) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0435) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0420) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0430) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0435) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0430) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0441) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0435) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0441) found |
@@ -164,15 +164,7 @@ These numbers describe this 18-scenario corpus, not a statistically representati
 
 ## False positives and false negatives, explained honestly
 
-3 of 18 scenarios were misclassified by the tool relative to this corpus's ground truth. None of these are implementation bugs in the sense of "the code does not match its own spec" -- each is the detector behaving exactly as designed, on a case where that design has a real, documented limit. They are recorded here, not fixed, per this task's scope.
-
-### `near-miss-args-reorder` (FP)
-
-An MCP server's two independent CLI flags are reordered; the positional package argument stays last and behavior is unchanged.
-
-**Why**: DD-2 compares args via JSON.stringify, which is order-sensitive by design (see the code comment: reordering CAN change execution semantics for positional CLI args, so it is deliberately treated as drift). Included to test that documented tradeoff honestly rather than assume it away.
-
-**Actual findings**: diff-drift.swapped-mcp-server [high]: MCP server 'filesystem' definition changed (args)
+2 of 18 scenarios were misclassified by the tool relative to this corpus's ground truth. None of these are implementation bugs in the sense of "the code does not match its own spec" -- each is the detector behaving exactly as designed, on a case where that design has a real, documented limit. They are recorded here, not fixed, per this task's scope.
 
 ### `near-miss-legit-cyrillic-text` (FP)
 

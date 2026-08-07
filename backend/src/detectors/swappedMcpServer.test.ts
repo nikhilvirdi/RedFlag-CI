@@ -114,12 +114,92 @@ describe('DD-2: detectSwappedMcpServer', () => {
     expect(findings[0].summary).toBe("MCP server 's1' definition changed (command, args)");
   });
 
-  it('treats args comparison as order-sensitive', () => {
+  it('treats args comparison as order-sensitive for purely positional arguments', () => {
     const beforeContent = JSON.stringify({
       mcpServers: { s1: { command: 'npx', args: ['-y', 'pkg', '/tmp'] } },
     });
     const afterContent = JSON.stringify({
       mcpServers: { s1: { command: 'npx', args: ['-y', '/tmp', 'pkg'] } },
+    });
+
+    const findings = detectSwappedMcpServer('.mcp.json', beforeContent, afterContent);
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0].summary).toBe("MCP server 's1' definition changed (args)");
+  });
+
+  it('produces zero findings when only flagged arguments are reordered (fixture)', () => {
+    // Closes the near-miss-args-reorder false positive: "-y" (positional,
+    // single-dash) stays last-before-the-package-name in both orderings;
+    // only "--verbose" (a flagged argument) moves relative to it, which is
+    // cosmetic, not drift.
+    const beforeContent = readFixture('args-reorder-flags-only', 'before.json');
+    const afterContent = readFixture('args-reorder-flags-only', 'after.json');
+
+    const findings = detectSwappedMcpServer('.mcp.json', beforeContent, afterContent);
+
+    expect(findings).toHaveLength(0);
+  });
+
+  it('still fires when a positional flag value moves before its flag (fixture)', () => {
+    // judgment-dd2-args-reorder-with-real-semantics: "--config" goes from
+    // immediately followed by "/etc/app.conf" (has a value) to immediately
+    // followed by "--verbose" (no value at all) -- a genuine argument-parsing
+    // break, not a cosmetic reorder. Must keep firing after this task.
+    const beforeContent = readFixture('args-reorder-real-semantics', 'before.json');
+    const afterContent = readFixture('args-reorder-real-semantics', 'after.json');
+
+    const findings = detectSwappedMcpServer('.mcp.json', beforeContent, afterContent);
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0].summary).toBe("MCP server 'deploy' definition changed (args)");
+  });
+
+  it('compares self-contained "--key=value" flagged arguments unordered', () => {
+    const beforeContent = JSON.stringify({
+      mcpServers: { s1: { command: 'npx', args: ['pkg', '--timeout=30', '--retries=3'] } },
+    });
+    const afterContent = JSON.stringify({
+      mcpServers: { s1: { command: 'npx', args: ['pkg', '--retries=3', '--timeout=30'] } },
+    });
+
+    expect(detectSwappedMcpServer('.mcp.json', beforeContent, afterContent)).toHaveLength(0);
+  });
+
+  it('still fires when a flagged argument value actually changes, reorder aside', () => {
+    const beforeContent = JSON.stringify({
+      mcpServers: { s1: { command: 'npx', args: ['pkg', '--timeout=30'] } },
+    });
+    const afterContent = JSON.stringify({
+      mcpServers: { s1: { command: 'npx', args: ['--timeout=90', 'pkg'] } },
+    });
+
+    const findings = detectSwappedMcpServer('.mcp.json', beforeContent, afterContent);
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0].summary).toBe("MCP server 's1' definition changed (args)");
+  });
+
+  it('still fires when a flagged argument is genuinely added, not just reordered', () => {
+    const beforeContent = JSON.stringify({
+      mcpServers: { s1: { command: 'npx', args: ['-y', 'pkg'] } },
+    });
+    const afterContent = JSON.stringify({
+      mcpServers: { s1: { command: 'npx', args: ['-y', 'pkg', '--allow-write'] } },
+    });
+
+    const findings = detectSwappedMcpServer('.mcp.json', beforeContent, afterContent);
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0].summary).toBe("MCP server 's1' definition changed (args)");
+  });
+
+  it('falls back to exact comparison when args is not a clean string array', () => {
+    const beforeContent = JSON.stringify({
+      mcpServers: { s1: { command: 'npx', args: ['-y', 42, 'pkg'] } },
+    });
+    const afterContent = JSON.stringify({
+      mcpServers: { s1: { command: 'npx', args: ['pkg', 42, '-y'] } },
     });
 
     const findings = detectSwappedMcpServer('.mcp.json', beforeContent, afterContent);
