@@ -27,8 +27,26 @@ const CHARACTER_NAMES: Record<number, string> = {
 // The combining marks in \u0300-\u036F are exactly what this detector
 // targets, not an accidental base+combining-mark grapheme cluster the rule
 // below warns about, hence the disable.
+//
+// Unicode Tags (U+E0000-U+E007F): an astral-plane block (outside the Basic
+// Multilingual Plane, above U+FFFF) originally meant for language tagging,
+// with no legitimate use in rule-file prose today -- documented as having
+// been used for steganographic prompt injection, hiding instructions inside
+// characters that render as nothing at all. \u{E0000}-\u{E007F} code-point
+// escapes require the "u" flag to parse (invalid syntax without it) and, on
+// a match, to be treated as one code point rather than two independent
+// surrogate-half matches -- without "u", each surrogate half is matched
+// against the class separately, and neither half's UTF-16 code unit
+// (0xDB40 / 0xDC00-0xDC7F for this block) falls inside any BMP range already
+// in this class, so the tag character would simply fail to match rather
+// than false-matching. Adding "u" doesn't change matching for the existing
+// BMP-only ranges (\u00AD, \u200B-\u200D, etc.): under the "u" flag those
+// 4-hex-digit escapes still mean exactly the same single BMP code points
+// they did before, and none of them fall in the surrogate range
+// (U+D800-U+DFFF), so there's no ambiguity between "a BMP range entry" and
+// "half of an astral pair" for the engine to resolve differently.
 // eslint-disable-next-line no-misleading-character-class
-const INVISIBLE_CHAR_PATTERN = /[\u00AD\u200B-\u200D\u200F\u202A-\u202E\u2066-\u2069\u0300-\u036F]/g;
+const INVISIBLE_CHAR_PATTERN = /[\u00AD\u200B-\u200D\u200F\u202A-\u202E\u2066-\u2069\u0300-\u036F\u{E0000}-\u{E007F}]/gu;
 
 function locate(content: string, index: number): { line: number; column: number } {
   const before = content.slice(0, index);
