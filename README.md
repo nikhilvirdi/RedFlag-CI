@@ -28,6 +28,30 @@ RedFlag CI runs two checks. Both are fully deterministic, no LLM calls, no netwo
 
 If a PR doesn't touch any of these files, RedFlag CI does nothing: no comment, no noise. That's deliberate. The most common complaint about existing AI-code review tools is alert fatigue; some report false-positive rates as high as 87%. RedFlag CI would rather miss something subtle than train you to ignore it.
 
+## Key features
+
+- **Six deterministic detectors**, covering both agent-config drift (new MCP servers, swapped tools, widened permissions, hook changes) and rule-file injection (invisible Unicode, homoglyphs) -- see `architecture.md` for the exact behavior of each.
+- **No LLM calls, anywhere in the pipeline.** Every check is a plain function over file content, so a given diff always produces the same result. Nothing here depends on a model call succeeding, staying consistent, or costing you tokens.
+- **Fail-open by design.** A malformed or unparseable config file is skipped, not blocked. RedFlag CI would rather miss a broken file than break your build.
+- **Zero-config install.** No dashboard, no settings screen, nothing to configure beyond installing the app. It works the moment it's on your repo.
+- **Quiet by default.** No comment posts unless there's an actual finding. A PR that doesn't touch a monitored file gets no response at all -- silence is part of the product, not a gap in coverage.
+- **Least-privilege permissions.** The GitHub App requests `contents:read`, `pull_requests:write`, and `checks:write`. Nothing broader.
+- **Never blocks a merge.** Check runs report `success` or `neutral`, never `failure`. Whether a finding should block a PR is a decision for your repo's own branch protection rules, not something this tool imposes.
+- **Benchmarked, not just claimed.** A 120-scenario adversarial test corpus backs the precision and recall numbers below, with every known limitation documented openly rather than hidden. See `docs/STRESS_TESTING.md`.
+
+## Tech stack
+
+| Layer | Technology |
+|---|---|
+| Runtime | Node.js, TypeScript (strict mode) |
+| Server | Express 5 |
+| GitHub integration | `@octokit/app`, `@octokit/rest` |
+| Payload validation | Zod |
+| Testing | Jest, Supertest |
+| Logging | Winston, Morgan |
+| Packaging | Docker |
+| CI | GitHub Actions |
+
 ## What it doesn't do, and why
 
 No dashboard. No auto-fix. No LLM-based or ML-based semantic analysis, anywhere in the roadmap. These weren't left out for lack of time -- they were considered and deliberately rejected, because each one would trade away the thing that makes this tool different: deterministic, zero-noise, zero-config detection. `architecture.md` section 8 has the full reasoning.
@@ -47,15 +71,63 @@ The benchmark corpus grows with every release: v1.2.0 (detector hardening and ne
 
 Full breakdown: `backend/benchmark/RESULTS.md`.
 
+## Getting started
+
+RedFlag CI is self-hosted: there's no public, one-click install yet, since v1 hasn't been published to the GitHub Marketplace. Running it on your own repository means registering your own GitHub App and pointing it at a webhook endpoint you control.
+
+**1. Clone and install**
+
+```bash
+git clone https://github.com/nikhilvirdi/RedFlag-CI.git
+cd RedFlag-CI/backend
+npm install
+```
+
+**2. Register a GitHub App**
+
+Go to **GitHub Settings → Developer settings → GitHub Apps → New GitHub App**, and set:
+
+- **Webhook URL**: wherever you're running the service (a public URL, or a tunnel like ngrok for local testing), pointing at the app's webhook endpoint
+- **Webhook secret**: any random string -- you'll need this again in the next step
+- **Repository permissions**: `Contents: Read-only`, `Pull requests: Read & write`, `Checks: Read & write` -- nothing broader
+- **Subscribe to events**: `Pull request`
+
+After creating the app, note the **App ID**, generate a **private key** (downloads a `.pem` file), and install the app on the repository you want it to watch.
+
+**3. Configure environment variables**
+
+Create a `.env` file in `backend/`:
+
+```
+GITHUB_APP_ID=your_app_id
+GITHUB_WEBHOOK_SECRET=the_secret_from_step_2
+GITHUB_APP_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----
+...contents of the .pem file...
+-----END RSA PRIVATE KEY-----"
+```
+
+**4. Build and run**
+
+```bash
+npm run build
+node dist/index.js
+```
+
+The service listens on port 3000 by default. Once it's running and reachable at the webhook URL you configured, RedFlag CI is live: open a pull request that touches one of the monitored files (see `architecture.md` section 4 for the full list) on the repo you installed it on, and it'll comment if it finds something worth flagging.
+
 ## Documentation
 
-- `architecture.md`: full system design, every detector, every decision, and the roadmap through v2, the project's final planned version
-- `docs/PROBLEM_SPACE.md`: the research behind why this exists
-- `docs/COMPETITIVE_LANDSCAPE.md`: what else is out there, and where the gaps are
-- `docs/adr/0001-deterministic-only-v1.md`: why v1 is deterministic-only, and what that costs in practice
-- `docs/STRESS_TESTING.md`: how the benchmark grew from 18 to 120 scenarios, and what it found
-- `backend/benchmark/RESULTS.md`: the full benchmark corpus and results
-- `backend/benchmark/COMPARISON.md`: a live comparison against Snyk Agent Scan (formerly mcp-scan)
+| File | What's in it |
+|---|---|
+| [`architecture.md`](architecture.md) | Full system design: every detector, every decision, the roadmap through v2, the project's final planned version |
+| [`docs/PROBLEM_SPACE.md`](docs/PROBLEM_SPACE.md) | The research behind why this exists |
+| [`docs/COMPETITIVE_LANDSCAPE.md`](docs/COMPETITIVE_LANDSCAPE.md) | What else is out there, and where the gaps are |
+| [`docs/adr/0001-deterministic-only-v1.md`](docs/adr/0001-deterministic-only-v1.md) | Why v1 is deterministic-only, and what that costs in practice |
+| [`docs/STRESS_TESTING.md`](docs/STRESS_TESTING.md) | How the benchmark grew from 18 to 120 scenarios, and what it found |
+| [`backend/benchmark/RESULTS.md`](backend/benchmark/RESULTS.md) | The full benchmark corpus and results |
+| [`backend/benchmark/COMPARISON.md`](backend/benchmark/COMPARISON.md) | A live comparison against Snyk Agent Scan (formerly mcp-scan) |
+| [`CHANGELOG.md`](CHANGELOG.md) | What shipped in each version |
+| [`SECURITY.md`](SECURITY.md) | How to report a vulnerability, and the tool's own security scope |
 
 ## License
 
