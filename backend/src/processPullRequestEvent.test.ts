@@ -447,6 +447,18 @@ describe('Task A.3: cumulative-widening tracking against the stored baseline', (
     // which pr2's own diff alone could never show, since 'Bash(git diff)'
     // isn't part of pr2's own base-to-head change at all.
     expect(body).toContain("Permission 'Bash(git diff)' added to allow-list");
+
+    // Task A.6: the two must be in visibly distinct sections, not just both
+    // present somewhere in the body -- the whole point is that a reviewer
+    // can tell "this is my PR's own diff" apart from "this is drift since
+    // baseline I didn't cause in this PR."
+    expect(body).toContain('RedFlag CI found 1 issue');
+    expect(body).toContain('additional change found since the last known-good baseline');
+    const mainSectionEnd = body.indexOf('additional change found since the last known-good baseline');
+    const immediateIndex = body.indexOf("Permission 'Bash(git *)' added to allow-list");
+    const cumulativeIndex = body.indexOf("Permission 'Bash(git diff)' added to allow-list");
+    expect(immediateIndex).toBeLessThan(mainSectionEnd);
+    expect(cumulativeIndex).toBeGreaterThan(mainSectionEnd);
   });
 
   it('does not duplicate a finding that both the immediate and cumulative comparisons would report', async () => {
