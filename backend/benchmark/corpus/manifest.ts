@@ -1239,12 +1239,21 @@ export const SCENARIOS: CorpusScenario[] = [
   },
   {
     id: 'regression-dd1-dual-key-collision',
-    description: 'DD-1 regression variant (schema dual-key merge): same server name present under mcpServers and servers with different definitions.',
+    description: 'DD-2 regression variant (schema dual-key merge): same server name present under mcpServers and servers with different definitions.',
     filePath: '.mcp.json',
     engine: 'diff-drift',
     detectorUnderTest: 'diff-drift.swapped-mcp-server',
     groundTruth: 'negative',
-    note: 'Variant of judgment-dd1-both-schema-keys-present testing a collision to confirm mcpServers precedence.',
+    note: 'Task 6.4: this fixture alone could not actually distinguish "mcpServers correctly wins the merge" from "servers is short-circuited away entirely" -- both produce this same TN, since mcpServers.weather is unchanged either way and was never going to need servers.weather to resolve correctly. The investigation found DD-2 had the exact unfixed `mcpServers ?? servers` short-circuit bug Task 2.1 had already fixed on DD-1: a colliding servers entry was invisible, but so was any non-colliding one. Fixed in Task 6.4 (same merge-with-precedence as DD-1). This scenario stays TN post-fix, now for the documented reason (mcpServers correctly wins the collision) rather than by the bug\'s coincidence -- see the companion regression-dd2-servers-key-blind-spot for the case that actually distinguishes the two.',
+  },
+  {
+    id: 'regression-dd2-servers-key-blind-spot',
+    description: 'DD-2 regression variant (schema dual-key merge, non-collision): a server entry exists only under "servers" (no mcpServers counterpart) and its command/args change between base and head.',
+    filePath: '.mcp.json',
+    engine: 'diff-drift',
+    detectorUnderTest: 'diff-drift.swapped-mcp-server',
+    groundTruth: 'positive',
+    note: "Task 6.4: companion to regression-dd1-dual-key-collision, testing what that fixture couldn't -- a servers-only entry with no mcpServers collision to hide behind. Before the Task 6.4 fix, DD-2's `mcpServers ?? servers` never read `servers` at all once `mcpServers` was present (even non-empty and unrelated), so this scenario's swap on 'filesystem' was missed entirely: a false negative, not a suppressed finding. Fixed by the same merge-with-precedence change applied to regression-dd1-dual-key-collision.",
   },
   {
     id: 'regression-dd1-rename-args-whitespace',
