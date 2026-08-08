@@ -17,6 +17,8 @@ import { detectRuleFileChecksInJsonKeys } from './detectors/ruleFileJsonKeys';
 import { aggregateFindings } from './aggregateFindings';
 import { postFindings } from './postFindings';
 import { updateBaselineOnMerge, MergeEvent } from './baselineUpdate';
+import { readBaseline } from './baseline';
+import { detectCumulativeDrift } from './cumulativeDrift';
 import { Finding } from './types';
 
 const PROCESSED_ACTIONS = new Set(['opened', 'synchronize']);
@@ -166,6 +168,15 @@ export async function processPullRequestEvent(githubApp: GitHubApp, payload: unk
 
   let findings: Finding[] = [];
   if (matches.length > 0) {
+    const octokit = await githubApp.getInstallationOctokit(installationId);
+    // Task A.3: fail-open by construction -- readBaseline already collapses
+    // a missing baseline branch, a missing file, malformed content, or any
+    // other API failure to null, so a repo with no baseline yet (or one
+    // RedFlag CI temporarily can't reach) falls straight through to today's
+    // stateless, single-PR comparison below with no special-casing needed
+    // here.
+    const baseline = await readBaseline(octokit, { owner, repo });
+
     const findingsBySource = await Promise.all(
       matches.map(async (match) => {
         const { base, head } = await getFileVersions(githubApp, {
@@ -177,9 +188,22 @@ export async function processPullRequestEvent(githubApp: GitHubApp, payload: unk
           headRef,
         });
 
-        return match.engine === 'diff-drift'
-          ? runDiffDriftDetectors(match.path, base, head)
-          : runRuleFileDetectors(match.path, head);
+        const immediateFindings =
+          match.engine === 'diff-drift'
+            ? runDiffDriftDetectors(match.path, base, head)
+            : runRuleFileDetectors(match.path, head);
+
+        // Cumulative drift only applies to diff-drift files with a known
+        // baseline entry; a file the baseline has never captured (new to
+        // this repo's monitored set, or the baseline predates it) has
+        // nothing to compare against beyond what's already above.
+        const baselineContent = baseline?.files[match.path];
+        if (match.engine !== 'diff-drift' || baselineContent === undefined) {
+          return immediateFindings;
+        }
+
+        const cumulativeFindings = detectCumulativeDrift(match.path, baselineContent, head, immediateFindings);
+        return [...immediateFindings, ...cumulativeFindings];
       })
     );
 
