@@ -106,6 +106,26 @@ interface Finding {
 
 Both rule-file detectors are pure character-class checks. No natural-language interpretation, no judgment calls, which is why they carry a near-zero false-positive rate.
 
+### v1.2.0 additions (Phase 5)
+
+Six further detectors, all dispatched alongside DD-1 through DD-4 against the same diff-drift-monitored files. Five of the six are current-state checks against head content only, not a base/head diff -- an unpinned dependency, an obfuscated command, a duplicate key, a suspicious network target, or a path-traversal sequence is a live risk on every PR it's still present in, not just the PR that introduced it. The sixth, transport-type change, is a diff check like DD-1 through DD-4, since "changed transport" is inherently a before/after comparison.
+
+**Unpinned MCP dependency** (`diff-drift.unpinned-mcp-dependency`). For every MCP server entry whose command is `npx`, checks whether the package argument carries an explicit `@version` pin. No pin means npx always resolves to whatever release is currently published on the registry, so a compromised or malicious package update reaches every agent invocation immediately, with no PR for anyone to review. Severity: `warning`.
+
+**Obfuscated command** (`diff-drift.obfuscated-command`). Scans MCP server commands and arguments, and hook commands, for two patterns: output piped directly into a shell (`| sh` or `| bash`), and a long base64-looking token (20 or more base64-alphabet characters, excluding tokens that are hex digits end to end, which excludes git hashes and checksums from matching on charset alone). Either pattern lets a payload pass through review as opaque or pre-execution text while a shell or interpreter still runs it. Severity: `high`.
+
+**Duplicate top-level JSON key** (`diff-drift.duplicate-json-key`). A raw-text scan, not a `JSON.parse`-based one, since parsing silently collapses a duplicate key onto its last occurrence before any code built on the parsed object could ever see it. Flags a top-level key (for example, a second `mcpServers`) appearing more than once in the file. Some JSON parsers resolve a duplicate to its last occurrence, others to its first, so a second occurrence can smuggle a payload past a reviewer who only reads the first, legitimate-looking one. Severity: `warning`.
+
+**Suspicious network target** (`diff-drift.suspicious-network-target`). Scans MCP server arguments and environment variable values for a non-HTTPS `http://` URL or a bare IPv4 address, excluding localhost/loopback targets and an IP already following an `https://` or `http://` prefix (already covered by the URL check). Unencrypted HTTP exposes traffic and credentials to interception; a bare IP bypasses domain validation, TLS certificate verification, and DNS governance. Severity: `warning`.
+
+**Path traversal** (`diff-drift.path-traversal`). Scans MCP server arguments and environment variable values for a `../` or `..\` sequence. Navigating outside an expected directory boundary this way can expose sensitive system files or escape directory sandboxing. Severity: `warning`.
+
+**Transport-type change** (`diff-drift.transport-type-change`). For a server entry present in both base and head, flags a flip between a "local" shape (a `command`, no `url` or `transport`) and a "remote" shape (`url` and/or `transport`, no `command`), in either direction. A locally-run process executes with local privileges and is visible in the repo; a remote endpoint executes outside your control and receives whatever the agent sends it. This is a trust-boundary jump independent of any single field's value, and DD-2's own command-field comparison may already report the same entry as changed, but only generically -- this reports specifically that the server's transport changed. Severity: `high`.
+
+**RF-1/RF-2 extended to JSON keys.** RF-1 and RF-2 originally only scanned rule-file prose (`CLAUDE.md`, `.cursor/rules/*`, `.github/copilot-instructions.md`). Phase 5 extends their reach, unchanged, to MCP server names and permission allow/deny entries in diff-drift files -- identifier-like JSON strings a human reviewer tends to skim past. Not a new detector ID: findings still carry `rule-file.invisible-unicode` or `rule-file.homoglyphs`, at the same severities as section 5's rule-file entries above.
+
+**Cross-cutting: Unicode normalization.** Not a numbered detector, but a change that applies to every one of them. All string comparisons and set-membership checks -- server keys, permission entries, hook fields -- normalize to NFC (`String.prototype.normalize('NFC')`) before comparing, everywhere in the codebase. Without this, two byte-different but visually identical representations of the same string (for example, an accented character as one precomposed code point versus a base letter plus a combining mark) could either dodge a "same entry" match and read as a spurious add/remove pair, or let a duplicate-key/duplicate-server-name attack slip past a check that only compares raw, un-normalized strings.
+
 ## 6. Output
 
 **PR comment**, posted only if there's at least one finding, one comment per PR run (not one per finding), formatted as a short list: what changed, in which file, and why it matters, with a CVE reference where one applies.
