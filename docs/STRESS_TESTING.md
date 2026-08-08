@@ -65,20 +65,57 @@ The first of these three is structural and permanent. The other two turned out n
 | Original 18-scenario benchmark | 0.727 | 0.889 |
 | Full 120-scenario corpus, before fixes | 0.892 | 0.846 |
 | After the five gaps were closed | 0.926 | 0.949 |
+| 138-scenario corpus, after v1.2.0 | 1.000 | 1.000 |
 
-Recall dropped in the middle row, and that's expected, not a regression: a much larger, deliberately adversarial corpus surfaces more of what the tool actually misses. Precision improved throughout, mostly because the larger corpus added far more scenarios that correctly stay quiet than ones that misfire -- only 5 of the corpus's 8 total false positives are new since the original 18. Once the five real gaps were fixed, both numbers moved past where they started.
+Recall dropped in the middle row, and that's expected, not a regression: a much larger, deliberately adversarial corpus surfaces more of what the tool actually misses. Precision improved throughout, mostly because the larger corpus added far more scenarios that correctly stay quiet than ones that misfire -- only 5 of the corpus's 8 total false positives are new since the original 18. Once the five real gaps were fixed, both numbers moved past where they started. The last row is v1.2.0's own hardening pass, covered below -- what specifically closed to get there, not just the number.
 
-Every one of the 120 scenarios was checked individually against what it was built to demonstrate. All 120 matched.
+Every one of the 120 scenarios was checked individually against what it was built to demonstrate. All 120 matched. The 18 scenarios added in v1.2.0 were checked the same way; see below.
 
 ## Compared to what else is out there
 
 We ran the same original benchmark against Snyk Agent Scan (the tool most people know as mcp-scan). It couldn't render a verdict on any of the 18 files, for three separate reasons: it doesn't parse markdown rule files at all, its schema doesn't cover permissions or hooks, and reaching an actual verdict on MCP server configs requires a cloud account and running the servers themselves, neither of which RedFlag CI's own headless, zero-config design requires. The full comparison, including exactly what was tried and why, is in `backend/benchmark/COMPARISON.md`.
 
+## v1.2.0: closing the gaps this document left open
+
+v1.1.0's stress-testing pass found real limits and, per its own reasoning above, left some of them alone on purpose: three false positives recorded as accepted tradeoffs, plus one deliberate false negative carried over from the original 18-scenario benchmark and documented in `docs/adr/0001-deterministic-only-v1.md`. v1.2.0 went back to all four, plus three further gaps found the same way -- reading what the existing corpus already said was broken, not inventing new scenarios to chase -- and closed every one with a deterministic fix, not a smarter model. The ADR's second addendum makes the case for that choice directly: almost every gap the project's now-rejected LLM-tier plan was meant to close turned out to have one.
+
+**The three accepted false positives, closed:**
+
+- **Arg-reorder on an MCP server** (`near-miss-args-reorder`). DD-2 now compares flagged (`--key value`-style) arguments as an unordered set, leaving purely positional arguments order-sensitive, since a reorder there can still change execution semantics. `regression-dd2-positional-arg-reorder-fires` confirms the fix doesn't overcorrect: moving a positional argument alongside a flag reorder still fires.
+- **A legitimate Cyrillic sentence tripping the homoglyph detector** (`near-miss-legit-cyrillic-text`). RF-2 gained a per-word script-majority check: a word that's mostly one non-Latin script reads as real language, not an attack; a word that's Latin except for one or two substituted characters still fires. `regression-rf2-greek-majority-legit` confirms the fix generalizes past Cyrillic to Greek.
+- **An MCP server rename read as a brand-new entry** (`near-miss-mcp-server-rename`). A shared remove/add correlation utility now lets DD-1 recognize a paired rename by matching identity fields, instead of only ever comparing by key name. `regression-dd1-rename-args-whitespace` confirms the correlation is exact, not fuzzy: a trivial whitespace difference in an argument still breaks the match and correctly fires as new.
+
+**The one deliberate false negative, closed:**
+
+- **A homoglyph attack using an uncommon Cyrillic character went undetected** (`known-gap-uncommon-homoglyph`, U+0501). RF-2 now uses Unicode's official confusables.txt table instead of a hand-picked list. `regression-rf2-armenian-homoglyph` confirms the new table covers scripts well beyond the one code point that was originally missed.
+
+**Three further fixes, not previously documented as known gaps but found reading the same corpus:**
+
+- RF-1 gained the Combining Diacritical Marks block and the Unicode Tags block (U+E0000-U+E007F), closing two encoding gaps the original character-class table didn't cover (`regression-rf1-combining-mark-start`, `regression-rf1-unicode-tag-cursor-rules`).
+- DD-1 now merges the `mcpServers` and `servers` schema keys instead of using `??`, which silently discarded `servers` any time `mcpServers` was present at all, even empty (`judgment-dd1-both-schema-keys-present`).
+- DD-3's narrowing correlation, the same shared utility as DD-1's rename fix, generalizes past the two tool names it was originally verified against (`regression-dd3-narrowing-correlation`).
+
+## Two more bugs, found by testing the fixes themselves
+
+Building a regression fixture meant to confirm DD-2 correctly resolves a genuine collision between `mcpServers` and `servers` turned up that the fixture couldn't actually prove what it was built to prove: the bug and the fix produced the identical result on it, since the `mcpServers` side was unchanged either way and the fixture never actually needed `servers` to be read at all in order to pass. Looking closer found DD-2 had the exact `mcpServers ?? servers` short-circuit bug DD-1 had before its own schema-merge fix earlier in this same phase -- never ported over. Fixed with the same merge-with-precedence change, and a companion scenario, `regression-dd2-servers-key-blind-spot`, was built specifically to test what the first fixture couldn't: a `servers`-only entry with no collision to hide behind.
+
+Separately, chasing why that fix's own source file rendered as a binary diff in git turned up a second, unrelated bug: a single stray NUL byte, embedded in the source since the original detector-hardening commit that introduced the line, sitting where a space belonged in an internal argument-comparison key. It never affected any finding -- both sides of every comparison built the identical corrupted string either way -- and, checked directly rather than assumed, it turned out the runtime string was never actually wrong either: TypeScript silently sanitizes a raw NUL inside a template literal into a space at compile time. Still a real defect in committed source, invisible to every text-based review tool until someone went looking at the raw bytes. Fixed directly, with a test that reads the source file's bytes, since a test of the runtime string alone -- the more obvious thing to check -- cannot catch this class of regression at all.
+
+## The corpus, 120 to 138
+
+Eighteen more scenarios, in three groups:
+
+- **9 real-world-grounded scenarios**, sourced from actual incidents and documented techniques rather than only synthetic constructions: CVE-2025-54135 (a CurXecute-pattern MCP config rewrite), CVE-2025-54136 (MCPoison, a reverse-shell-shaped command swap on an already-approved server), the Trojan Source homoglyph pattern (CVE-2021-42574/42694) applied to an MCP server name, Riley Goodside's Unicode Tag Block invisible-instruction-injection technique, an eslint-scope-style base64-obfuscated curl-pipe-bash payload, an event-stream/colors.js-style unpinned npx dependency, a Capital One-pattern SSRF probe against a cloud metadata IP, a path-traversal sequence in a CLI argument, and a JSON duplicate-key smuggling case (pattern-inspired -- no single documented MCP incident, but a technique widely seen in WAF bypasses).
+- **8 regression variants**, one for each Phase 1 through 4 gap closed above, built specifically to confirm each fix generalizes past the single scenario that originally found the gap, not just pass the one case it was written against.
+- **1 more**, `regression-dd2-servers-key-blind-spot`, from the DD-2 bug found while building the regression variants themselves, above.
+
+A perfect score on the resulting 138-scenario corpus is not a claim that detection is now complete. It's a claim that every gap this corpus was specifically built to test is closed, on the scenarios built to test it. The corpus grew because more of what it tests for was found; a future round that goes looking for the next thing it doesn't yet test for should expect to find something, the same way every round before it did -- that's the same caveat this document carried at 120 scenarios, not a new one added because the number happens to look clean this time.
+
 ## Where to look next
 
-- `backend/benchmark/RESULTS.md` -- the full 120-scenario results table, generated fresh by the benchmark runner.
+- `backend/benchmark/RESULTS.md` -- the full 138-scenario results table, generated fresh by the benchmark runner.
 - `backend/benchmark/COMPARISON.md` -- the live comparison against Snyk Agent Scan.
 - `docs/adr/0001-deterministic-only-v1.md` -- why v1 is deterministic-only, and the honest cost of that choice.
-- `CHANGELOG.md` -- the exact fixes that shipped in v1.1.0.
+- `CHANGELOG.md` -- the exact fixes that shipped in v1.1.0 and v1.2.0.
 
-This corpus isn't final. v1.2.0 and v2 (the project's last planned version, see `architecture.md` section 8) each expand it further, with the same philosophy: hunt for real gaps deliberately, document what's found honestly, and don't stop once the numbers look clean.
+This corpus isn't final. v2 (the project's last planned version, see `architecture.md` section 8) expands it further, with the same philosophy: hunt for real gaps deliberately, document what's found honestly, and don't stop once the numbers look clean.
