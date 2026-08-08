@@ -30,6 +30,24 @@ export async function getFileVersions(
   return { base, head };
 }
 
+export interface FileAtRefRequest {
+  installationId: number;
+  owner: string;
+  repo: string;
+  path: string;
+  ref: string;
+}
+
+// Task A.2: a single-ref fetch for the baseline's merge-triggered snapshot
+// build, which needs one file's content at the merge commit, not a
+// base/head pair. Reuses fetchFileContent's own 404-as-null handling rather
+// than duplicating it.
+export async function getFileAtRef(app: GitHubApp, request: FileAtRefRequest): Promise<string | null> {
+  const { installationId, owner, repo, path, ref } = request;
+  const octokit = await app.getInstallationOctokit(installationId);
+  return fetchFileContent(octokit, owner, repo, path, ref);
+}
+
 async function fetchFileContent(
   octokit: Octokit,
   owner: string,

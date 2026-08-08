@@ -16,6 +16,7 @@ import { detectHomoglyphs } from './detectors/homoglyphs';
 import { detectRuleFileChecksInJsonKeys } from './detectors/ruleFileJsonKeys';
 import { aggregateFindings } from './aggregateFindings';
 import { postFindings } from './postFindings';
+import { updateBaselineOnMerge, MergeEvent } from './baselineUpdate';
 import { Finding } from './types';
 
 const PROCESSED_ACTIONS = new Set(['opened', 'synchronize']);
@@ -26,6 +27,8 @@ interface WebhookPullRequestPayload {
     number?: unknown;
     head?: { sha?: unknown };
     base?: { sha?: unknown };
+    merged?: unknown;
+    merge_commit_sha?: unknown;
   };
   repository?: {
     name?: unknown;
@@ -79,6 +82,48 @@ function parsePullRequestEvent(payload: unknown): ParsedPullRequestEvent | null 
   return { owner, repo, pullNumber, headSha, baseRef: baseSha, headRef: headSha, installationId };
 }
 
+// Task A.2: the baseline must update only on an actual merge, never on
+// open/synchronize, and never for a PR that was closed without merging (an
+// unmerged PR must never influence the stored baseline, even indirectly).
+//
+// Signal chosen: the pull_request webhook event, action "closed" with
+// pull_request.merged === true -- not a push event to the base branch.
+// A push event fires for ANY commit landing on that branch (a direct push,
+// a force-push, a merge done outside a reviewed PR), not only a genuine PR
+// merge, and carries no PR number to correlate back to one; distinguishing
+// "was this actually a merged PR" from "something else changed this branch"
+// would mean re-deriving the same signal pull_request/closed already gives
+// directly. The merge commit's own SHA (merge_commit_sha) is used as the
+// ref to snapshot, not the base branch name, so a second merge landing
+// between event delivery and this handler running can't shift what gets
+// captured out from under it.
+function parseMergeEvent(payload: unknown): MergeEvent | null {
+  if (typeof payload !== 'object' || payload === null) {
+    return null;
+  }
+
+  const p = payload as WebhookPullRequestPayload;
+  if (p.action !== 'closed' || p.pull_request?.merged !== true) {
+    return null;
+  }
+
+  const owner = p.repository?.owner?.login;
+  const repo = p.repository?.name;
+  const mergeCommitSha = p.pull_request?.merge_commit_sha;
+  const installationId = p.installation?.id;
+
+  if (
+    typeof owner !== 'string' ||
+    typeof repo !== 'string' ||
+    typeof mergeCommitSha !== 'string' ||
+    typeof installationId !== 'number'
+  ) {
+    return null;
+  }
+
+  return { owner, repo, mergeCommitSha, installationId };
+}
+
 function runDiffDriftDetectors(filePath: string, base: string | null, head: string | null): Finding[] {
   return [
     ...detectNewMcpServer(filePath, base, head),
@@ -103,6 +148,12 @@ function runRuleFileDetectors(filePath: string, head: string | null): Finding[] 
 }
 
 export async function processPullRequestEvent(githubApp: GitHubApp, payload: unknown): Promise<void> {
+  const mergeEvent = parseMergeEvent(payload);
+  if (mergeEvent) {
+    await updateBaselineOnMerge(githubApp, mergeEvent);
+    return;
+  }
+
   const event = parsePullRequestEvent(payload);
   if (!event) {
     return;

@@ -10,7 +10,10 @@ export interface MonitoredFilesResult {
   matches: MonitoredFileMatch[];
 }
 
-const DIFF_DRIFT_FILES: readonly string[] = [
+// Exported for baseline.ts's merge-triggered snapshot build (Task A.2): the
+// baseline needs the full, current list of diff-drift file paths to capture
+// on every merge, not just whichever ones a given PR happened to touch.
+export const DIFF_DRIFT_FILES: readonly string[] = [
   '.mcp.json',
   '.cursor/mcp.json',
   'claude_desktop_config.json',
