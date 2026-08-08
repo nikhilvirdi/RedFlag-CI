@@ -1,4 +1,5 @@
 import { Octokit } from '@octokit/rest';
+import { logger } from './logger';
 
 // v2 Phase A (architecture.md section 8): a small JSON snapshot committed to
 // a dedicated branch, not a database -- "the last known-good state of each
@@ -162,4 +163,37 @@ export async function writeBaseline(octokit: Octokit, request: WriteBaselineRequ
     content: Buffer.from(JSON.stringify(snapshot, null, 2)).toString('base64'),
     sha,
   });
+}
+
+// Task A.4: A.2's merge-only update path is the only way the baseline is
+// *meant* to change; an unprotected branch could be pushed to directly,
+// bypassing it entirely (e.g. seeding a false "known good" state to hide
+// drift, or wiping the baseline outright). This only ever logs a warning,
+// never blocks anything -- fixing the branch's own protection settings is a
+// repo-admin action outside RedFlag CI's own permission scope
+// (architecture.md section 2's least-privilege principle), not something
+// this tool can or should silently correct on someone's behalf.
+//
+// repos.getBranch (not the admin-only repos.getBranchProtection) is used
+// deliberately: its response includes a plain `protected` boolean available
+// to any caller with read access, so this check can't itself fail just
+// because the installation lacks admin permissions on the repo.
+export async function checkBaselineBranchProtection(
+  octokit: Octokit,
+  owner: string,
+  repo: string,
+  branch: string = BASELINE_BRANCH
+): Promise<void> {
+  try {
+    const { data } = await octokit.rest.repos.getBranch({ owner, repo, branch });
+    if (!data.protected) {
+      logger.warn('Baseline branch has no branch protection enabled', { owner, repo, branch });
+    }
+  } catch (error) {
+    // Fail-open (architecture.md section 2): being unable to verify
+    // protection status (branch not found, API error, etc.) is itself
+    // worth logging distinctly, but never throws out of this check.
+    const message = error instanceof Error ? error.message : String(error);
+    logger.warn('Could not verify baseline branch protection status', { owner, repo, branch, message });
+  }
 }
