@@ -85,8 +85,9 @@ describe('updateBaselineOnMerge', () => {
 
     expect(createOrUpdateFileContents).toHaveBeenCalledTimes(1);
     const call = createOrUpdateFileContents.mock.calls[0][0];
+    // Task A.5: the written content is { snapshot, contentHash }, not a bare snapshot.
     const written = JSON.parse(Buffer.from(call.content, 'base64').toString('utf-8'));
-    expect(written.files).toEqual(fileContents);
+    expect(written.snapshot.files).toEqual(fileContents);
   });
 
   it('omits a monitored path from the snapshot when it does not exist in the repo (404)', async () => {
@@ -101,7 +102,7 @@ describe('updateBaselineOnMerge', () => {
 
     const call = createOrUpdateFileContents.mock.calls[0][0];
     const written = JSON.parse(Buffer.from(call.content, 'base64').toString('utf-8'));
-    expect(written.files).toEqual({});
+    expect(written.snapshot.files).toEqual({});
   });
 
   it('uses the merge commit SHA, not a branch name, as the ref for every file fetch', async () => {

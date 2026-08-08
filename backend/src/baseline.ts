@@ -1,4 +1,5 @@
 import { Octokit } from '@octokit/rest';
+import { createHash } from 'crypto';
 import { logger } from './logger';
 
 // v2 Phase A (architecture.md section 8): a small JSON snapshot committed to
@@ -28,6 +29,31 @@ export interface BaselineRepoRequest {
 
 export interface WriteBaselineRequest extends BaselineRepoRequest {
   snapshot: BaselineSnapshot;
+}
+
+// Task A.5: the hash lives alongside the snapshot in the stored file, not on
+// BaselineSnapshot itself -- integrity is purely a concern of how the
+// snapshot gets stored and read back, not something the rest of the
+// codebase (buildSnapshot's callers, cumulativeDrift.ts) needs to know
+// about. Computed over the exact JSON serialization of `snapshot`, so any
+// byte-level change to the stored snapshot -- whether from a direct push to
+// the branch bypassing A.2's merge-only update path, or plain corruption --
+// changes the hash and is caught on the next read.
+interface StoredBaseline {
+  snapshot: BaselineSnapshot;
+  contentHash: string;
+}
+
+export function computeSnapshotHash(snapshot: BaselineSnapshot): string {
+  return createHash('sha256').update(JSON.stringify(snapshot)).digest('hex');
+}
+
+function isValidStoredBaseline(value: unknown): value is StoredBaseline {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+  const obj = value as Record<string, unknown>;
+  return typeof obj.contentHash === 'string' && isValidSnapshot(obj.snapshot);
 }
 
 // Pure: no Octokit, no I/O. Builds the snapshot that gets written after a
@@ -67,10 +93,14 @@ function isValidSnapshot(value: unknown): value is BaselineSnapshot {
 
 // Fail-open by design (architecture.md section 2, extended to baseline
 // infrastructure by this task): a missing branch, a missing file, malformed
-// JSON, or any other API failure all collapse to `null` here, not a thrown
-// error. The caller's job is to fall back to today's stateless base/head
-// comparison when this returns null, never to block a PR because the
-// baseline isn't available.
+// JSON, a failed integrity check, or any other API failure all collapse to
+// `null` here, not a thrown error. The caller's job is to fall back to
+// today's stateless base/head comparison when this returns null, never to
+// block a PR because the baseline isn't available -- a tampered snapshot is
+// treated exactly like an unavailable one for that purpose (Task A.5: it is
+// specifically NOT trusted and used anyway just because a hash exists;
+// distinguishing "tampered" from "unavailable" is done only in the log
+// below, not in what the caller receives).
 export async function readBaseline(
   octokit: Octokit,
   request: BaselineRepoRequest
@@ -91,7 +121,27 @@ export async function readBaseline(
 
     const raw = Buffer.from(data.content, 'base64').toString('utf-8');
     const parsed: unknown = JSON.parse(raw);
-    return isValidSnapshot(parsed) ? parsed : null;
+    if (!isValidStoredBaseline(parsed)) {
+      return null;
+    }
+
+    // Task A.5: same distinct-logging pattern as Task 6.3's rate-limit
+    // handling -- a hash mismatch is a specific, named condition, not folded
+    // into a generic "couldn't read the baseline" silence. It means the
+    // stored content changed outside writeBaseline's own write path (e.g. a
+    // direct push to the branch, which A.4's protection check exists to
+    // catch happening at all), so it's a tampering signal, not ordinary
+    // unavailability.
+    if (computeSnapshotHash(parsed.snapshot) !== parsed.contentHash) {
+      logger.warn('Baseline snapshot integrity hash mismatch -- possible tampering outside the normal update flow', {
+        owner,
+        repo,
+        branch,
+      });
+      return null;
+    }
+
+    return parsed.snapshot;
   } catch {
     return null;
   }
@@ -154,13 +204,15 @@ export async function writeBaseline(octokit: Octokit, request: WriteBaselineRequ
     }
   }
 
+  const stored: StoredBaseline = { snapshot, contentHash: computeSnapshotHash(snapshot) };
+
   await octokit.rest.repos.createOrUpdateFileContents({
     owner,
     repo,
     path: BASELINE_FILE_PATH,
     branch,
     message: 'redflag-ci: update baseline snapshot',
-    content: Buffer.from(JSON.stringify(snapshot, null, 2)).toString('base64'),
+    content: Buffer.from(JSON.stringify(stored, null, 2)).toString('base64'),
     sha,
   });
 }
