@@ -1,5 +1,5 @@
 import { Finding } from './types';
-import { formatFindingsComment } from './formatFindingsComment';
+import { formatFindingsComment, formatCumulativeDriftSection } from './formatFindingsComment';
 
 describe('Task 5.2: formatFindingsComment', () => {
   const sampleFindings: Finding[] = [
@@ -74,5 +74,55 @@ describe('Task 5.2: formatFindingsComment', () => {
     expect(result).toContain('`.claude/settings.json`');
     expect(result).toContain("New hook 'PostToolUse' added");
     expect(result).toContain('CVE-2025-59536');
+  });
+
+  describe('Task A.6: formatCumulativeDriftSection', () => {
+    const cumulativeFinding: Finding = {
+      detectorId: 'diff-drift.widened-permissions',
+      severity: 'warning',
+      file: '.claude/settings.json',
+      summary: "Permission 'Bash(git diff)' added to allow-list",
+      detail: "The head branch adds 'Bash(git diff)' to the allow-list in .claude/settings.json.",
+    };
+
+    it('returns an empty string when there are no cumulative findings', () => {
+      expect(formatCumulativeDriftSection([])).toBe('');
+    });
+
+    it('uses singular "change" for exactly one cumulative finding', () => {
+      const result = formatCumulativeDriftSection([cumulativeFinding]);
+
+      expect(result).toContain('1 additional change found');
+      expect(result).not.toContain('1 additional changes');
+    });
+
+    it('uses plural "changes" for more than one', () => {
+      const result = formatCumulativeDriftSection([cumulativeFinding, { ...cumulativeFinding, summary: 'second' }]);
+
+      expect(result).toContain('2 additional changes found');
+    });
+
+    it('explicitly frames the section as baseline drift, not this PR\'s own diff', () => {
+      const result = formatCumulativeDriftSection([cumulativeFinding]);
+
+      expect(result).toContain('since the last known-good baseline');
+      expect(result).toContain("not part of this PR's own diff");
+    });
+
+    it('renders findings in the exact same bullet format as the main section', () => {
+      const mainResult = formatFindingsComment([cumulativeFinding]);
+      const cumulativeResult = formatCumulativeDriftSection([cumulativeFinding]);
+
+      const mainBullet = mainResult.split('\n').find((line) => line.startsWith('- '));
+      const cumulativeBullet = cumulativeResult.split('\n').find((line) => line.startsWith('- '));
+
+      expect(cumulativeBullet).toBe(mainBullet);
+    });
+
+    it('is a visually distinct section from formatFindingsComment\'s own header, not merged into it', () => {
+      const result = formatCumulativeDriftSection([cumulativeFinding]);
+
+      expect(result).not.toContain('RedFlag CI found');
+    });
   });
 });

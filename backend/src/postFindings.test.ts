@@ -278,3 +278,87 @@ describe('Task 6.1: comment/check-run idempotency on synchronize events', () => 
     expect(updateComment).not.toHaveBeenCalled();
   });
 });
+
+describe('Task A.6: cumulativeFindings render as a distinct comment section', () => {
+  const cumulativeFinding: Finding = {
+    detectorId: 'diff-drift.widened-permissions',
+    severity: 'warning',
+    file: '.claude/settings.json',
+    summary: "Permission 'Bash(git diff)' added to allow-list",
+    detail: "The head branch adds 'Bash(git diff)' to the allow-list in .claude/settings.json.",
+  };
+
+  it('includes both sections in the comment body when both findings and cumulativeFindings are present', async () => {
+    const createComment = jest.fn().mockResolvedValue({});
+    const octokit = mockOctokit({ createComment });
+
+    await postFindings(octokit, {
+      owner: 'octo-org',
+      repo: 'octo-repo',
+      pullNumber: 42,
+      headSha: 'abc123',
+      findings: sampleFindings,
+      cumulativeFindings: [cumulativeFinding],
+    });
+
+    const body = createComment.mock.calls[0][0].body as string;
+    expect(body).toContain("New hook 'PostToolUse' added");
+    expect(body).toContain("Permission 'Bash(git diff)' added to allow-list");
+    expect(body).toContain('additional change found since the last known-good baseline');
+  });
+
+  it('still posts a comment (and a neutral check) when findings is empty but cumulativeFindings is not', async () => {
+    const createComment = jest.fn().mockResolvedValue({});
+    const createCheck = jest.fn().mockResolvedValue({});
+    const octokit = mockOctokit({ createComment, createCheck });
+
+    await postFindings(octokit, {
+      owner: 'octo-org',
+      repo: 'octo-repo',
+      pullNumber: 42,
+      headSha: 'abc123',
+      findings: [],
+      cumulativeFindings: [cumulativeFinding],
+    });
+
+    expect(createComment).toHaveBeenCalledTimes(1);
+    const body = createComment.mock.calls[0][0].body as string;
+    expect(body).toContain("Permission 'Bash(git diff)' added to allow-list");
+    expect(body).not.toContain('RedFlag CI found'); // no main-section header when findings is empty
+    expect(createCheck).toHaveBeenCalledWith(expect.objectContaining({ conclusion: 'neutral' }));
+  });
+
+  it('creates a success check and posts no comment when both findings and cumulativeFindings are empty', async () => {
+    const createComment = jest.fn().mockResolvedValue({});
+    const createCheck = jest.fn().mockResolvedValue({});
+    const octokit = mockOctokit({ createComment, createCheck });
+
+    await postFindings(octokit, {
+      owner: 'octo-org',
+      repo: 'octo-repo',
+      pullNumber: 42,
+      headSha: 'abc123',
+      findings: [],
+      cumulativeFindings: [],
+    });
+
+    expect(createComment).not.toHaveBeenCalled();
+    expect(createCheck).toHaveBeenCalledWith(expect.objectContaining({ conclusion: 'success' }));
+  });
+
+  it('behaves exactly as before when cumulativeFindings is simply omitted (backward compatible)', async () => {
+    const createComment = jest.fn().mockResolvedValue({});
+    const octokit = mockOctokit({ createComment });
+
+    await postFindings(octokit, {
+      owner: 'octo-org',
+      repo: 'octo-repo',
+      pullNumber: 42,
+      headSha: 'abc123',
+      findings: sampleFindings,
+    });
+
+    const body = createComment.mock.calls[0][0].body as string;
+    expect(body).not.toContain('additional change');
+  });
+});

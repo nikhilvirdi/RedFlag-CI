@@ -167,6 +167,7 @@ export async function processPullRequestEvent(githubApp: GitHubApp, payload: unk
   const { matches } = filterMonitoredFiles(changedFiles);
 
   let findings: Finding[] = [];
+  let cumulativeFindings: Finding[] = [];
   if (matches.length > 0) {
     const octokit = await githubApp.getInstallationOctokit(installationId);
     // Task A.3: fail-open by construction -- readBaseline already collapses
@@ -177,7 +178,7 @@ export async function processPullRequestEvent(githubApp: GitHubApp, payload: unk
     // here.
     const baseline = await readBaseline(octokit, { owner, repo });
 
-    const findingsBySource = await Promise.all(
+    const resultsByFile = await Promise.all(
       matches.map(async (match) => {
         const { base, head } = await getFileVersions(githubApp, {
           installationId,
@@ -199,17 +200,23 @@ export async function processPullRequestEvent(githubApp: GitHubApp, payload: unk
         // nothing to compare against beyond what's already above.
         const baselineContent = baseline?.files[match.path];
         if (match.engine !== 'diff-drift' || baselineContent === undefined) {
-          return immediateFindings;
+          return { immediateFindings, cumulativeFindings: [] as Finding[] };
         }
 
+        // Task A.6: kept separate from immediateFindings, not merged in --
+        // these need their own distinct section in the PR comment (built by
+        // postFindings/formatCumulativeDriftSection below), not to blend
+        // invisibly into the main list as if they were part of this PR's
+        // own diff.
         const cumulativeFindings = detectCumulativeDrift(match.path, baselineContent, head, immediateFindings);
-        return [...immediateFindings, ...cumulativeFindings];
+        return { immediateFindings, cumulativeFindings };
       })
     );
 
-    findings = aggregateFindings(findingsBySource);
+    findings = aggregateFindings(resultsByFile.map((r) => r.immediateFindings));
+    cumulativeFindings = aggregateFindings(resultsByFile.map((r) => r.cumulativeFindings));
   }
 
   const octokit = await githubApp.getInstallationOctokit(installationId);
-  await postFindings(octokit, { owner, repo, pullNumber, headSha, findings });
+  await postFindings(octokit, { owner, repo, pullNumber, headSha, findings, cumulativeFindings });
 }

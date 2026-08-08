@@ -1,6 +1,6 @@
 import { Octokit } from '@octokit/rest';
 import { Finding } from './types';
-import { formatFindingsComment } from './formatFindingsComment';
+import { formatFindingsComment, formatCumulativeDriftSection } from './formatFindingsComment';
 
 export interface PostFindingsRequest {
   owner: string;
@@ -8,6 +8,11 @@ export interface PostFindingsRequest {
   pullNumber: number;
   headSha: string;
   findings: Finding[];
+  // Task A.6: findings from comparing against the stored baseline (Task
+  // A.3) that this PR's own base/head diff wouldn't show on its own.
+  // Optional and defaulted to empty so every existing caller/test that
+  // never had a baseline to compare against needs no changes.
+  cumulativeFindings?: Finding[];
 }
 
 const CHECK_RUN_NAME = 'RedFlag CI';
@@ -59,12 +64,19 @@ async function findExistingCheckRunId(
 // architecture.md section 6: a comment posts only when there's at least one
 // finding; the check run conclusion is "neutral" (findings present) or
 // "success" (none) and is never "failure" — RedFlag CI never blocks a PR.
+// Task A.6: cumulativeFindings counts toward that decision exactly like
+// findings does -- drift that's only visible against the baseline is still
+// a real finding, not a lesser one, so it still flips the check to neutral
+// and still posts a comment even if this PR's own diff alone found nothing.
 export async function postFindings(octokit: Octokit, request: PostFindingsRequest): Promise<void> {
-  const { owner, repo, pullNumber, headSha, findings } = request;
-  const hasFindings = findings.length > 0;
+  const { owner, repo, pullNumber, headSha, findings, cumulativeFindings = [] } = request;
+  const hasFindings = findings.length > 0 || cumulativeFindings.length > 0;
 
   if (hasFindings) {
-    const body = `${formatFindingsComment(findings)}\n\n${COMMENT_MARKER}`;
+    const sections = [formatFindingsComment(findings), formatCumulativeDriftSection(cumulativeFindings)].filter(
+      Boolean
+    );
+    const body = `${sections.join('\n\n')}\n\n${COMMENT_MARKER}`;
     const existingCommentId = await findExistingCommentId(octokit, owner, repo, pullNumber);
 
     if (existingCommentId !== null) {
