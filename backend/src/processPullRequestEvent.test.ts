@@ -1,6 +1,13 @@
 import { GitHubApp } from './githubApp';
 import { processPullRequestEvent } from './processPullRequestEvent';
 import { updateBaselineOnMerge } from './baselineUpdate';
+import { computeSnapshotHash, BaselineSnapshot } from './baseline';
+
+// Task A.5: the on-disk baseline.json shape is { snapshot, contentHash },
+// not a bare snapshot -- readBaseline rejects anything else as tampered.
+function storedBaselineJson(snapshot: BaselineSnapshot): string {
+  return JSON.stringify({ snapshot, contentHash: computeSnapshotHash(snapshot) });
+}
 
 jest.mock('./baselineUpdate');
 const mockUpdateBaselineOnMerge = updateBaselineOnMerge as jest.MockedFunction<typeof updateBaselineOnMerge>;
@@ -415,7 +422,7 @@ describe('Task A.3: cumulative-widening tracking against the stored baseline', (
     // allow-list. This PR's own immediate base (pr1, already merged) already
     // has the first entry; this PR (pr2) adds only the second. A
     // single-PR-scoped comparison would only ever see the second addition.
-    const baselineSnapshot = JSON.stringify({
+    const baselineSnapshot = storedBaselineJson({
       version: 1,
       updatedAt: '2026-08-01T00:00:00.000Z',
       files: { '.claude/settings.json': JSON.stringify({ permissions: { allow: [], deny: [] } }) },
@@ -448,7 +455,7 @@ describe('Task A.3: cumulative-widening tracking against the stored baseline', (
     // same thing the immediate comparison already does.
     const sharedBase = JSON.stringify({ permissions: { allow: ['Read(*)'], deny: [] } });
     const head = JSON.stringify({ permissions: { allow: ['Read(*)', 'Bash(*)'], deny: [] } });
-    const baselineSnapshot = JSON.stringify({
+    const baselineSnapshot = storedBaselineJson({
       version: 1,
       updatedAt: '2026-08-01T00:00:00.000Z',
       files: { '.claude/settings.json': sharedBase },

