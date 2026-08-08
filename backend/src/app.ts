@@ -3,6 +3,7 @@ import { getWebhookSecret } from './config';
 import { verifyWebhookSignature } from './webhookSignature';
 import { GitHubApp } from './githubApp';
 import { processPullRequestEvent } from './processPullRequestEvent';
+import { logger } from './logger';
 
 // GitHub retries a webhook delivery on timeout/failure using the same
 // X-GitHub-Delivery header, so a retry must not reprocess the event -- since
@@ -26,6 +27,22 @@ function markSeen(seenDeliveryIds: Map<string, true>, deliveryId: string): boole
     seenDeliveryIds.delete(oldest);
   }
   return false;
+}
+
+// Task 6.3: githubApp.ts's throttling plugin already retries a rate-limited
+// Octokit call with backoff; this only fires once retries are exhausted (or
+// for a 429, which the plugin doesn't retry at all -- see githubApp.ts). It
+// must be logged as its own condition, not folded into the generic catch
+// below: architecture.md section 2's fail-open policy is for content this
+// tool can't parse, not for never having reached GitHub's API to check in
+// the first place, and those two failure modes look identical to an
+// operator unless the logs say otherwise.
+function isRateLimitError(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null || !('status' in error)) {
+    return false;
+  }
+  const status = (error as { status: unknown }).status;
+  return status === 403 || status === 429;
 }
 
 export function createApp(githubApp: GitHubApp): Express {
@@ -52,7 +69,14 @@ export function createApp(githubApp: GitHubApp): Express {
       const event: unknown = JSON.parse(payload.toString('utf-8'));
       await processPullRequestEvent(githubApp, event);
     } catch (error) {
-      console.error('Error processing webhook event:', error);
+      const message = error instanceof Error ? error.message : String(error);
+      if (isRateLimitError(error)) {
+        logger.warn('GitHub API rate limit exhausted retries; no check posted for this event', {
+          message,
+        });
+      } else {
+        logger.error('Error processing webhook event', { message });
+      }
     }
 
     res.sendStatus(200);
