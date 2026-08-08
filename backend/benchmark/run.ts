@@ -9,6 +9,7 @@ import { detectUnpinnedMcpDependency } from '../src/detectors/unpinnedMcpDepende
 import { detectObfuscatedCommand } from '../src/detectors/obfuscatedCommand';
 import { detectInvisibleUnicode } from '../src/detectors/invisibleUnicode';
 import { detectHomoglyphs } from '../src/detectors/homoglyphs';
+import { detectRuleFileChecksInJsonKeys } from '../src/detectors/ruleFileJsonKeys';
 import { aggregateFindings } from '../src/aggregateFindings';
 import { Finding } from '../src/types';
 
@@ -29,6 +30,7 @@ function runDiffDriftDetectors(filePath: string, base: string | null, head: stri
     ...detectHookChanged(filePath, base, head),
     ...detectUnpinnedMcpDependency(filePath, head),
     ...detectObfuscatedCommand(filePath, head),
+    ...detectRuleFileChecksInJsonKeys(filePath, head),
   ];
 }
 
@@ -144,9 +146,10 @@ function buildResultsMarkdown(results: ScenarioResult[], generatedAt: string): s
     '18 synthetic PR scenarios, each a before/after file pair for one monitored file, stored under ' +
       '`benchmark/corpus/<scenario-id>/`. `benchmark/run.ts` runs the actual production detector ' +
       'functions and `aggregateFindings` against each pair -- the same dispatch logic ' +
-      '`processPullRequestEvent.ts` uses (diff-drift files get DD-1 through DD-4 plus the ' +
-      'unpinned-MCP-dependency and obfuscated-command checks; rule-file files get RF-1/RF-2 ' +
-      'against head content only) -- with no GitHub API, webhook, or posting involved. Each ' +
+      '`processPullRequestEvent.ts` uses (diff-drift files get DD-1 through DD-4, the ' +
+      'unpinned-MCP-dependency and obfuscated-command checks, plus RF-1/RF-2 against MCP server ' +
+      'names and permission entries; rule-file files get RF-1/RF-2 against head content only) -- ' +
+      'with no GitHub API, webhook, or posting involved. Each ' +
       "scenario carries a ground-truth label (`positive` = should produce at least one finding, " +
       '`negative` = should produce none). A scenario "fires" if the aggregated findings array is ' +
       'non-empty. No detector logic was modified to produce these numbers.'

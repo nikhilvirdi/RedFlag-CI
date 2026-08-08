@@ -9,6 +9,7 @@ import { detectUnpinnedMcpDependency } from './detectors/unpinnedMcpDependency';
 import { detectObfuscatedCommand } from './detectors/obfuscatedCommand';
 import { detectInvisibleUnicode } from './detectors/invisibleUnicode';
 import { detectHomoglyphs } from './detectors/homoglyphs';
+import { detectRuleFileChecksInJsonKeys } from './detectors/ruleFileJsonKeys';
 import { aggregateFindings } from './aggregateFindings';
 import { postFindings } from './postFindings';
 import { Finding } from './types';
@@ -82,6 +83,7 @@ function runDiffDriftDetectors(filePath: string, base: string | null, head: stri
     ...detectHookChanged(filePath, base, head),
     ...detectUnpinnedMcpDependency(filePath, head),
     ...detectObfuscatedCommand(filePath, head),
+    ...detectRuleFileChecksInJsonKeys(filePath, head),
   ];
 }
 
