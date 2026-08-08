@@ -1,6 +1,6 @@
 # RedFlag CI v1 Benchmark Results
 
-Generated: 2026-08-08T07:39:18.422Z
+Generated: 2026-08-08T08:03:21.803Z
 
 ## Methodology
 

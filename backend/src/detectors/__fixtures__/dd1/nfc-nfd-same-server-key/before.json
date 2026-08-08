@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "café": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem"
+      ]
+    }
+  }
+}

@@ -1,5 +1,6 @@
 import { Finding } from '../types';
 import { correlateRemovedAdded } from '../correlateRemovedAdded';
+import { normalizeUnicode, normalizeDeep } from '../unicodeNormalize';
 
 // Mirrors DD-2's PINNED_FIELDS (swappedMcpServer.ts) -- what runs (command),
 // how it runs (args, env), and any explicit version/hash pin -- duplicated
@@ -52,11 +53,16 @@ interface ServerCandidate {
 // Order-sensitive for the "args" array (JSON.stringify preserves order),
 // matching DD-2's own comparison semantics -- a rename shouldn't also
 // silently swallow a simultaneous positional-argument reorder underneath it.
+// Compared through normalizeDeep (Task 5.8) so two otherwise-identical
+// fields expressed in different Unicode normalization forms (e.g. an env
+// value or an arg string using NFD instead of NFC) still correlate as the
+// same rename, rather than spuriously failing to match on byte differences
+// invisible to a human reviewer.
 function isSameServerDefinition(removed: ServerCandidate, added: ServerCandidate): boolean {
   return IDENTITY_FIELDS.every(
     (field) =>
-      JSON.stringify(getField(removed.definition, field)) ===
-      JSON.stringify(getField(added.definition, field))
+      JSON.stringify(normalizeDeep(getField(removed.definition, field))) ===
+      JSON.stringify(normalizeDeep(getField(added.definition, field)))
   );
 }
 
@@ -83,14 +89,23 @@ export function detectNewMcpServer(
     baseEntries = parsedBase;
   }
 
-  const baseNames = new Set(Object.keys(baseEntries));
-  const headNames = new Set(Object.keys(headEntries));
+  const baseNames = Object.keys(baseEntries);
+  const headNames = Object.keys(headEntries);
 
-  const removedCandidates: ServerCandidate[] = [...baseNames]
-    .filter((name) => !headNames.has(name))
+  // Membership is checked on normalized names (Task 5.8) -- a server key
+  // expressed in two different Unicode normalization forms between base and
+  // head is the same key to a human reviewer, and must not read as a
+  // removal+addition pair. The candidate lists themselves still carry each
+  // side's original, un-normalized name (for display and for indexing back
+  // into baseEntries/headEntries, which are keyed by the raw JSON text).
+  const normalizedBaseNames = new Set(baseNames.map(normalizeUnicode));
+  const normalizedHeadNames = new Set(headNames.map(normalizeUnicode));
+
+  const removedCandidates: ServerCandidate[] = baseNames
+    .filter((name) => !normalizedHeadNames.has(normalizeUnicode(name)))
     .map((name) => ({ name, definition: baseEntries[name] }));
-  const addedCandidates: ServerCandidate[] = [...headNames]
-    .filter((name) => !baseNames.has(name))
+  const addedCandidates: ServerCandidate[] = headNames
+    .filter((name) => !normalizedBaseNames.has(normalizeUnicode(name)))
     .map((name) => ({ name, definition: headEntries[name] }));
 
   // A removed+added pair whose identity fields match exactly reads as a

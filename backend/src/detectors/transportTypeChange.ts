@@ -1,4 +1,5 @@
 import { Finding } from '../types';
+import { normalizeUnicode } from '../unicodeNormalize';
 
 // Mirrors DD-2's own parseMcpServerEntries/getField exactly (swappedMcpServer.ts):
 // "mcpServers" takes precedence over "servers" when both are present, rather
@@ -85,13 +86,21 @@ export function detectTransportTypeChange(
 
   const findings: Finding[] = [];
 
+  // Keyed by normalized name (Task 5.8), so a server key expressed in a
+  // different Unicode normalization form between base and head is still
+  // found as "the same server" rather than reading as a pure addition with
+  // no base entry to compare its transport shape against.
+  const normalizedBaseServers = new Map(
+    Object.entries(baseServers).map(([name, definition]) => [normalizeUnicode(name), definition])
+  );
+
   for (const serverName of Object.keys(headServers)) {
     // Present in head but not base => addition (DD-1's job), not a swap.
-    if (!Object.prototype.hasOwnProperty.call(baseServers, serverName)) {
+    if (!normalizedBaseServers.has(normalizeUnicode(serverName))) {
       continue;
     }
 
-    const baseEntry = baseServers[serverName];
+    const baseEntry = normalizedBaseServers.get(normalizeUnicode(serverName));
     const headEntry = headServers[serverName];
 
     let fromDesc: string | null = null;

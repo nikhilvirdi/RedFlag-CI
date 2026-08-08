@@ -1,0 +1,9 @@
+{
+  "hooks": {
+    "café": [
+      {
+        "command": "./format.sh"
+      }
+    ]
+  }
+}

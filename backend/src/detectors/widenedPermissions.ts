@@ -1,5 +1,6 @@
 import { Finding } from '../types';
 import { correlateRemovedAdded } from '../correlateRemovedAdded';
+import { normalizeUnicode } from '../unicodeNormalize';
 
 // A wildcard escalates an added allow entry from warning to high only when
 // we can be CONFIDENT it grants an unrestricted, open-ended class of actions:
@@ -70,7 +71,10 @@ function isNarrowing(removed: string, added: string): boolean {
   return (
     isUnrestrictedWildcard(removed) &&
     !isUnrestrictedWildcard(added) &&
-    toolName(removed) === toolName(added)
+    // Normalized (Task 5.8): a tool name expressed in a different Unicode
+    // normalization form on either side of the diff must still be
+    // recognized as the same tool for narrowing purposes.
+    normalizeUnicode(toolName(removed)) === normalizeUnicode(toolName(added))
   );
 }
 
@@ -135,8 +139,20 @@ export function detectWidenedPermissions(
   const headAllowSet = new Set(head.allow);
   const headDeny = new Set(head.deny);
 
-  const removedAllow = [...baseAllowSet].filter((entry) => !headAllowSet.has(entry));
-  const addedAllow = [...headAllowSet].filter((entry) => !baseAllowSet.has(entry));
+  // Membership checked on normalized entries (Task 5.8): an allow entry
+  // expressed in a different Unicode normalization form between base and
+  // head is the same entry to a reviewer, and must not read as a
+  // removal+addition pair. removedAllow/addedAllow still carry each side's
+  // original, un-normalized entry text for display and downstream checks.
+  const normalizedBaseAllow = new Set([...baseAllowSet].map(normalizeUnicode));
+  const normalizedHeadAllow = new Set([...headAllowSet].map(normalizeUnicode));
+
+  const removedAllow = [...baseAllowSet].filter(
+    (entry) => !normalizedHeadAllow.has(normalizeUnicode(entry))
+  );
+  const addedAllow = [...headAllowSet].filter(
+    (entry) => !normalizedBaseAllow.has(normalizeUnicode(entry))
+  );
 
   // Widening (1) & (3): allow entries genuinely new to head, after pulling
   // out any pair correlated as a narrowing (Task 3.3) -- e.g. "Bash(*)"
@@ -175,9 +191,12 @@ export function detectWidenedPermissions(
 
   // Widening (2): deny rules present in base but removed in head. Unchanged
   // by Task 3.3 -- no correlation involved, a different code path entirely.
-  // Adding a deny rule is a narrowing change and is ignored.
+  // Adding a deny rule is a narrowing change and is ignored. Membership
+  // checked on normalized entries (Task 5.8), same reasoning as the allow
+  // list above.
+  const normalizedHeadDeny = new Set([...headDeny].map(normalizeUnicode));
   for (const entry of new Set(base.deny)) {
-    if (!headDeny.has(entry)) {
+    if (!normalizedHeadDeny.has(normalizeUnicode(entry))) {
       findings.push({
         detectorId: 'diff-drift.widened-permissions',
         severity: 'warning',

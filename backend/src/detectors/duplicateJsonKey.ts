@@ -1,4 +1,5 @@
 import { Finding } from '../types';
+import { normalizeUnicode } from '../unicodeNormalize';
 
 // A raw-text scan, not a JSON.parse-based one: JSON.parse silently collapses
 // duplicate keys onto the last occurrence before this code would ever see
@@ -99,13 +100,20 @@ export function detectDuplicateJsonKey(filePath: string, headContent: string | n
   }
 
   const keys = findTopLevelKeys(headContent);
+  // Tracked by normalized key (Task 5.8): two top-level keys that render
+  // identically to a reviewer but differ only in Unicode normalization form
+  // (e.g. one NFC, one NFD) are just as real a duplicate-key smuggling risk
+  // as a byte-identical repeat -- a reviewer skimming the file sees the same
+  // text twice either way. The raw `key` (as it appears at the second
+  // occurrence) is still what gets displayed in the finding.
   const seen = new Set<string>();
   const alreadyFlagged = new Set<string>();
   const findings: Finding[] = [];
 
   for (const key of keys) {
-    if (seen.has(key) && !alreadyFlagged.has(key)) {
-      alreadyFlagged.add(key);
+    const normalized = normalizeUnicode(key);
+    if (seen.has(normalized) && !alreadyFlagged.has(normalized)) {
+      alreadyFlagged.add(normalized);
       findings.push({
         detectorId: 'diff-drift.duplicate-json-key',
         severity: 'warning',
@@ -114,7 +122,7 @@ export function detectDuplicateJsonKey(filePath: string, headContent: string | n
         detail: `The top-level key '${key}' appears more than once in ${filePath}. Some JSON parsers silently resolve a duplicate key to its last occurrence while others take the first, so a second occurrence can smuggle a payload past a reviewer who only reads the first, legitimate-looking one.`,
       });
     }
-    seen.add(key);
+    seen.add(normalized);
   }
 
   return findings;

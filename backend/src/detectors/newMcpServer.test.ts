@@ -248,4 +248,22 @@ describe('DD-1: detectNewMcpServer', () => {
     expect(findings).toHaveLength(1);
     expect(findings[0].summary).toBe("New MCP server 'brand-new' added");
   });
+
+  it('Task 5.8: does NOT report a new server when the same key is expressed in a different Unicode normalization form (fixture)', () => {
+    // before.json's key is NFD ("cafe" + combining acute accent); after.json's
+    // is the same server under the NFC (precomposed) form of the same name.
+    // Byte-different, same logical key -- must not read as remove+add.
+    const beforeContent = fs.readFileSync(
+      path.join(fixturesDir, 'nfc-nfd-same-server-key', 'before.json'),
+      'utf-8'
+    );
+    const afterContent = fs.readFileSync(
+      path.join(fixturesDir, 'nfc-nfd-same-server-key', 'after.json'),
+      'utf-8'
+    );
+
+    const findings = detectNewMcpServer('.mcp.json', beforeContent, afterContent);
+
+    expect(findings).toHaveLength(0);
+  });
 });
