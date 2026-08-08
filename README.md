@@ -56,18 +56,21 @@ If a PR doesn't touch any of these files, RedFlag CI does nothing: no comment, n
 
 No dashboard. No auto-fix. No LLM-based or ML-based semantic analysis, anywhere in the roadmap. These weren't left out for lack of time -- they were considered and deliberately rejected, because each one would trade away the thing that makes this tool different: deterministic, zero-noise, zero-config detection. `architecture.md` section 8 has the full reasoning.
 
-Two things are still planned, in the project's final version, v2: memory of drift across multiple pull requests (still no database -- a small git-native snapshot, not a hosted service), and SARIF/JSON export so teams that want a dashboard can get one for free via GitHub's own Security tab, without this project building one. After v2 ships, this roadmap is closed.
+Two things that used to be listed here as "still planned" have since shipped, in v2.0.0, the project's final version: memory of drift across multiple pull requests (still no database -- a small git-native snapshot, not a hosted service), and SARIF/JSON export so teams that want a dashboard can get one for free via GitHub's own Security tab, without this project building one. With v2.0.0 shipped, this roadmap is closed -- there's nothing left planned beyond what's already built. See `CHANGELOG.md` for exactly what shipped, and `docs/EXPORTS.md` for how to use the export functions.
 
 ## Status
 
-v1.1.0 is complete and running. All six detectors work end to end, from a GitHub webhook to a posted PR comment and check run, verified against a real pull request on a live repository. It's also been stress-tested against a 120-scenario adversarial benchmark, built specifically to find the tool's real limits -- see `docs/STRESS_TESTING.md` for what that testing found and `docs/adr/0001-deterministic-only-v1.md` for what the numbers below actually mean.
+v2.0.0 is complete -- the project's final planned release. The core pipeline (all fourteen detectors: the original six, plus eight added in v1.2.0) works end to end, from a GitHub webhook to a posted PR comment and check run, verified against a real pull request on a live repository. It's also been stress-tested against a 138-scenario adversarial benchmark, built specifically to find the tool's real limits -- see `docs/STRESS_TESTING.md` for what that testing found and `docs/adr/0001-deterministic-only-v1.md` for what the numbers below actually mean. v2.0.0's own additions -- cross-PR drift memory and the export functions -- are validated by the automated test suite (unit tests against a mocked Octokit, plus integration tests exercising the full webhook-to-comment pipeline) rather than that same live-repository run; `docs/STRESS_TESTING.md`'s new section explains why cross-PR behavior specifically is tested that way instead of via the benchmark corpus.
 
 | Version | Precision | Recall | Benchmark corpus |
 |---|---|---|---|
 | v1.0.0 | 0.727 | 0.889 | 18 scenarios |
 | v1.1.0 | 0.926 | 0.949 | 120 scenarios |
+| v1.2.0 | 1.000 | 1.000 | 138 scenarios |
 
-The benchmark corpus grows with every release: v1.2.0 (detector hardening and new detectors) and v2 (cross-PR drift memory, SARIF/JSON export -- the final planned version) will each expand it further. Exact scenario counts for those versions are recorded here once each one ships, not projected in advance.
+v2.0.0 shipped against this same 138-scenario corpus, unchanged: Phase A's cross-PR drift memory is a stateful, sequential, webhook-timing-dependent feature that doesn't fit the corpus's single-PR-scoped format, so it's covered instead by integration tests exercising the real pipeline (`docs/STRESS_TESTING.md` explains why in full). Precision and recall stayed at 1.000/1.000.
+
+This table is now complete: v2.0.0 is the project's last planned version, so there's no future release left to grow the corpus for.
 
 Full breakdown: `backend/benchmark/RESULTS.md`.
 
@@ -119,13 +122,14 @@ The service listens on port 3000 by default. Once it's running and reachable at 
 
 | File | What's in it |
 |---|---|
-| [`architecture.md`](architecture.md) | Full system design: every detector, every decision, the roadmap through v2, the project's final planned version |
+| [`architecture.md`](architecture.md) | Full system design: every detector, every decision, the complete roadmap through v2.0.0, the project's final release |
 | [`docs/PROBLEM_SPACE.md`](docs/PROBLEM_SPACE.md) | The research behind why this exists |
 | [`docs/COMPETITIVE_LANDSCAPE.md`](docs/COMPETITIVE_LANDSCAPE.md) | What else is out there, and where the gaps are |
 | [`docs/adr/0001-deterministic-only-v1.md`](docs/adr/0001-deterministic-only-v1.md) | Why v1 is deterministic-only, and what that costs in practice |
 | [`docs/STRESS_TESTING.md`](docs/STRESS_TESTING.md) | How the benchmark grew from 18 to 120 scenarios, and what it found |
 | [`backend/benchmark/RESULTS.md`](backend/benchmark/RESULTS.md) | The full benchmark corpus and results |
 | [`backend/benchmark/COMPARISON.md`](backend/benchmark/COMPARISON.md) | A live comparison against Snyk Agent Scan (formerly mcp-scan) |
+| [`docs/EXPORTS.md`](docs/EXPORTS.md) | v2.0.0's SARIF/JSON export and exit-code-threshold functions, and a worked GitHub Actions example |
 | [`CHANGELOG.md`](CHANGELOG.md) | What shipped in each version |
 | [`SECURITY.md`](SECURITY.md) | How to report a vulnerability, and the tool's own security scope |
 
