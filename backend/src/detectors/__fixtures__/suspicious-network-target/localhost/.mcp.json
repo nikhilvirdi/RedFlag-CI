@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "local-dev": {
+      "command": "node",
+      "args": ["http://localhost:8080", "127.0.0.1"],
+      "env": {
+        "BIND_ADDR": "0.0.0.0"
+      }
+    }
+  }
+}
