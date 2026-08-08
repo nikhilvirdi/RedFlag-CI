@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "file-reader": {
+      "command": "node",
+      "args": ["server.js", "../../etc/passwd"]
+    }
+  }
+}
