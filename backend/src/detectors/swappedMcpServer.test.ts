@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { detectSwappedMcpServer } from './swappedMcpServer';
+import { detectSwappedMcpServer, splitArgs } from './swappedMcpServer';
 
 describe('DD-2: detectSwappedMcpServer', () => {
   const fixturesDir = path.join(__dirname, '__fixtures__', 'dd2');
@@ -325,5 +325,63 @@ describe('DD-2: detectSwappedMcpServer', () => {
     expect(findings).toHaveLength(1);
     expect(findings[0].detectorId).toBe('diff-drift.swapped-mcp-server');
     expect(findings[0].summary).toContain('definition changed (command)');
+  });
+
+  describe('Task 6.5: splitArgs token construction has no embedded control characters', () => {
+    // Guards against a regression of a real bug found in this file: the
+    // space in `${token} ${hasValue}` had been a stray NUL byte on disk
+    // since Task 3.4, undetected until now. Two independent reasons no test
+    // ever caught it: both sides of every DD-2 comparison built the
+    // identical string either way (so no finding ever changed), AND
+    // TypeScript's compiler silently sanitized the NUL into a space during
+    // compilation, so even the *runtime* string was never actually wrong.
+    // The runtime-string assertions below are still worth keeping (general
+    // correctness coverage), but the source-byte test after them is the
+    // only one of the two that would actually have caught this bug --
+    // confirmed by reverting the fix and re-running both kinds during this
+    // task: the runtime-string tests kept passing, only the byte-level one
+    // failed.
+    // Char-code check rather than a /[\x00-\x1F\x7F]/ regex literal, which
+    // ESLint's no-control-regex rule (correctly) flags as suspicious.
+    function hasControlChar(s: string): boolean {
+      return [...s].some((ch) => {
+        const code = ch.charCodeAt(0);
+        return code < 32 || code === 127;
+      });
+    }
+
+    it('joins a bare flag and its value-presence marker with a plain space, no control characters', () => {
+      const { flagged } = splitArgs(['--config', '/etc/app.conf']);
+
+      expect(flagged).toEqual(['--config true']);
+      expect(hasControlChar(flagged[0])).toBe(false);
+    });
+
+    it('does the same for a bare flag with no following value', () => {
+      const { flagged } = splitArgs(['--verbose']);
+
+      expect(flagged).toEqual(['--verbose false']);
+      expect(hasControlChar(flagged[0])).toBe(false);
+    });
+
+    it('never embeds a control character in any flagged token, across every splitArgs code path', () => {
+      const { flagged } = splitArgs(['--timeout=30', '--config', '/etc/app.conf', '--verbose', 'pkg']);
+
+      expect(flagged.length).toBeGreaterThan(0);
+      for (const token of flagged) {
+        expect(hasControlChar(token)).toBe(false);
+      }
+    });
+
+    it('has no embedded NUL byte anywhere in the .ts source file itself', () => {
+      // The actual guard: TypeScript quietly repairs a NUL inside a
+      // template literal at compile time, so a runtime-string check alone
+      // (above) can never detect this class of regression. Only reading
+      // the source file's raw bytes can.
+      const sourcePath = path.join(__dirname, 'swappedMcpServer.ts');
+      const raw = fs.readFileSync(sourcePath);
+
+      expect(raw.includes(0)).toBe(false);
+    });
   });
 });
