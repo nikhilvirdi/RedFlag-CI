@@ -1,6 +1,6 @@
 # RedFlag CI v1 Benchmark Results
 
-Generated: 2026-08-08T08:51:38.794Z
+Generated: 2026-08-08T08:57:43.154Z
 
 ## Methodology
 
@@ -14,12 +14,12 @@ Classification:
 
 ## Headline numbers
 
-- True positives: 88
+- True positives: 93
 - False positives: 0
-- True negatives: 41
+- True negatives: 44
 - False negatives: 0
-- **Precision** = TP / (TP + FP) = 88 / 88 = 1.000
-- **Recall** = TP / (TP + FN) = 88 / 88 = 1.000
+- **Precision** = TP / (TP + FP) = 93 / 93 = 1.000
+- **Recall** = TP / (TP + FN) = 93 / 93 = 1.000
 
 These numbers describe this 18-scenario corpus, not a statistically representative sample of real-world PRs. The corpus intentionally includes near-miss and known-gap cases designed to surface the detectors' actual limits (see below) rather than a set chosen to look clean.
 
@@ -29,17 +29,17 @@ These numbers describe this 18-scenario corpus, not a statistically representati
 |---|---|---|---|---|
 | `diff-drift.duplicate-json-key` | 1 | 1 | 0 | 0 |
 | `diff-drift.hook-changed` | 12 | 12 | 5 | 0 |
-| `diff-drift.new-mcp-server` | 14 | 14 | 17 | 0 |
+| `diff-drift.new-mcp-server` | 15 | 15 | 17 | 0 |
 | `diff-drift.new-mcp-server + diff-drift.swapped-mcp-server` | 3 | 3 | 0 | 0 |
 | `diff-drift.obfuscated-command` | 1 | 1 | 0 | 0 |
 | `diff-drift.path-traversal` | 1 | 1 | 0 | 0 |
 | `diff-drift.suspicious-network-target` | 1 | 1 | 0 | 0 |
-| `diff-drift.swapped-mcp-server` | 11 | 11 | 2 | 0 |
+| `diff-drift.swapped-mcp-server` | 12 | 12 | 3 | 0 |
 | `diff-drift.unpinned-mcp-dependency` | 1 | 1 | 0 | 0 |
-| `diff-drift.widened-permissions` | 14 | 14 | 4 | 0 |
+| `diff-drift.widened-permissions` | 14 | 14 | 5 | 0 |
 | `diff-drift.widened-permissions + diff-drift.hook-changed` | 2 | 2 | 1 | 0 |
-| `rule-file.homoglyph` | 13 | 13 | 2 | 0 |
-| `rule-file.invisible-unicode` | 12 | 12 | 7 | 0 |
+| `rule-file.homoglyph` | 14 | 14 | 3 | 0 |
+| `rule-file.invisible-unicode` | 14 | 14 | 7 | 0 |
 | `rule-file.invisible-unicode + rule-file.homoglyph` | 2 | 2 | 3 | 0 |
 
 ## Full scenario results
@@ -175,6 +175,14 @@ These numbers describe this 18-scenario corpus, not a statistically representati
 | `adversarial-ssrf-network-target` | `.mcp.json` | positive | true | **TP** | diff-drift.new-mcp-server [warning]: New MCP server 'metrics' added; diff-drift.suspicious-network-target [warning]: MCP server 'metrics' uses insecure HTTP target 'http://169.254.169.254/latest/meta-data/' |
 | `adversarial-path-traversal-cli-arg` | `.mcp.json` | positive | true | **TP** | diff-drift.swapped-mcp-server [high]: MCP server 'reader' definition changed (args); diff-drift.path-traversal [warning]: MCP server 'reader' uses path traversal sequence in '../../../../etc/passwd' |
 | `adversarial-duplicate-json-key` | `.mcp.json` | positive | true | **TP** | diff-drift.swapped-mcp-server [high]: MCP server 'legit' definition changed (args) |
+| `regression-rf2-armenian-homoglyph` | `.cursor/rules/deploy.md` | positive | true | **TP** | rule-file.homoglyph [high]: Armenian look-alike character (U+0585) found |
+| `regression-rf1-combining-mark-start` | `CLAUDE.md` | positive | true | **TP** | rule-file.invisible-unicode [high]: Invisible Unicode character (U+0300) found |
+| `regression-rf1-unicode-tag-cursor-rules` | `.cursor/rules/security.md` | positive | true | **TP** | rule-file.invisible-unicode [high]: Invisible Unicode character (U+E0020) found |
+| `regression-dd1-dual-key-collision` | `.mcp.json` | negative | false | **TN** | (none) |
+| `regression-dd1-rename-args-whitespace` | `.mcp.json` | positive | true | **TP** | diff-drift.new-mcp-server [warning]: New MCP server 'new-name' added |
+| `regression-dd3-narrowing-correlation` | `.claude/settings.json` | negative | false | **TN** | (none) |
+| `regression-dd2-positional-arg-reorder-fires` | `.mcp.json` | positive | true | **TP** | diff-drift.swapped-mcp-server [high]: MCP server 'cli' definition changed (args) |
+| `regression-rf2-greek-majority-legit` | `CLAUDE.md` | negative | false | **TN** | (none) |
 
 ## False positives and false negatives, explained honestly
 
