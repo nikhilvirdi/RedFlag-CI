@@ -6,6 +6,7 @@ import { detectSwappedMcpServer } from '../src/detectors/swappedMcpServer';
 import { detectWidenedPermissions } from '../src/detectors/widenedPermissions';
 import { detectHookChanged } from '../src/detectors/hookChanged';
 import { detectUnpinnedMcpDependency } from '../src/detectors/unpinnedMcpDependency';
+import { detectObfuscatedCommand } from '../src/detectors/obfuscatedCommand';
 import { detectInvisibleUnicode } from '../src/detectors/invisibleUnicode';
 import { detectHomoglyphs } from '../src/detectors/homoglyphs';
 import { aggregateFindings } from '../src/aggregateFindings';
@@ -27,6 +28,7 @@ function runDiffDriftDetectors(filePath: string, base: string | null, head: stri
     ...detectWidenedPermissions(filePath, base, head),
     ...detectHookChanged(filePath, base, head),
     ...detectUnpinnedMcpDependency(filePath, head),
+    ...detectObfuscatedCommand(filePath, head),
   ];
 }
 
@@ -143,8 +145,8 @@ function buildResultsMarkdown(results: ScenarioResult[], generatedAt: string): s
       '`benchmark/corpus/<scenario-id>/`. `benchmark/run.ts` runs the actual production detector ' +
       'functions and `aggregateFindings` against each pair -- the same dispatch logic ' +
       '`processPullRequestEvent.ts` uses (diff-drift files get DD-1 through DD-4 plus the ' +
-      'unpinned-MCP-dependency check; rule-file files get RF-1/RF-2 against head content only) -- ' +
-      'with no GitHub API, webhook, or posting involved. Each ' +
+      'unpinned-MCP-dependency and obfuscated-command checks; rule-file files get RF-1/RF-2 ' +
+      'against head content only) -- with no GitHub API, webhook, or posting involved. Each ' +
       "scenario carries a ground-truth label (`positive` = should produce at least one finding, " +
       '`negative` = should produce none). A scenario "fires" if the aggregated findings array is ' +
       'non-empty. No detector logic was modified to produce these numbers.'
