@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "local-server": {
+      "command": "node",
+      "args": ["./config/app.json", "version..latest"],
+      "env": {
+        "CONFIG_DIR": "./config"
+      }
+    }
+  }
+}

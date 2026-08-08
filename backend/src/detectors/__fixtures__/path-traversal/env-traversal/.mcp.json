@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "file-reader": {
+      "command": "node",
+      "args": ["server.js"],
+      "env": {
+        "SECRET_PATH": "../secrets/key.pem"
+      }
+    }
+  }
+}
