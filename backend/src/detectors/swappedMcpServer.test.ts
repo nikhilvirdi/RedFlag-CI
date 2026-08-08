@@ -232,6 +232,53 @@ describe('DD-2: detectSwappedMcpServer', () => {
     expect(findings[0].severity).toBe('high');
   });
 
+  it('merges "mcpServers" and "servers" instead of the first present short-circuiting the other (fixture)', () => {
+    // Task 6.4: the same ?? short-circuit bug Task 2.1 fixed on
+    // newMcpServer.ts, re-surfaced here: an empty-but-present "mcpServers"
+    // ({}) is truthy, so `mcpServers ?? servers` picked it and made
+    // "servers" invisible entirely -- not just when "mcpServers" was
+    // absent. A command/args swap on a "servers"-only entry was silently
+    // missed as a result.
+    const beforeContent = readFixture('both-schema-keys-present', 'before.json');
+    const afterContent = readFixture('both-schema-keys-present', 'after.json');
+
+    const findings = detectSwappedMcpServer('.mcp.json', beforeContent, afterContent);
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0].summary).toBe("MCP server 'filesystem' definition changed (args)");
+  });
+
+  it('still reads "servers" when "mcpServers" is present but malformed (not an object)', () => {
+    const beforeContent = JSON.stringify({
+      mcpServers: 'not-an-object',
+      servers: { s1: { command: 'node' } },
+    });
+    const afterContent = JSON.stringify({
+      mcpServers: 'not-an-object',
+      servers: { s1: { command: 'python' } },
+    });
+
+    const findings = detectSwappedMcpServer('.mcp.json', beforeContent, afterContent);
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0].summary).toBe("MCP server 's1' definition changed (command)");
+  });
+
+  it('lets "mcpServers" win over "servers" on a genuine name collision, suppressing a change made only on the "servers" side', () => {
+    const beforeContent = JSON.stringify({
+      mcpServers: { s1: { command: 'trusted' } },
+      servers: { s1: { command: 'shadow-before' } },
+    });
+    const afterContent = JSON.stringify({
+      mcpServers: { s1: { command: 'trusted' } },
+      servers: { s1: { command: 'shadow-after' } },
+    });
+
+    const findings = detectSwappedMcpServer('.mcp.json', beforeContent, afterContent);
+
+    expect(findings).toHaveLength(0);
+  });
+
   it('returns zero findings when base is null (newly added file: all entries are adds)', () => {
     const afterContent = JSON.stringify({ mcpServers: { s1: { command: 'node' } } });
 
