@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "insecure-api": {
+      "command": "node",
+      "args": ["server.js"],
+      "env": {
+        "API_ENDPOINT": "http://api.example.com/v1"
+      }
+    }
+  }
+}

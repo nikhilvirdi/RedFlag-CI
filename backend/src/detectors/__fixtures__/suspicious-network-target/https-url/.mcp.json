@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "secure-api": {
+      "command": "node",
+      "args": ["server.js"],
+      "env": {
+        "API_ENDPOINT": "https://api.example.com/v1"
+      }
+    }
+  }
+}
