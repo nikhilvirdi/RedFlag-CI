@@ -10,6 +10,7 @@ import { detectObfuscatedCommand } from './detectors/obfuscatedCommand';
 import { detectDuplicateJsonKey } from './detectors/duplicateJsonKey';
 import { detectSuspiciousNetworkTarget } from './detectors/suspiciousNetworkTarget';
 import { detectPathTraversal } from './detectors/pathTraversal';
+import { detectTransportTypeChange } from './detectors/transportTypeChange';
 import { detectInvisibleUnicode } from './detectors/invisibleUnicode';
 import { detectHomoglyphs } from './detectors/homoglyphs';
 import { detectRuleFileChecksInJsonKeys } from './detectors/ruleFileJsonKeys';
@@ -89,6 +90,7 @@ function runDiffDriftDetectors(filePath: string, base: string | null, head: stri
     ...detectDuplicateJsonKey(filePath, head),
     ...detectSuspiciousNetworkTarget(filePath, head),
     ...detectPathTraversal(filePath, head),
+    ...detectTransportTypeChange(filePath, base, head),
     ...detectRuleFileChecksInJsonKeys(filePath, head),
   ];
 }

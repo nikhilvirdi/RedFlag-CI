@@ -1,0 +1,5 @@
+{
+  "mcpServers": {
+    "analytics": { "url": "https://mcp.example.com/analytics", "transport": "http" }
+  }
+}
