@@ -4,11 +4,17 @@ import request from 'supertest';
 import { createApp } from './app';
 import { GitHubApp } from './githubApp';
 import { processPullRequestEvent } from './processPullRequestEvent';
+import { logger } from './logger';
 
 jest.mock('./processPullRequestEvent');
 const mockProcessPullRequestEvent = processPullRequestEvent as jest.MockedFunction<
   typeof processPullRequestEvent
 >;
+
+jest.mock('./logger', () => ({
+  logger: { warn: jest.fn(), error: jest.fn(), info: jest.fn() },
+}));
+const mockLogger = logger as unknown as { warn: jest.Mock; error: jest.Mock };
 
 const WEBHOOK_SECRET = 'test-secret';
 const payload = JSON.stringify({ action: 'opened' });
@@ -34,7 +40,13 @@ beforeAll(() => {
 
 beforeEach(() => {
   mockProcessPullRequestEvent.mockReset().mockResolvedValue(undefined);
+  mockLogger.warn.mockReset();
+  mockLogger.error.mockReset();
 });
+
+function rateLimitError(status: 403 | 429): Error & { status: number } {
+  return Object.assign(new Error('You have exceeded a secondary rate limit'), { status });
+}
 
 describe('POST /webhook', () => {
   let app: Express;
@@ -127,5 +139,65 @@ describe('Task 6.2: webhook delivery deduplication', () => {
 
     expect(response.status).toBe(401);
     expect(mockProcessPullRequestEvent).not.toHaveBeenCalled();
+  });
+});
+
+describe('Task 6.3: rate-limit failures are logged as a distinct condition', () => {
+  let app: Express;
+
+  beforeEach(() => {
+    const githubApp = { getInstallationOctokit: jest.fn() } as unknown as GitHubApp;
+    app = createApp(githubApp);
+  });
+
+  it('logs a distinct warning, not the generic error path, when a 403 rate-limit error survives to the webhook handler', async () => {
+    mockProcessPullRequestEvent.mockRejectedValueOnce(rateLimitError(403));
+
+    const response = await send(app, 'delivery-403');
+
+    expect(response.status).toBe(200);
+    expect(mockLogger.warn).toHaveBeenCalledTimes(1);
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      expect.stringContaining('rate limit'),
+      expect.objectContaining({ message: expect.stringContaining('secondary rate limit') })
+    );
+    expect(mockLogger.error).not.toHaveBeenCalled();
+  });
+
+  it('logs a distinct warning for a 429 too', async () => {
+    mockProcessPullRequestEvent.mockRejectedValueOnce(rateLimitError(429));
+
+    const response = await send(app, 'delivery-429');
+
+    expect(response.status).toBe(200);
+    expect(mockLogger.warn).toHaveBeenCalledTimes(1);
+    expect(mockLogger.error).not.toHaveBeenCalled();
+  });
+
+  it('still logs an ordinary error (not a rate-limit warning) for a non-rate-limit failure, e.g. malformed webhook JSON', async () => {
+    const response = await request(app)
+      .post('/webhook')
+      .set('Content-Type', 'application/json')
+      .set('X-Hub-Signature-256', sign('not valid json', WEBHOOK_SECRET))
+      .send('not valid json');
+
+    expect(response.status).toBe(200);
+    expect(mockLogger.error).toHaveBeenCalledTimes(1);
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      'Error processing webhook event',
+      expect.objectContaining({ message: expect.any(String) })
+    );
+    expect(mockLogger.warn).not.toHaveBeenCalled();
+    expect(mockProcessPullRequestEvent).not.toHaveBeenCalled();
+  });
+
+  it('still logs an ordinary error for a generic (non-403/429) failure from the pipeline', async () => {
+    mockProcessPullRequestEvent.mockRejectedValueOnce(new Error('boom'));
+
+    const response = await send(app, 'delivery-generic-error');
+
+    expect(response.status).toBe(200);
+    expect(mockLogger.error).toHaveBeenCalledTimes(1);
+    expect(mockLogger.warn).not.toHaveBeenCalled();
   });
 });

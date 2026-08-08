@@ -1,12 +1,60 @@
 import { App } from '@octokit/app';
 import { Octokit } from '@octokit/rest';
+import { throttling } from '@octokit/plugin-throttling';
 import { getGitHubAppConfig } from './config';
+import { logger } from './logger';
 
-export type GitHubApp = App<{ Octokit: typeof Octokit }>;
+// Audit (Task 6.3): neither @octokit/app nor @octokit/rest retries or backs
+// off a rate-limited request on their own -- a 403 (primary limit) or
+// secondary/abuse-limit response just throws straight out of whichever REST
+// call made it. @octokit/plugin-throttling was not installed; this wires it
+// in. Its handlers are also where a rate limit becomes a distinctly logged
+// event rather than an anonymous thrown error (see app.ts's webhook handler
+// for what happens if retries are exhausted and it propagates anyway).
+const ThrottledOctokit = Octokit.plugin(throttling);
+
+// Retries are capped, not unbounded: this is a webhook handler, not a batch
+// job, so it should give up and let architecture.md section 2's fail-open
+// policy take over (log distinctly, keep the check quiet, never block the
+// PR) rather than hold the request open indefinitely against a sustained
+// rate limit.
+const MAX_RATE_LIMIT_RETRIES = 1;
+
+function onLimit(kind: 'primary' | 'secondary') {
+  return (
+    retryAfter: number,
+    options: { method: string; url: string },
+    _octokit: unknown,
+    retryCount: number
+  ): boolean => {
+    logger.warn(`GitHub API ${kind} rate limit hit, retrying`, {
+      route: `${options.method} ${options.url}`,
+      retryAfterSeconds: retryAfter,
+      retryCount,
+    });
+    return retryCount < MAX_RATE_LIMIT_RETRIES;
+  };
+}
+
+// @octokit/app's own constructor only ever passes {authStrategy, auth, log}
+// to `new Octokit(...)` -- it has no option to forward a `throttle` config
+// through `new App({...})`. Baking the handlers in via .defaults() is the
+// only way they reach every Octokit instance @octokit/app creates
+// (app.octokit itself, and every per-installation client from
+// getInstallationOctokit): plugin-throttling throws at construction time if
+// onRateLimit/onSecondaryRateLimit aren't present, so this isn't optional.
+const GitHubOctokit = ThrottledOctokit.defaults({
+  throttle: {
+    onRateLimit: onLimit('primary'),
+    onSecondaryRateLimit: onLimit('secondary'),
+  },
+});
+
+export type GitHubApp = App<{ Octokit: typeof GitHubOctokit }>;
 
 export function createGitHubApp(): GitHubApp {
   const { appId, privateKey } = getGitHubAppConfig();
-  return new App({ appId, privateKey, Octokit });
+  return new App({ appId, privateKey, Octokit: GitHubOctokit });
 }
 
 export interface ChangedFilesRequest {
