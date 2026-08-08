@@ -1,5 +1,9 @@
 import { GitHubApp } from './githubApp';
 import { processPullRequestEvent } from './processPullRequestEvent';
+import { updateBaselineOnMerge } from './baselineUpdate';
+
+jest.mock('./baselineUpdate');
+const mockUpdateBaselineOnMerge = updateBaselineOnMerge as jest.MockedFunction<typeof updateBaselineOnMerge>;
 
 const OWNER = 'octo-org';
 const REPO = 'octo-repo';
@@ -141,6 +145,10 @@ function statefulMockOctokit(
 
   return { octokit, comments, createComment, updateComment, createCheck, updateCheck };
 }
+
+beforeEach(() => {
+  mockUpdateBaselineOnMerge.mockReset().mockResolvedValue(undefined);
+});
 
 describe('Task 6.1: processPullRequestEvent (webhook-to-comment wiring)', () => {
   it('short-circuits cleanly when the PR touches no monitored files: success check, no comment, no file fetches', async () => {
@@ -308,5 +316,95 @@ describe('Task 6.1: processPullRequestEvent (webhook-to-comment wiring)', () => 
 
     expect(createCheck).toHaveBeenCalledTimes(1);
     expect(updateCheck).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('Task A.2: baseline updates only on an actual merge', () => {
+  function mergedPullRequestPayload(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+    return pullRequestPayload({
+      action: 'closed',
+      pull_request: {
+        number: PULL_NUMBER,
+        head: { sha: HEAD_SHA },
+        base: { sha: BASE_SHA },
+        merged: true,
+        merge_commit_sha: 'merge-commit-sha-xyz',
+      },
+      ...overrides,
+    });
+  }
+
+  it('calls updateBaselineOnMerge, not the detection/comment flow, when a PR is actually merged', async () => {
+    const { octokit, listFiles, createComment, createCheck } = mockOctokit([], {});
+    const githubApp = mockGitHubApp(octokit);
+
+    await processPullRequestEvent(githubApp, mergedPullRequestPayload());
+
+    expect(mockUpdateBaselineOnMerge).toHaveBeenCalledTimes(1);
+    expect(mockUpdateBaselineOnMerge).toHaveBeenCalledWith(
+      githubApp,
+      expect.objectContaining({
+        owner: OWNER,
+        repo: REPO,
+        mergeCommitSha: 'merge-commit-sha-xyz',
+        installationId: INSTALLATION_ID,
+      })
+    );
+    // The ordinary detection/posting flow must not also run for a merge event.
+    expect(listFiles).not.toHaveBeenCalled();
+    expect(createComment).not.toHaveBeenCalled();
+    expect(createCheck).not.toHaveBeenCalled();
+  });
+
+  it('does nothing at all for a PR closed WITHOUT merging -- an unmerged PR must never influence the baseline', async () => {
+    const { octokit, listFiles } = mockOctokit([], {});
+    const githubApp = mockGitHubApp(octokit);
+
+    await processPullRequestEvent(
+      githubApp,
+      pullRequestPayload({
+        action: 'closed',
+        pull_request: { number: PULL_NUMBER, head: { sha: HEAD_SHA }, base: { sha: BASE_SHA }, merged: false },
+      })
+    );
+
+    expect(mockUpdateBaselineOnMerge).not.toHaveBeenCalled();
+    expect(listFiles).not.toHaveBeenCalled();
+  });
+
+  it('does not call updateBaselineOnMerge for an ordinary opened event', async () => {
+    const unchanged = JSON.stringify({ mcpServers: {} });
+    const { octokit } = mockOctokit(['.mcp.json'], { '.mcp.json': { base: unchanged, head: unchanged } });
+    const githubApp = mockGitHubApp(octokit);
+
+    await processPullRequestEvent(githubApp, pullRequestPayload({ action: 'opened' }));
+
+    expect(mockUpdateBaselineOnMerge).not.toHaveBeenCalled();
+  });
+
+  it('does not call updateBaselineOnMerge for an ordinary synchronize event', async () => {
+    const unchanged = JSON.stringify({ mcpServers: {} });
+    const { octokit } = mockOctokit(['.mcp.json'], { '.mcp.json': { base: unchanged, head: unchanged } });
+    const githubApp = mockGitHubApp(octokit);
+
+    await processPullRequestEvent(githubApp, pullRequestPayload({ action: 'synchronize' }));
+
+    expect(mockUpdateBaselineOnMerge).not.toHaveBeenCalled();
+  });
+
+  it('ignores a merge-shaped payload missing required fields rather than throwing', async () => {
+    const { octokit, listFiles } = mockOctokit([], {});
+    const githubApp = mockGitHubApp(octokit);
+
+    await processPullRequestEvent(
+      githubApp,
+      pullRequestPayload({
+        action: 'closed',
+        pull_request: { number: PULL_NUMBER, merged: true }, // no merge_commit_sha
+      })
+    );
+
+    expect(mockUpdateBaselineOnMerge).not.toHaveBeenCalled();
+    expect(listFiles).not.toHaveBeenCalled();
   });
 });
