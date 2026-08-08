@@ -262,4 +262,21 @@ describe('DD-2: detectSwappedMcpServer', () => {
     expect(detectSwappedMcpServer('.mcp.json', '"hello"', valid)).toHaveLength(0);
     expect(detectSwappedMcpServer('.mcp.json', valid, '123')).toHaveLength(0);
   });
+
+  it('Task 5.8: still finds the base entry and detects a real command swap when the key is expressed in a different Unicode normalization form (fixture)', () => {
+    // before.json's key is NFD; after.json's is the NFC form of the same
+    // logical key, AND the command genuinely changes -- proves the base
+    // entry is still looked up correctly (not silently treated as a
+    // same-name addition with nothing to diff against), not just that
+    // "nothing changed" trivially produces no finding.
+    const findings = detectSwappedMcpServer(
+      '.mcp.json',
+      readFixture('nfc-nfd-key-still-detects-swap', 'before.json'),
+      readFixture('nfc-nfd-key-still-detects-swap', 'after.json')
+    );
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0].detectorId).toBe('diff-drift.swapped-mcp-server');
+    expect(findings[0].summary).toContain('definition changed (command)');
+  });
 });

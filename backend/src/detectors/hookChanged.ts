@@ -1,4 +1,5 @@
 import { Finding } from '../types';
+import { normalizeUnicode } from '../unicodeNormalize';
 
 interface HookEntry {
   key: string;
@@ -147,36 +148,45 @@ export function detectHookChanged(
   }
 
   // Count max array elements per eventName across base and head to determine
-  // whether index disambiguation in the display name is necessary.
+  // whether index disambiguation in the display name is necessary. Keyed by
+  // normalized eventName (Task 5.8) so the same event expressed in two
+  // Unicode normalization forms between base and head aggregates into one
+  // count instead of two independent ones.
   const eventCounts = new Map<string, number>();
   for (const entry of baseList) {
     if (entry.arrayIndex !== undefined) {
-      const current = eventCounts.get(entry.eventName) ?? 0;
-      eventCounts.set(entry.eventName, Math.max(current, entry.arrayIndex + 1));
+      const key = normalizeUnicode(entry.eventName);
+      const current = eventCounts.get(key) ?? 0;
+      eventCounts.set(key, Math.max(current, entry.arrayIndex + 1));
     }
   }
   for (const entry of headList) {
     if (entry.arrayIndex !== undefined) {
-      const current = eventCounts.get(entry.eventName) ?? 0;
-      eventCounts.set(entry.eventName, Math.max(current, entry.arrayIndex + 1));
+      const key = normalizeUnicode(entry.eventName);
+      const current = eventCounts.get(key) ?? 0;
+      eventCounts.set(key, Math.max(current, entry.arrayIndex + 1));
     }
   }
 
+  // Keyed by normalized key (Task 5.8): a hook key expressed in a different
+  // Unicode normalization form between base and head must still be found as
+  // "the same hook" rather than reading as a brand-new one with nothing to
+  // diff against.
   const baseMap = new Map<string, HookEntry>();
   for (const entry of baseList) {
-    baseMap.set(entry.key, entry);
+    baseMap.set(normalizeUnicode(entry.key), entry);
   }
 
   const findings: Finding[] = [];
 
   for (const headEntry of headList) {
-    const totalCount = eventCounts.get(headEntry.eventName) ?? 0;
+    const totalCount = eventCounts.get(normalizeUnicode(headEntry.eventName)) ?? 0;
     const displayName =
       headEntry.arrayIndex !== undefined && totalCount > 1
         ? `${headEntry.eventName}[${headEntry.arrayIndex}]`
         : headEntry.eventName;
 
-    const baseEntry = baseMap.get(headEntry.key);
+    const baseEntry = baseMap.get(normalizeUnicode(headEntry.key));
     if (!baseEntry) {
       findings.push({
         detectorId: 'diff-drift.hook-changed',
@@ -187,8 +197,13 @@ export function detectHookChanged(
       });
     } else {
       const commandChanged =
-        normalizeWhitespace(baseEntry.command) !== normalizeWhitespace(headEntry.command);
-      const matcherChanged = baseEntry.matcher !== headEntry.matcher;
+        normalizeUnicode(normalizeWhitespace(baseEntry.command)) !==
+        normalizeUnicode(normalizeWhitespace(headEntry.command));
+      // Unicode-normalized (Task 5.8) before comparing; undefined passes
+      // through unchanged rather than being coerced into a string.
+      const matcherChanged =
+        (baseEntry.matcher === undefined ? undefined : normalizeUnicode(baseEntry.matcher)) !==
+        (headEntry.matcher === undefined ? undefined : normalizeUnicode(headEntry.matcher));
 
       if (commandChanged && matcherChanged) {
         findings.push({

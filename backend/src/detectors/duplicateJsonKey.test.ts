@@ -115,4 +115,17 @@ describe('Task 5.4: detectDuplicateJsonKey', () => {
     expect(findings[0].summary).toBe("Duplicate top-level key 'servers' found");
     expect(findings[0].file).toBe('claude_desktop_config.json');
   });
+
+  it('Task 5.8: fires when the same top-level key appears twice, once in each Unicode normalization form (fixture)', () => {
+    // The fixture's two non-"mcpServers" keys are the same logical name --
+    // one NFD (decomposed), one NFC (precomposed) -- byte-different but
+    // visually identical to a reviewer skimming the file.
+    const findings = detectDuplicateJsonKey(
+      '.mcp.json',
+      readFixture('nfc-nfd-duplicate', '.mcp.json')
+    );
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0].detectorId).toBe('diff-drift.duplicate-json-key');
+  });
 });

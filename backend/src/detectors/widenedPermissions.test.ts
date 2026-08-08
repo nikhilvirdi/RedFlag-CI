@@ -349,4 +349,14 @@ describe('DD-3: detectWidenedPermissions', () => {
     expect(findings).toHaveLength(1);
     expect(findings[0].summary).toBe("Deny rule 'Bash(rm)' removed");
   });
+
+  it('Task 5.8: does NOT report a permission as added when the same entry is expressed in a different Unicode normalization form (fixture)', () => {
+    const findings = detectWidenedPermissions(
+      filePath,
+      readFixture('nfc-nfd-same-permission-entry', 'before.json'),
+      readFixture('nfc-nfd-same-permission-entry', 'after.json')
+    );
+
+    expect(findings).toHaveLength(0);
+  });
 });

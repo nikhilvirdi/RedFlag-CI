@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "café": {
+      "command": "node",
+      "args": [
+        "-y",
+        "server-filesystem"
+      ]
+    }
+  }
+}

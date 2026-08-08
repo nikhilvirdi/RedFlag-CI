@@ -157,4 +157,20 @@ describe('Task 5.7: detectTransportTypeChange', () => {
     expect(findings).toHaveLength(1);
     expect(findings[0].file).toBe('claude_desktop_config.json');
   });
+
+  it('Task 5.8: still finds the base entry and detects a real transport change when the key is expressed in a different Unicode normalization form (fixture)', () => {
+    // before.json's key is NFD; after.json's is the NFC form of the same
+    // logical key, AND the transport genuinely changes local -> remote --
+    // proves the base entry is still looked up correctly, not just that
+    // "nothing changed" trivially produces no finding.
+    const findings = detectTransportTypeChange(
+      filePath,
+      readFixture('nfc-nfd-key-still-detects-change', 'before.json'),
+      readFixture('nfc-nfd-key-still-detects-change', 'after.json')
+    );
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0].detectorId).toBe('diff-drift.transport-type-change');
+    expect(findings[0].summary).toContain('local (command-based, stdio) to remote (url/transport-based)');
+  });
 });

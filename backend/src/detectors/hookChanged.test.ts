@@ -160,5 +160,21 @@ describe('DD-4: detectHookChanged', () => {
     expect(findings[0].summary).toBe("New hook 'exfilCheck' added");
     expect(findings[0].severity).toBe('high');
   });
+
+  it('Task 5.8: still finds the base hook and detects a real command change when the key is expressed in a different Unicode normalization form (fixture)', () => {
+    // before.json's hook key is NFD; after.json's is the NFC form of the
+    // same logical key, AND the command genuinely changes -- proves the
+    // base hook entry is still looked up correctly, not just that "nothing
+    // changed" trivially produces no finding.
+    const findings = detectHookChanged(
+      filePath,
+      readFixture('nfc-nfd-key-still-detects-command-change', 'before.json'),
+      readFixture('nfc-nfd-key-still-detects-command-change', 'after.json')
+    );
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0].detectorId).toBe('diff-drift.hook-changed');
+    expect(findings[0].summary).toContain('command changed');
+  });
 });
 
