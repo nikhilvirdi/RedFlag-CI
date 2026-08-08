@@ -1,0 +1,5 @@
+{
+  "mcpServers": {
+    "analytics": { "command": "node", "args": ["analytics-server.js"] }
+  }
+}
