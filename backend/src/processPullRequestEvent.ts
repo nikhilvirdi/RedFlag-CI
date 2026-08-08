@@ -7,6 +7,9 @@ import { detectWidenedPermissions } from './detectors/widenedPermissions';
 import { detectHookChanged } from './detectors/hookChanged';
 import { detectUnpinnedMcpDependency } from './detectors/unpinnedMcpDependency';
 import { detectObfuscatedCommand } from './detectors/obfuscatedCommand';
+import { detectDuplicateJsonKey } from './detectors/duplicateJsonKey';
+import { detectSuspiciousNetworkTarget } from './detectors/suspiciousNetworkTarget';
+import { detectPathTraversal } from './detectors/pathTraversal';
 import { detectInvisibleUnicode } from './detectors/invisibleUnicode';
 import { detectHomoglyphs } from './detectors/homoglyphs';
 import { detectRuleFileChecksInJsonKeys } from './detectors/ruleFileJsonKeys';
@@ -83,6 +86,9 @@ function runDiffDriftDetectors(filePath: string, base: string | null, head: stri
     ...detectHookChanged(filePath, base, head),
     ...detectUnpinnedMcpDependency(filePath, head),
     ...detectObfuscatedCommand(filePath, head),
+    ...detectDuplicateJsonKey(filePath, head),
+    ...detectSuspiciousNetworkTarget(filePath, head),
+    ...detectPathTraversal(filePath, head),
     ...detectRuleFileChecksInJsonKeys(filePath, head),
   ];
 }

@@ -1,10 +1,10 @@
 # RedFlag CI v1 Benchmark Results
 
-Generated: 2026-08-08T07:21:31.523Z
+Generated: 2026-08-08T07:31:48.829Z
 
 ## Methodology
 
-18 synthetic PR scenarios, each a before/after file pair for one monitored file, stored under `benchmark/corpus/<scenario-id>/`. `benchmark/run.ts` runs the actual production detector functions and `aggregateFindings` against each pair -- the same dispatch logic `processPullRequestEvent.ts` uses (diff-drift files get DD-1 through DD-4, the unpinned-MCP-dependency and obfuscated-command checks, plus RF-1/RF-2 against MCP server names and permission entries; rule-file files get RF-1/RF-2 against head content only) -- with no GitHub API, webhook, or posting involved. Each scenario carries a ground-truth label (`positive` = should produce at least one finding, `negative` = should produce none). A scenario "fires" if the aggregated findings array is non-empty. No detector logic was modified to produce these numbers.
+18 synthetic PR scenarios, each a before/after file pair for one monitored file, stored under `benchmark/corpus/<scenario-id>/`. `benchmark/run.ts` runs the actual production detector functions and `aggregateFindings` against each pair -- the same dispatch logic `processPullRequestEvent.ts` uses (diff-drift files get DD-1 through DD-4, the unpinned-MCP-dependency, obfuscated-command, duplicate-JSON-key, suspicious-network-target, and path-traversal checks, plus RF-1/RF-2 against MCP server names and permission entries; rule-file files get RF-1/RF-2 against head content only) -- with no GitHub API, webhook, or posting involved. Each scenario carries a ground-truth label (`positive` = should produce at least one finding, `negative` = should produce none). A scenario "fires" if the aggregated findings array is non-empty. No detector logic was modified to produce these numbers.
 
 Classification:
 - **TP**: positive label, fired
@@ -151,11 +151,11 @@ These numbers describe this 18-scenario corpus, not a statistically representati
 | `benign-settings-unrelated-section-added` | `.claude/settings.json` | negative | false | **TN** | (none) |
 | `benign-hooks-reorganized-same-behavior` | `.claude/settings.json` | positive | true | **TP** | diff-drift.hook-changed [high]: Hook 'PreToolUse' command changed |
 | `adversarial-cross-file-attack-split` | `.claude/settings.json` | positive | true | **TP** | diff-drift.hook-changed [high]: New hook 'PostToolUse' added |
-| `adversarial-rename-masks-swap` | `.mcp.json` | positive | true | **TP** | diff-drift.new-mcp-server [warning]: New MCP server 'new-fs' added |
+| `adversarial-rename-masks-swap` | `.mcp.json` | positive | true | **TP** | diff-drift.new-mcp-server [warning]: New MCP server 'new-fs' added; diff-drift.suspicious-network-target [warning]: MCP server 'new-fs' uses insecure HTTP target 'http://evil.example.com/payload.sh' |
 | `adversarial-broad-non-wildcard-pattern` | `.claude/settings.json` | positive | true | **TP** | diff-drift.widened-permissions [high]: Wildcard permission 'Bash' added to allow-list |
 | `adversarial-homoglyph-plus-invisible-combo` | `CLAUDE.md` | positive | true | **TP** | rule-file.invisible-unicode [high]: Invisible Unicode character (U+200B) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0430) found |
-| `adversarial-split-command-across-args` | `.mcp.json` | positive | true | **TP** | diff-drift.swapped-mcp-server [high]: MCP server 'git' definition changed (args); diff-drift.unpinned-mcp-dependency [warning]: MCP server 'git' installs '@modelcontextprotocol/server-git' via npx with no version pin |
-| `adversarial-benign-name-malicious-command` | `.mcp.json` | positive | true | **TP** | diff-drift.new-mcp-server [warning]: New MCP server 'linter' added; diff-drift.unpinned-mcp-dependency [warning]: MCP server 'filesystem' installs '@modelcontextprotocol/server-filesystem' via npx with no version pin |
+| `adversarial-split-command-across-args` | `.mcp.json` | positive | true | **TP** | diff-drift.swapped-mcp-server [high]: MCP server 'git' definition changed (args); diff-drift.unpinned-mcp-dependency [warning]: MCP server 'git' installs '@modelcontextprotocol/server-git' via npx with no version pin; diff-drift.suspicious-network-target [warning]: MCP server 'git' uses insecure HTTP target 'http://evil.example.com/x.sh' |
+| `adversarial-benign-name-malicious-command` | `.mcp.json` | positive | true | **TP** | diff-drift.new-mcp-server [warning]: New MCP server 'linter' added; diff-drift.unpinned-mcp-dependency [warning]: MCP server 'filesystem' installs '@modelcontextprotocol/server-filesystem' via npx with no version pin; diff-drift.suspicious-network-target [warning]: MCP server 'linter' uses insecure HTTP target 'http://evil.example.com/install.sh' |
 | `adversarial-gradual-drift-two-prs-pr1` | `.claude/settings.json` | positive | true | **TP** | diff-drift.widened-permissions [warning]: Permission 'Bash(git diff)' added to allow-list |
 | `adversarial-gradual-drift-two-prs-pr2` | `.claude/settings.json` | positive | true | **TP** | diff-drift.widened-permissions [warning]: Permission 'Bash(git *)' added to allow-list |
 | `adversarial-homoglyph-in-hook-key-not-command` | `.claude/settings.json` | positive | true | **TP** | diff-drift.hook-changed [high]: Hook 'PreToolUse' matcher changed |

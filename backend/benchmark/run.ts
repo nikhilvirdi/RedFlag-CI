@@ -7,6 +7,9 @@ import { detectWidenedPermissions } from '../src/detectors/widenedPermissions';
 import { detectHookChanged } from '../src/detectors/hookChanged';
 import { detectUnpinnedMcpDependency } from '../src/detectors/unpinnedMcpDependency';
 import { detectObfuscatedCommand } from '../src/detectors/obfuscatedCommand';
+import { detectDuplicateJsonKey } from '../src/detectors/duplicateJsonKey';
+import { detectSuspiciousNetworkTarget } from '../src/detectors/suspiciousNetworkTarget';
+import { detectPathTraversal } from '../src/detectors/pathTraversal';
 import { detectInvisibleUnicode } from '../src/detectors/invisibleUnicode';
 import { detectHomoglyphs } from '../src/detectors/homoglyphs';
 import { detectRuleFileChecksInJsonKeys } from '../src/detectors/ruleFileJsonKeys';
@@ -30,6 +33,9 @@ function runDiffDriftDetectors(filePath: string, base: string | null, head: stri
     ...detectHookChanged(filePath, base, head),
     ...detectUnpinnedMcpDependency(filePath, head),
     ...detectObfuscatedCommand(filePath, head),
+    ...detectDuplicateJsonKey(filePath, head),
+    ...detectSuspiciousNetworkTarget(filePath, head),
+    ...detectPathTraversal(filePath, head),
     ...detectRuleFileChecksInJsonKeys(filePath, head),
   ];
 }
@@ -147,8 +153,9 @@ function buildResultsMarkdown(results: ScenarioResult[], generatedAt: string): s
       '`benchmark/corpus/<scenario-id>/`. `benchmark/run.ts` runs the actual production detector ' +
       'functions and `aggregateFindings` against each pair -- the same dispatch logic ' +
       '`processPullRequestEvent.ts` uses (diff-drift files get DD-1 through DD-4, the ' +
-      'unpinned-MCP-dependency and obfuscated-command checks, plus RF-1/RF-2 against MCP server ' +
-      'names and permission entries; rule-file files get RF-1/RF-2 against head content only) -- ' +
+      'unpinned-MCP-dependency, obfuscated-command, duplicate-JSON-key, suspicious-network-target, ' +
+      'and path-traversal checks, plus RF-1/RF-2 against MCP server names and permission entries; ' +
+      'rule-file files get RF-1/RF-2 against head content only) -- ' +
       'with no GitHub API, webhook, or posting involved. Each ' +
       "scenario carries a ground-truth label (`positive` = should produce at least one finding, " +
       '`negative` = should produce none). A scenario "fires" if the aggregated findings array is ' +
