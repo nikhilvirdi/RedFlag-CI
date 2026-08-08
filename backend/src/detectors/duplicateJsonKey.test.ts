@@ -1,0 +1,118 @@
+import * as fs from 'fs';
+import * as path from 'path';
+import { detectDuplicateJsonKey } from './duplicateJsonKey';
+
+describe('Task 5.4: detectDuplicateJsonKey', () => {
+  const fixturesDir = path.join(__dirname, '__fixtures__', 'duplicate-json-key');
+
+  const readFixture = (name: string, file: string): string =>
+    fs.readFileSync(path.join(fixturesDir, name, file), 'utf-8');
+
+  it('fires a WARNING-severity finding when a top-level key is duplicated (fixture)', () => {
+    const findings = detectDuplicateJsonKey('.mcp.json', readFixture('duplicate-mcp-servers-key', '.mcp.json'));
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0]).toEqual({
+      detectorId: 'diff-drift.duplicate-json-key',
+      severity: 'warning',
+      file: '.mcp.json',
+      summary: "Duplicate top-level key 'mcpServers' found",
+      detail:
+        "The top-level key 'mcpServers' appears more than once in .mcp.json. Some JSON parsers " +
+        'silently resolve a duplicate key to its last occurrence while others take the first, so ' +
+        'a second occurrence can smuggle a payload past a reviewer who only reads the first, ' +
+        'legitimate-looking one.',
+    });
+  });
+
+  it('produces zero findings when every top-level key appears once (fixture)', () => {
+    const findings = detectDuplicateJsonKey('.mcp.json', readFixture('single-key', '.mcp.json'));
+
+    expect(findings).toHaveLength(0);
+  });
+
+  it('fires on a duplicated top-level key in .claude/settings.json (fixture)', () => {
+    const findings = detectDuplicateJsonKey(
+      '.claude/settings.json',
+      readFixture('duplicate-permissions-key', 'settings.json')
+    );
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0].summary).toBe("Duplicate top-level key 'permissions' found");
+    expect(findings[0].file).toBe('.claude/settings.json');
+  });
+
+  it('does NOT flag the same key name repeated at a nested depth, only at top level (fixture)', () => {
+    // Two different servers each having their own "command" key is fine --
+    // those are at depth 3 (mcpServers -> server -> command), not depth 1.
+    const findings = detectDuplicateJsonKey(
+      '.mcp.json',
+      readFixture('nested-same-key-not-duplicate', '.mcp.json')
+    );
+
+    expect(findings).toHaveLength(0);
+  });
+
+  it('produces zero findings when headContent is null (file deleted in head)', () => {
+    expect(detectDuplicateJsonKey('.mcp.json', null)).toHaveLength(0);
+  });
+
+  it('fails open (returns 0 findings) when headContent is malformed JSON', () => {
+    expect(detectDuplicateJsonKey('.mcp.json', '{ invalid json')).toHaveLength(0);
+  });
+
+  it('fails open (returns 0 findings) when content is valid JSON primitive or array', () => {
+    expect(detectDuplicateJsonKey('.mcp.json', '[1, 2, 3]')).toHaveLength(0);
+    expect(detectDuplicateJsonKey('.mcp.json', '"hello"')).toHaveLength(0);
+    expect(detectDuplicateJsonKey('.mcp.json', '123')).toHaveLength(0);
+    expect(detectDuplicateJsonKey('.mcp.json', 'null')).toHaveLength(0);
+    expect(detectDuplicateJsonKey('.mcp.json', '')).toHaveLength(0);
+  });
+
+  it('reports one finding per duplicated key name, even with three or more occurrences', () => {
+    const headContent = '{"a": 1, "b": 2, "a": 3, "a": 4}';
+
+    const findings = detectDuplicateJsonKey('.mcp.json', headContent);
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0].summary).toBe("Duplicate top-level key 'a' found");
+  });
+
+  it('reports a separate finding for each distinct duplicated key', () => {
+    const headContent = '{"mcpServers": {}, "hooks": {}, "mcpServers": {}, "hooks": {}}';
+
+    const findings = detectDuplicateJsonKey('.mcp.json', headContent);
+
+    expect(findings).toHaveLength(2);
+    const summaries = findings.map((f) => f.summary).sort();
+    expect(summaries).toEqual([
+      "Duplicate top-level key 'hooks' found",
+      "Duplicate top-level key 'mcpServers' found",
+    ]);
+  });
+
+  it('is unaffected by whitespace/minification (whitespace-agnostic raw scan)', () => {
+    const minified = '{"mcpServers":{"a":{"command":"npx"}},"mcpServers":{"b":{"command":"npx"}}}';
+
+    expect(detectDuplicateJsonKey('.mcp.json', minified)).toHaveLength(1);
+  });
+
+  it('does not miscount depth when a string value contains braces, brackets, or a colon', () => {
+    const headContent = JSON.stringify({
+      mcpServers: { a: { command: 'npx', args: ['{not: a real key}', '[also not]'] } },
+      note: 'a string with a colon: right here, and {braces} too',
+    });
+
+    expect(detectDuplicateJsonKey('.mcp.json', headContent)).toHaveLength(0);
+  });
+
+  it('supports "servers" top-level key as well as "mcpServers"', () => {
+    const headContent = '{"servers": {"a": {}}, "servers": {"b": {}}}';
+
+    const findings = detectDuplicateJsonKey('claude_desktop_config.json', headContent);
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0].summary).toBe("Duplicate top-level key 'servers' found");
+    expect(findings[0].file).toBe('claude_desktop_config.json');
+  });
+});
