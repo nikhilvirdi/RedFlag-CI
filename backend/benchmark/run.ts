@@ -151,7 +151,7 @@ function buildResultsMarkdown(results: ScenarioResult[], generatedAt: string): s
   lines.push('## Methodology');
   lines.push('');
   lines.push(
-    '18 synthetic PR scenarios, each a before/after file pair for one monitored file, stored under ' +
+    `${results.length} synthetic PR scenarios, each a before/after file pair for one monitored file, stored under ` +
       '`benchmark/corpus/<scenario-id>/`. `benchmark/run.ts` runs the actual production detector ' +
       'functions and `aggregateFindings` against each pair -- the same dispatch logic ' +
       '`processPullRequestEvent.ts` uses (diff-drift files get DD-1 through DD-4, the ' +
@@ -180,7 +180,7 @@ function buildResultsMarkdown(results: ScenarioResult[], generatedAt: string): s
   lines.push(`- **Recall** = TP / (TP + FN) = ${counts.TP} / ${counts.TP + counts.FN} = ${recall.toFixed(3)}`);
   lines.push('');
   lines.push(
-    'These numbers describe this 18-scenario corpus, not a statistically representative sample of ' +
+    `These numbers describe this ${results.length}-scenario corpus, not a statistically representative sample of ` +
       'real-world PRs. The corpus intentionally includes near-miss and known-gap cases designed to ' +
       "surface the detectors' actual limits (see below) rather than a set chosen to look clean."
   );

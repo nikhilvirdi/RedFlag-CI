@@ -1,10 +1,10 @@
 # RedFlag CI v1 Benchmark Results
 
-Generated: 2026-08-08T10:07:14.623Z
+Generated: 2026-08-08T10:15:45.427Z
 
 ## Methodology
 
-18 synthetic PR scenarios, each a before/after file pair for one monitored file, stored under `benchmark/corpus/<scenario-id>/`. `benchmark/run.ts` runs the actual production detector functions and `aggregateFindings` against each pair -- the same dispatch logic `processPullRequestEvent.ts` uses (diff-drift files get DD-1 through DD-4, the unpinned-MCP-dependency, obfuscated-command, duplicate-JSON-key, suspicious-network-target, path-traversal, and transport-type-change checks, plus RF-1/RF-2 against MCP server names and permission entries; rule-file files get RF-1/RF-2 against head content only) -- with no GitHub API, webhook, or posting involved. Each scenario carries a ground-truth label (`positive` = should produce at least one finding, `negative` = should produce none). A scenario "fires" if the aggregated findings array is non-empty. No detector logic was modified to produce these numbers.
+138 synthetic PR scenarios, each a before/after file pair for one monitored file, stored under `benchmark/corpus/<scenario-id>/`. `benchmark/run.ts` runs the actual production detector functions and `aggregateFindings` against each pair -- the same dispatch logic `processPullRequestEvent.ts` uses (diff-drift files get DD-1 through DD-4, the unpinned-MCP-dependency, obfuscated-command, duplicate-JSON-key, suspicious-network-target, path-traversal, and transport-type-change checks, plus RF-1/RF-2 against MCP server names and permission entries; rule-file files get RF-1/RF-2 against head content only) -- with no GitHub API, webhook, or posting involved. Each scenario carries a ground-truth label (`positive` = should produce at least one finding, `negative` = should produce none). A scenario "fires" if the aggregated findings array is non-empty. No detector logic was modified to produce these numbers.
 
 Classification:
 - **TP**: positive label, fired
@@ -21,7 +21,7 @@ Classification:
 - **Precision** = TP / (TP + FP) = 94 / 94 = 1.000
 - **Recall** = TP / (TP + FN) = 94 / 94 = 1.000
 
-These numbers describe this 18-scenario corpus, not a statistically representative sample of real-world PRs. The corpus intentionally includes near-miss and known-gap cases designed to surface the detectors' actual limits (see below) rather than a set chosen to look clean.
+These numbers describe this 138-scenario corpus, not a statistically representative sample of real-world PRs. The corpus intentionally includes near-miss and known-gap cases designed to surface the detectors' actual limits (see below) rather than a set chosen to look clean.
 
 ## Breakdown by detector
 
