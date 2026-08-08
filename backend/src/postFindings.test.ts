@@ -18,15 +18,23 @@ const sampleFindings: Finding[] = [
 
 function mockOctokit(overrides: {
   createComment?: jest.Mock;
+  updateComment?: jest.Mock;
+  listComments?: jest.Mock;
   createCheck?: jest.Mock;
+  updateCheck?: jest.Mock;
+  listForRef?: jest.Mock;
 }): Octokit {
   const createComment = overrides.createComment ?? jest.fn().mockResolvedValue({});
+  const updateComment = overrides.updateComment ?? jest.fn().mockResolvedValue({});
+  const listComments = overrides.listComments ?? jest.fn().mockResolvedValue({ data: [] });
   const createCheck = overrides.createCheck ?? jest.fn().mockResolvedValue({});
+  const updateCheck = overrides.updateCheck ?? jest.fn().mockResolvedValue({});
+  const listForRef = overrides.listForRef ?? jest.fn().mockResolvedValue({ data: { check_runs: [] } });
 
   return {
     rest: {
-      issues: { createComment },
-      checks: { create: createCheck },
+      issues: { createComment, updateComment, listComments },
+      checks: { create: createCheck, update: updateCheck, listForRef },
     },
   } as unknown as Octokit;
 }
@@ -106,5 +114,167 @@ describe('Task 5.3: postFindings', () => {
     const [call] = createCheck.mock.calls;
     expect(call[0].conclusion).not.toBe('failure');
     expect(['neutral', 'success']).toContain(call[0].conclusion);
+  });
+});
+
+// Stateful fake standing in for GitHub's actual comment/check-run store, so
+// the two-event scenario below exercises the same list-then-create-or-update
+// path postFindings uses against the real API instead of a mock that always
+// reports "nothing exists yet".
+function statefulOctokit(): Octokit {
+  const comments: { id: number; body: string }[] = [];
+  const checkRuns: { id: number; head_sha: string; conclusion: string }[] = [];
+  let nextId = 1;
+
+  const listComments = jest.fn().mockImplementation(async () => ({ data: comments }));
+  const createComment = jest.fn().mockImplementation(async ({ body }: { body: string }) => {
+    const comment = { id: nextId++, body };
+    comments.push(comment);
+    return { data: comment };
+  });
+  const updateComment = jest
+    .fn()
+    .mockImplementation(async ({ comment_id, body }: { comment_id: number; body: string }) => {
+      const comment = comments.find((c) => c.id === comment_id)!;
+      comment.body = body;
+      return { data: comment };
+    });
+
+  const listForRef = jest.fn().mockImplementation(async ({ ref }: { ref: string }) => ({
+    data: { check_runs: checkRuns.filter((run) => run.head_sha === ref) },
+  }));
+  const createCheck = jest
+    .fn()
+    .mockImplementation(async ({ head_sha, conclusion }: { head_sha: string; conclusion: string }) => {
+      const run = { id: nextId++, head_sha, conclusion };
+      checkRuns.push(run);
+      return { data: run };
+    });
+  const updateCheck = jest
+    .fn()
+    .mockImplementation(async ({ check_run_id, conclusion }: { check_run_id: number; conclusion: string }) => {
+      const run = checkRuns.find((r) => r.id === check_run_id)!;
+      run.conclusion = conclusion;
+      return { data: run };
+    });
+
+  return {
+    rest: {
+      issues: { createComment, updateComment, listComments },
+      checks: { create: createCheck, update: updateCheck, listForRef },
+    },
+  } as unknown as Octokit;
+}
+
+describe('Task 6.1: comment/check-run idempotency on synchronize events', () => {
+  it('edits the existing comment in place on a second synchronize event, instead of duplicating it', async () => {
+    const octokit = statefulOctokit();
+    const firstFindings = sampleFindings;
+    const secondFindings: Finding[] = [
+      {
+        detectorId: 'diff-drift.new-mcp-server',
+        severity: 'high',
+        file: '.mcp.json',
+        summary: "New MCP server 'evil-server' added",
+        detail: 'The head branch adds a new, previously unseen MCP server.',
+      },
+    ];
+
+    await postFindings(octokit, {
+      owner: 'octo-org',
+      repo: 'octo-repo',
+      pullNumber: 42,
+      headSha: 'sha-1',
+      findings: firstFindings,
+    });
+    await postFindings(octokit, {
+      owner: 'octo-org',
+      repo: 'octo-repo',
+      pullNumber: 42,
+      headSha: 'sha-1',
+      findings: secondFindings,
+    });
+
+    const { listComments, createComment, updateComment } = octokit.rest.issues as unknown as {
+      listComments: jest.Mock;
+      createComment: jest.Mock;
+      updateComment: jest.Mock;
+    };
+    const finalComments = (await listComments.mock.results.at(-1)!.value).data as { body: string }[];
+
+    expect(createComment).toHaveBeenCalledTimes(1);
+    expect(updateComment).toHaveBeenCalledTimes(1);
+    expect(finalComments).toHaveLength(1);
+    expect(finalComments[0].body).toContain("New MCP server 'evil-server' added");
+    expect(finalComments[0].body).not.toContain("New hook 'PostToolUse' added");
+  });
+
+  it('updates the existing check run in place on a second synchronize event, instead of duplicating it', async () => {
+    const octokit = statefulOctokit();
+
+    await postFindings(octokit, {
+      owner: 'octo-org',
+      repo: 'octo-repo',
+      pullNumber: 42,
+      headSha: 'sha-1',
+      findings: sampleFindings,
+    });
+    await postFindings(octokit, {
+      owner: 'octo-org',
+      repo: 'octo-repo',
+      pullNumber: 42,
+      headSha: 'sha-1',
+      findings: sampleFindings,
+    });
+
+    const { listForRef, create, update } = octokit.rest.checks as unknown as {
+      listForRef: jest.Mock;
+      create: jest.Mock;
+      update: jest.Mock;
+    };
+    const finalRuns = (await listForRef.mock.results.at(-1)!.value).data.check_runs;
+
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(update).toHaveBeenCalledTimes(1);
+    expect(finalRuns).toHaveLength(1);
+  });
+
+  it('creates a new comment (not an edit) when no prior RedFlag CI comment exists on the PR', async () => {
+    const octokit = statefulOctokit();
+
+    await postFindings(octokit, {
+      owner: 'octo-org',
+      repo: 'octo-repo',
+      pullNumber: 42,
+      headSha: 'sha-1',
+      findings: sampleFindings,
+    });
+
+    const { createComment, updateComment } = octokit.rest.issues as unknown as {
+      createComment: jest.Mock;
+      updateComment: jest.Mock;
+    };
+    expect(createComment).toHaveBeenCalledTimes(1);
+    expect(updateComment).not.toHaveBeenCalled();
+  });
+
+  it('only matches a comment carrying the RedFlag CI marker, ignoring unrelated comments on the PR', async () => {
+    const listComments = jest
+      .fn()
+      .mockResolvedValue({ data: [{ id: 99, body: 'looks great, thanks!' }] });
+    const createComment = jest.fn().mockResolvedValue({});
+    const updateComment = jest.fn().mockResolvedValue({});
+    const octokit = mockOctokit({ listComments, createComment, updateComment });
+
+    await postFindings(octokit, {
+      owner: 'octo-org',
+      repo: 'octo-repo',
+      pullNumber: 42,
+      headSha: 'abc123',
+      findings: sampleFindings,
+    });
+
+    expect(createComment).toHaveBeenCalledTimes(1);
+    expect(updateComment).not.toHaveBeenCalled();
   });
 });

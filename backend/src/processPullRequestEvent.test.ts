@@ -55,13 +55,18 @@ function mockOctokit(changedFiles: string[], fileContents: Record<string, { base
 
   const createComment = jest.fn().mockResolvedValue({});
   const createCheck = jest.fn().mockResolvedValue({});
+  // Task 6.1: postFindings looks for a prior RedFlag CI comment/check run
+  // before deciding whether to create or update; these scenarios all start
+  // from a clean PR with neither yet posted.
+  const listComments = jest.fn().mockResolvedValue({ data: [] });
+  const listForRef = jest.fn().mockResolvedValue({ data: { check_runs: [] } });
 
   const octokit = {
     rest: {
       pulls: { listFiles },
       repos: { getContent },
-      issues: { createComment },
-      checks: { create: createCheck },
+      issues: { createComment, updateComment: jest.fn(), listComments },
+      checks: { create: createCheck, update: jest.fn(), listForRef },
     },
   };
 
@@ -70,6 +75,71 @@ function mockOctokit(changedFiles: string[], fileContents: Record<string, { base
 
 function mockGitHubApp(octokit: unknown): GitHubApp {
   return { getInstallationOctokit: jest.fn().mockResolvedValue(octokit) } as unknown as GitHubApp;
+}
+
+// Same file-content mocking as mockOctokit, but with a stateful comment/
+// check-run store standing in for GitHub's, so a second webhook delivery
+// for the same PR sees what the first one actually posted.
+function statefulMockOctokit(
+  changedFiles: string[],
+  fileContents: Record<string, { base: string; head: string }>
+) {
+  const listFiles = jest.fn().mockResolvedValue({ data: changedFiles.map((filename) => ({ filename })) });
+  const getContent = jest.fn().mockImplementation(({ path, ref }: { path: string; ref: string }) => {
+    const entry = fileContents[path];
+    if (!entry) {
+      return Promise.reject(notFoundError());
+    }
+    const content = ref === BASE_SHA ? entry.base : entry.head;
+    return Promise.resolve(fileResponse(content));
+  });
+
+  const comments: { id: number; body: string }[] = [];
+  const checkRuns: { id: number; head_sha: string; conclusion: string }[] = [];
+  let nextId = 1;
+
+  const listComments = jest.fn().mockImplementation(async () => ({ data: comments }));
+  const createComment = jest.fn().mockImplementation(async ({ body }: { body: string }) => {
+    const comment = { id: nextId++, body };
+    comments.push(comment);
+    return { data: comment };
+  });
+  const updateComment = jest
+    .fn()
+    .mockImplementation(async ({ comment_id, body }: { comment_id: number; body: string }) => {
+      const comment = comments.find((c) => c.id === comment_id)!;
+      comment.body = body;
+      return { data: comment };
+    });
+
+  const listForRef = jest.fn().mockImplementation(async ({ ref }: { ref: string }) => ({
+    data: { check_runs: checkRuns.filter((run) => run.head_sha === ref) },
+  }));
+  const createCheck = jest
+    .fn()
+    .mockImplementation(async ({ head_sha, conclusion }: { head_sha: string; conclusion: string }) => {
+      const run = { id: nextId++, head_sha, conclusion };
+      checkRuns.push(run);
+      return { data: run };
+    });
+  const updateCheck = jest
+    .fn()
+    .mockImplementation(async ({ check_run_id, conclusion }: { check_run_id: number; conclusion: string }) => {
+      const run = checkRuns.find((r) => r.id === check_run_id)!;
+      run.conclusion = conclusion;
+      return { data: run };
+    });
+
+  const octokit = {
+    rest: {
+      pulls: { listFiles },
+      repos: { getContent },
+      issues: { createComment, updateComment, listComments },
+      checks: { create: createCheck, update: updateCheck, listForRef },
+    },
+  };
+
+  return { octokit, comments, createComment, updateComment, createCheck, updateCheck };
 }
 
 describe('Task 6.1: processPullRequestEvent (webhook-to-comment wiring)', () => {
@@ -195,5 +265,48 @@ describe('Task 6.1: processPullRequestEvent (webhook-to-comment wiring)', () => 
     await processPullRequestEvent(githubApp, { action: 'opened' });
 
     expect(listFiles).not.toHaveBeenCalled();
+  });
+
+  it('edits the prior comment and check run in place across two consecutive synchronize events, instead of duplicating them', async () => {
+    const firstHead = JSON.stringify({
+      mcpServers: {
+        filesystem: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-filesystem@1.0.0'] },
+        'shell-exec': { command: 'npx', args: ['-y', 'evil-shell-mcp@1.0.0'] },
+      },
+    });
+    const secondHead = JSON.stringify({
+      mcpServers: {
+        filesystem: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-filesystem@1.0.0'] },
+        'shell-exec': { command: 'npx', args: ['-y', 'evil-shell-mcp@1.0.0'] },
+        'another-evil-server': { command: 'npx', args: ['-y', 'another-evil-mcp@1.0.0'] },
+      },
+    });
+    const mcpBase = JSON.stringify({
+      mcpServers: {
+        filesystem: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-filesystem@1.0.0'] },
+      },
+    });
+
+    const { octokit, comments, createComment, updateComment, createCheck, updateCheck } =
+      statefulMockOctokit(['.mcp.json'], { '.mcp.json': { base: mcpBase, head: firstHead } });
+    const githubApp = mockGitHubApp(octokit);
+
+    await processPullRequestEvent(githubApp, pullRequestPayload({ action: 'synchronize' }));
+
+    // Second push to the same PR: same head SHA in this mock (a real push
+    // would change it, but the marker lookup is keyed on PR/SHA either way),
+    // new file content reflecting the second event's findings.
+    (octokit.rest.repos.getContent as jest.Mock).mockImplementation(({ ref }: { ref: string }) =>
+      Promise.resolve(fileResponse(ref === BASE_SHA ? mcpBase : secondHead))
+    );
+    await processPullRequestEvent(githubApp, pullRequestPayload({ action: 'synchronize' }));
+
+    expect(createComment).toHaveBeenCalledTimes(1);
+    expect(updateComment).toHaveBeenCalledTimes(1);
+    expect(comments).toHaveLength(1);
+    expect(comments[0].body).toContain("New MCP server 'another-evil-server' added");
+
+    expect(createCheck).toHaveBeenCalledTimes(1);
+    expect(updateCheck).toHaveBeenCalledTimes(1);
   });
 });
