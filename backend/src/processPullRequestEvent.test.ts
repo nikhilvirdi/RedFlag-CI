@@ -408,3 +408,82 @@ describe('Task A.2: baseline updates only on an actual merge', () => {
     expect(listFiles).not.toHaveBeenCalled();
   });
 });
+
+describe('Task A.3: cumulative-widening tracking against the stored baseline', () => {
+  it('catches the adversarial-gradual-drift-two-prs pattern end to end: two small widenings across two merges', async () => {
+    // Baseline (last known-good state, from before pr1 ever merged): empty
+    // allow-list. This PR's own immediate base (pr1, already merged) already
+    // has the first entry; this PR (pr2) adds only the second. A
+    // single-PR-scoped comparison would only ever see the second addition.
+    const baselineSnapshot = JSON.stringify({
+      version: 1,
+      updatedAt: '2026-08-01T00:00:00.000Z',
+      files: { '.claude/settings.json': JSON.stringify({ permissions: { allow: [], deny: [] } }) },
+    });
+    const pr1Base = JSON.stringify({ permissions: { allow: ['Bash(git diff)'], deny: [] } });
+    const pr2Head = JSON.stringify({ permissions: { allow: ['Bash(git diff)', 'Bash(git *)'], deny: [] } });
+
+    const { octokit, createComment } = mockOctokit(['.claude/settings.json'], {
+      '.claude/settings.json': { base: pr1Base, head: pr2Head },
+      'baseline.json': { base: 'unused', head: baselineSnapshot },
+    });
+    const githubApp = mockGitHubApp(octokit);
+
+    await processPullRequestEvent(githubApp, pullRequestPayload());
+
+    expect(createComment).toHaveBeenCalledTimes(1);
+    const body = createComment.mock.calls[0][0].body as string;
+
+    // The immediate-PR finding (pr2's own diff) is still there...
+    expect(body).toContain("Permission 'Bash(git *)' added to allow-list");
+    // ...and so is the cumulative one the baseline comparison surfaces,
+    // which pr2's own diff alone could never show, since 'Bash(git diff)'
+    // isn't part of pr2's own base-to-head change at all.
+    expect(body).toContain("Permission 'Bash(git diff)' added to allow-list");
+  });
+
+  it('does not duplicate a finding that both the immediate and cumulative comparisons would report', async () => {
+    // Baseline and immediate base are identical here: nothing accumulated
+    // before this PR, so the cumulative comparison would find exactly the
+    // same thing the immediate comparison already does.
+    const sharedBase = JSON.stringify({ permissions: { allow: ['Read(*)'], deny: [] } });
+    const head = JSON.stringify({ permissions: { allow: ['Read(*)', 'Bash(*)'], deny: [] } });
+    const baselineSnapshot = JSON.stringify({
+      version: 1,
+      updatedAt: '2026-08-01T00:00:00.000Z',
+      files: { '.claude/settings.json': sharedBase },
+    });
+
+    const { octokit, createComment } = mockOctokit(['.claude/settings.json'], {
+      '.claude/settings.json': { base: sharedBase, head },
+      'baseline.json': { base: 'unused', head: baselineSnapshot },
+    });
+    const githubApp = mockGitHubApp(octokit);
+
+    await processPullRequestEvent(githubApp, pullRequestPayload());
+
+    const body = createComment.mock.calls[0][0].body as string;
+    const occurrences = body.split("Wildcard permission 'Bash(*)' added").length - 1;
+    expect(occurrences).toBe(1);
+  });
+
+  it('falls back to plain single-PR comparison when no baseline exists yet (fail-open)', async () => {
+    const base = JSON.stringify({ permissions: { allow: [], deny: [] } });
+    const head = JSON.stringify({ permissions: { allow: ['Bash(*)'], deny: [] } });
+
+    // No 'baseline.json' entry at all -- readBaseline sees a 404 and
+    // returns null, same as a repo that has never had a PR merge through
+    // Task A.2's update path.
+    const { octokit, createComment } = mockOctokit(['.claude/settings.json'], {
+      '.claude/settings.json': { base, head },
+    });
+    const githubApp = mockGitHubApp(octokit);
+
+    await processPullRequestEvent(githubApp, pullRequestPayload());
+
+    expect(createComment).toHaveBeenCalledTimes(1);
+    const body = createComment.mock.calls[0][0].body as string;
+    expect(body).toContain("Wildcard permission 'Bash(*)' added to allow-list");
+    expect(body).toContain('RedFlag CI found 1 issue');
+  });
+});
