@@ -1,6 +1,16 @@
 import { GitHubApp } from './githubApp';
 import { updateBaselineOnMerge } from './baselineUpdate';
 import { DIFF_DRIFT_FILES } from './monitoredFiles';
+import { logger } from './logger';
+
+jest.mock('./logger', () => ({
+  logger: { warn: jest.fn(), error: jest.fn(), info: jest.fn() },
+}));
+const mockLogger = logger as unknown as { warn: jest.Mock };
+
+beforeEach(() => {
+  mockLogger.warn.mockReset();
+});
 
 const OWNER = 'octo-org';
 const REPO = 'octo-repo';
@@ -35,10 +45,11 @@ function mockGitHubApp(fileContents: Record<string, string>) {
   const createRef = jest.fn().mockResolvedValue({});
   const getRepo = jest.fn().mockResolvedValue({ data: { default_branch: 'main' } });
   const createOrUpdateFileContents = jest.fn().mockResolvedValue({});
+  const getBranch = jest.fn().mockResolvedValue({ data: { protected: true } });
 
   const octokit = {
     rest: {
-      repos: { getContent, get: getRepo, createOrUpdateFileContents },
+      repos: { getContent, get: getRepo, createOrUpdateFileContents, getBranch },
       git: { getRef, createRef },
     },
   };
@@ -47,7 +58,7 @@ function mockGitHubApp(fileContents: Record<string, string>) {
     getInstallationOctokit: jest.fn().mockResolvedValue(octokit),
   } as unknown as GitHubApp;
 
-  return { githubApp, getContent, createOrUpdateFileContents };
+  return { githubApp, getContent, createOrUpdateFileContents, getBranch };
 }
 
 describe('updateBaselineOnMerge', () => {
@@ -108,5 +119,40 @@ describe('updateBaselineOnMerge', () => {
     for (const call of fileFetchCalls) {
       expect(call[0].ref).toBe(MERGE_SHA);
     }
+  });
+
+  it('checks baseline branch protection after writing, and warns if it is not enabled (Task A.4)', async () => {
+    const { githubApp, getBranch } = mockGitHubApp({ '.mcp.json': '{}' });
+    getBranch.mockResolvedValue({ data: { protected: false } });
+
+    await updateBaselineOnMerge(githubApp, {
+      owner: OWNER,
+      repo: REPO,
+      mergeCommitSha: MERGE_SHA,
+      installationId: INSTALLATION_ID,
+    });
+
+    expect(getBranch).toHaveBeenCalledWith({
+      owner: OWNER,
+      repo: REPO,
+      branch: 'redflag-ci/baseline',
+    });
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      'Baseline branch has no branch protection enabled',
+      expect.objectContaining({ owner: OWNER, repo: REPO })
+    );
+  });
+
+  it('does not warn when the baseline branch is protected', async () => {
+    const { githubApp } = mockGitHubApp({ '.mcp.json': '{}' });
+
+    await updateBaselineOnMerge(githubApp, {
+      owner: OWNER,
+      repo: REPO,
+      mergeCommitSha: MERGE_SHA,
+      installationId: INSTALLATION_ID,
+    });
+
+    expect(mockLogger.warn).not.toHaveBeenCalled();
   });
 });

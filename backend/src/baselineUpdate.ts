@@ -1,7 +1,7 @@
 import { GitHubApp } from './githubApp';
 import { getFileAtRef } from './fileVersions';
 import { DIFF_DRIFT_FILES } from './monitoredFiles';
-import { buildSnapshot, writeBaseline } from './baseline';
+import { buildSnapshot, writeBaseline, checkBaselineBranchProtection } from './baseline';
 
 export interface MergeEvent {
   owner: string;
@@ -37,4 +37,12 @@ export async function updateBaselineOnMerge(githubApp: GitHubApp, event: MergeEv
   const snapshot = buildSnapshot(files);
   const octokit = await githubApp.getInstallationOctokit(installationId);
   await writeBaseline(octokit, { owner, repo, snapshot });
+
+  // Task A.4: checked here, right after the branch we just depended on --
+  // not on every webhook event, since protection status rarely changes and
+  // this project has no periodic/background job infrastructure to run it
+  // separately (architecture.md section 7: stateless, no queue). Never
+  // allowed to affect whether the write above succeeded; this is purely
+  // observability on top of it.
+  await checkBaselineBranchProtection(octokit, owner, repo);
 }

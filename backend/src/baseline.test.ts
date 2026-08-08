@@ -1,5 +1,21 @@
 import { Octokit } from '@octokit/rest';
-import { buildSnapshot, readBaseline, writeBaseline, BaselineSnapshot } from './baseline';
+import {
+  buildSnapshot,
+  readBaseline,
+  writeBaseline,
+  checkBaselineBranchProtection,
+  BaselineSnapshot,
+} from './baseline';
+import { logger } from './logger';
+
+jest.mock('./logger', () => ({
+  logger: { warn: jest.fn(), error: jest.fn(), info: jest.fn() },
+}));
+const mockLogger = logger as unknown as { warn: jest.Mock };
+
+beforeEach(() => {
+  mockLogger.warn.mockReset();
+});
 
 function notFoundError(): Error & { status: number } {
   return Object.assign(new Error('Not Found'), { status: 404 });
@@ -246,5 +262,60 @@ describe('writeBaseline', () => {
     expect(createOrUpdateFileContents).toHaveBeenCalledWith(
       expect.objectContaining({ branch: 'custom-branch' })
     );
+  });
+});
+
+describe('Task A.4: checkBaselineBranchProtection', () => {
+  function mockOctokit(getBranch: jest.Mock): Octokit {
+    return { rest: { repos: { getBranch } } } as unknown as Octokit;
+  }
+
+  it('logs no warning when the baseline branch has protection enabled', async () => {
+    const getBranch = jest.fn().mockResolvedValue({ data: { protected: true } });
+    const octokit = mockOctokit(getBranch);
+
+    await checkBaselineBranchProtection(octokit, 'octo-org', 'octo-repo');
+
+    expect(getBranch).toHaveBeenCalledWith({
+      owner: 'octo-org',
+      repo: 'octo-repo',
+      branch: 'redflag-ci/baseline',
+    });
+    expect(mockLogger.warn).not.toHaveBeenCalled();
+  });
+
+  it('logs a distinct warning when the baseline branch has no protection', async () => {
+    const getBranch = jest.fn().mockResolvedValue({ data: { protected: false } });
+    const octokit = mockOctokit(getBranch);
+
+    await checkBaselineBranchProtection(octokit, 'octo-org', 'octo-repo');
+
+    expect(mockLogger.warn).toHaveBeenCalledTimes(1);
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      'Baseline branch has no branch protection enabled',
+      expect.objectContaining({ owner: 'octo-org', repo: 'octo-repo', branch: 'redflag-ci/baseline' })
+    );
+  });
+
+  it('logs a distinct warning, and does not throw, when protection status cannot be verified at all', async () => {
+    const getBranch = jest.fn().mockRejectedValue(new Error('network error'));
+    const octokit = mockOctokit(getBranch);
+
+    await expect(checkBaselineBranchProtection(octokit, 'octo-org', 'octo-repo')).resolves.toBeUndefined();
+
+    expect(mockLogger.warn).toHaveBeenCalledTimes(1);
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      'Could not verify baseline branch protection status',
+      expect.objectContaining({ owner: 'octo-org', repo: 'octo-repo' })
+    );
+  });
+
+  it('respects a custom branch name', async () => {
+    const getBranch = jest.fn().mockResolvedValue({ data: { protected: true } });
+    const octokit = mockOctokit(getBranch);
+
+    await checkBaselineBranchProtection(octokit, 'octo-org', 'octo-repo', 'custom-branch');
+
+    expect(getBranch).toHaveBeenCalledWith({ owner: 'octo-org', repo: 'octo-repo', branch: 'custom-branch' });
   });
 });
