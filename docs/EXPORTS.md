@@ -1,4 +1,4 @@
-# RedFlag CI — SARIF / JSON Export and Exit-Code Threshold
+# RedFlag CI -- SARIF / JSON Export and Exit-Code Threshold
 
 Three pure utility functions ship alongside the core GitHub App:
 
@@ -8,7 +8,7 @@ Three pure utility functions ship alongside the core GitHub App:
 | `formatFindingsAsJson(findings)` | `src/exportJson.ts` | Plain JSON envelope string |
 | `computeExitCode(findings, threshold?)` | `src/exitCodeThreshold.ts` | `0` or `1` |
 
-All three are **pure functions** — no I/O, no side effects, same input always produces the same output. They operate on the same `Finding[]` that the PR-comment formatter already receives and are tested independently of the webhook pipeline.
+All three are **pure functions** -- no I/O, no side effects, same input always produces the same output. They operate on the same `Finding[]` that the PR-comment formatter already receives and are tested independently of the webhook pipeline.
 
 > **Not yet wired into the webhook.** These functions exist as tested, exported utilities. Calling them from `processPullRequestEvent.ts` and writing the output somewhere (a GitHub Actions artifact, a Gist, a commit status) is a separate wiring task. The worked example below shows how a consumer can use them today via a script step.
 
@@ -18,18 +18,18 @@ All three are **pure functions** — no I/O, no side effects, same input always 
 
 ### `formatFindingsAsSarif`
 
-Produces a [SARIF 2.1.0](https://docs.oasis-open.org/sarif/sarif/v2.1.0/sarif-v2.1.0.html)-compliant JSON string. SARIF is the format GitHub Code Scanning uses natively: upload a SARIF file and findings appear in the repository's **Security → Code scanning** tab, with inline annotations on the diff and a queryable findings history — without RedFlag CI needing to build or host any dashboard.
+Produces a [SARIF 2.1.0](https://docs.oasis-open.org/sarif/sarif/v2.1.0/sarif-v2.1.0.html)-compliant JSON string. SARIF is the format GitHub Code Scanning uses natively: upload a SARIF file and findings appear in the repository's **Security -> Code scanning** tab, with inline annotations on the diff and a queryable findings history -- without RedFlag CI needing to build or host any dashboard.
 
 Schema mapping:
 - `tool.driver.name` = `"RedFlag CI"`
-- `tool.driver.rules` — one entry per unique `detectorId`, not per finding
-- Each finding → one `results[]` entry: `ruleId` = `detectorId`, `level` = severity mapped (`high` → `"error"`, `warning` → `"warning"`, `info` → `"note"`), `message.text` = `detail`
+- `tool.driver.rules` -- one entry per unique `detectorId`, not per finding
+- Each finding -> one `results[]` entry: `ruleId` = `detectorId`, `level` = severity mapped (`high` -> `"error"`, `warning` -> `"warning"`, `info` -> `"note"`), `message.text` = `detail`
 - `locations[0].physicalLocation.artifactLocation.uri` = `file`
-- `region` is **omitted** — the `Finding` interface carries no structured line/column fields today; detectors that locate a character embed position text in `detail` as prose rather than typed fields. No fabricated `1,1`.
+- `region` is **omitted** -- the `Finding` interface carries no structured line/column fields today; detectors that locate a character embed position text in `detail` as prose rather than typed fields. No fabricated `1,1`.
 
 ### `formatFindingsAsJson`
 
-Produces a minimal JSON envelope for consumers that don't want SARIF's verbosity. No field renaming, no schema mapping — all `Finding` fields pass through exactly as-is.
+Produces a minimal JSON envelope for consumers that don't want SARIF's verbosity. No field renaming, no schema mapping -- all `Finding` fields pass through exactly as-is.
 
 ```json
 {
@@ -51,20 +51,20 @@ Produces a minimal JSON envelope for consumers that don't want SARIF's verbosity
 
 Returns `1` if any finding meets or exceeds the given severity threshold, `0` otherwise. Severity ordering: `high > warning > info`.
 
-**This function is advisory and consumer-side only.** It does not change RedFlag CI's own check-run behavior, which always reports `success` or `neutral`, never `failure` (architecture.md §6: "RedFlag CI reports, it never fails the build"). Whether a finding should block a PR is a decision for your repo's own branch protection rules. `computeExitCode` is the mechanism for a team to enforce that in their own CI step, independently of this tool's GitHub App.
+**This function is advisory and consumer-side only.** It does not change RedFlag CI's own check-run behavior, which always reports `success` or `neutral`, never `failure` (architecture.md section 6: RedFlag CI reports, it never fails the build). Whether a finding should block a PR is a decision for your repo's own branch protection rules. `computeExitCode` is the mechanism for a team to enforce that in their own CI step, independently of this tool's GitHub App.
 
 **Opt-in by construction:** if `threshold` is `undefined` (not passed), the function always returns `0`. There is no code path that produces a `1` without an explicit threshold.
 
 ```typescript
-computeExitCode(findings);             // always 0 — no threshold configured
+computeExitCode(findings);             // always 0 -- no threshold configured
 computeExitCode(findings, 'high');     // 1 only if at least one high finding
-computeExitCode(findings, 'warning'); // 1 if any high or warning finding
-computeExitCode(findings, 'info');    // 1 if any finding at all
+computeExitCode(findings, 'warning');  // 1 if any high or warning finding
+computeExitCode(findings, 'info');     // 1 if any finding at all
 ```
 
 ---
 
-## Worked example — GitHub Actions
+## Worked example -- GitHub Actions
 
 This snippet shows how a team would call RedFlag CI's exports from a separate job in their own workflow, upload the SARIF output to GitHub's Security tab, and optionally fail the job if any high-severity finding is present.
 
@@ -128,7 +128,7 @@ jobs:
           "
 
       - name: Upload SARIF to GitHub Security tab
-        # Runs even if the previous step exits 1 (continue-on-error keeps
+        # Runs even if the previous step exits 1 (if: always() keeps
         # the upload happening regardless of the threshold decision above).
         if: always()
         uses: github/codeql-action/upload-sarif@v3
@@ -147,9 +147,9 @@ jobs:
 ### What this does
 
 1. **Builds and runs** RedFlag CI in the workflow context.
-2. **Writes two export files** — a SARIF file for GitHub Code Scanning and a plain JSON file for any other consumer (Slack bot, badge, custom dashboard).
-3. **Uploads the SARIF** to GitHub's Security tab via `github/codeql-action/upload-sarif@v3`. Findings appear as inline annotations on the diff and persist in **Security → Code scanning**.
-4. **Optionally exits with code 1** if the threshold is met, which marks the workflow job as failed. This is separate from RedFlag CI's own check run — that check run stays `success`/`neutral` regardless.
+2. **Writes two export files** -- a SARIF file for GitHub Code Scanning and a plain JSON file for any other consumer (Slack bot, badge, custom dashboard).
+3. **Uploads the SARIF** to GitHub's Security tab via `github/codeql-action/upload-sarif@v3`. Findings appear as inline annotations on the diff and persist in **Security -> Code scanning**.
+4. **Optionally exits with code 1** if the threshold is met, which marks the workflow job as failed. This is separate from RedFlag CI's own check run -- that check run stays `success`/`neutral` regardless.
 
 ### `category: redflag-ci`
 
@@ -164,4 +164,4 @@ The `category` input distinguishes this SARIF upload from any other Code Scannin
 | `'high'` | At least one `high` finding |
 | `'warning'` | At least one `high` or `warning` finding |
 | `'info'` | Any finding at all |
-| `undefined` (default) | Never — always exits 0 |
+| `undefined` (default) | Never -- always exits 0 |
