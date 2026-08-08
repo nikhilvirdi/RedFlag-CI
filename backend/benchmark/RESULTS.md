@@ -1,6 +1,6 @@
 # RedFlag CI v1 Benchmark Results
 
-Generated: 2026-08-08T08:03:21.803Z
+Generated: 2026-08-08T08:51:38.794Z
 
 ## Methodology
 
@@ -14,12 +14,12 @@ Classification:
 
 ## Headline numbers
 
-- True positives: 79
+- True positives: 88
 - False positives: 0
 - True negatives: 41
 - False negatives: 0
-- **Precision** = TP / (TP + FP) = 79 / 79 = 1.000
-- **Recall** = TP / (TP + FN) = 79 / 79 = 1.000
+- **Precision** = TP / (TP + FP) = 88 / 88 = 1.000
+- **Recall** = TP / (TP + FN) = 88 / 88 = 1.000
 
 These numbers describe this 18-scenario corpus, not a statistically representative sample of real-world PRs. The corpus intentionally includes near-miss and known-gap cases designed to surface the detectors' actual limits (see below) rather than a set chosen to look clean.
 
@@ -27,14 +27,19 @@ These numbers describe this 18-scenario corpus, not a statistically representati
 
 | Detector | Positive scenarios | Caught (TP) | Negative scenarios | Misfired (FP) |
 |---|---|---|---|---|
+| `diff-drift.duplicate-json-key` | 1 | 1 | 0 | 0 |
 | `diff-drift.hook-changed` | 12 | 12 | 5 | 0 |
-| `diff-drift.new-mcp-server` | 13 | 13 | 17 | 0 |
+| `diff-drift.new-mcp-server` | 14 | 14 | 17 | 0 |
 | `diff-drift.new-mcp-server + diff-drift.swapped-mcp-server` | 3 | 3 | 0 | 0 |
-| `diff-drift.swapped-mcp-server` | 10 | 10 | 2 | 0 |
+| `diff-drift.obfuscated-command` | 1 | 1 | 0 | 0 |
+| `diff-drift.path-traversal` | 1 | 1 | 0 | 0 |
+| `diff-drift.suspicious-network-target` | 1 | 1 | 0 | 0 |
+| `diff-drift.swapped-mcp-server` | 11 | 11 | 2 | 0 |
+| `diff-drift.unpinned-mcp-dependency` | 1 | 1 | 0 | 0 |
 | `diff-drift.widened-permissions` | 14 | 14 | 4 | 0 |
 | `diff-drift.widened-permissions + diff-drift.hook-changed` | 2 | 2 | 1 | 0 |
-| `rule-file.homoglyph` | 12 | 12 | 2 | 0 |
-| `rule-file.invisible-unicode` | 11 | 11 | 7 | 0 |
+| `rule-file.homoglyph` | 13 | 13 | 2 | 0 |
+| `rule-file.invisible-unicode` | 12 | 12 | 7 | 0 |
 | `rule-file.invisible-unicode + rule-file.homoglyph` | 2 | 2 | 3 | 0 |
 
 ## Full scenario results
@@ -161,6 +166,15 @@ These numbers describe this 18-scenario corpus, not a statistically representati
 | `adversarial-homoglyph-in-hook-key-not-command` | `.claude/settings.json` | positive | true | **TP** | diff-drift.hook-changed [high]: Hook 'PreToolUse' matcher changed |
 | `adversarial-encoded-payload-in-args` | `.mcp.json` | positive | true | **TP** | diff-drift.swapped-mcp-server [high]: MCP server 'filesystem' definition changed (args); diff-drift.obfuscated-command [high]: MCP server 'filesystem' args contains a base64-looking blob; diff-drift.unpinned-mcp-dependency [warning]: MCP server 'filesystem' installs '@modelcontextprotocol/server-filesystem' via npx with no version pin |
 | `adversarial-mimics-approved-pattern` | `.mcp.json` | positive | true | **TP** | diff-drift.new-mcp-server [warning]: New MCP server 'filesystem-v2' added; diff-drift.unpinned-mcp-dependency [warning]: MCP server 'filesystem' installs '@modelcontextprotocol/server-filesystem' via npx with no version pin; diff-drift.unpinned-mcp-dependency [warning]: MCP server 'filesystem-v2' installs '@modelcontextprotocol/server-filesystem-v2' via npx with no version pin |
+| `adversarial-homoglyph-server-name` | `.mcp.json` | positive | true | **TP** | rule-file.homoglyph [high]: Cyrillic look-alike character (U+0430) found; diff-drift.new-mcp-server [warning]: New MCP server 'slаck' added; diff-drift.unpinned-mcp-dependency [warning]: MCP server 'slack' installs '@modelcontextprotocol/server-slack' via npx with no version pin; diff-drift.unpinned-mcp-dependency [warning]: MCP server 'slаck' installs 'malicious-package' via npx with no version pin |
+| `adversarial-mcp-server-swap` | `.mcp.json` | positive | true | **TP** | diff-drift.swapped-mcp-server [high]: MCP server 'weather' definition changed (args); diff-drift.suspicious-network-target [warning]: MCP server 'weather' uses bare IP target '10.0.0.1' |
+| `adversarial-curxecute-config-rewrite` | `.mcp.json` | positive | true | **TP** | diff-drift.obfuscated-command [high]: MCP server 'helpful-tool' args pipes output directly into a shell; diff-drift.new-mcp-server [warning]: New MCP server 'helpful-tool' added; diff-drift.suspicious-network-target [warning]: MCP server 'helpful-tool' uses insecure HTTP target 'http://attacker.com/payload' |
+| `adversarial-invisible-unicode-instruction` | `CLAUDE.md` | positive | true | **TP** | rule-file.invisible-unicode [high]: Invisible Unicode character (U+E0069) found; rule-file.invisible-unicode [high]: Invisible Unicode character (U+E0067) found; rule-file.invisible-unicode [high]: Invisible Unicode character (U+E006E) found; rule-file.invisible-unicode [high]: Invisible Unicode character (U+E006F) found; rule-file.invisible-unicode [high]: Invisible Unicode character (U+E0072) found; rule-file.invisible-unicode [high]: Invisible Unicode character (U+E0065) found; rule-file.invisible-unicode [high]: Invisible Unicode character (U+E0070) found; rule-file.invisible-unicode [high]: Invisible Unicode character (U+E0072) found; rule-file.invisible-unicode [high]: Invisible Unicode character (U+E0065) found; rule-file.invisible-unicode [high]: Invisible Unicode character (U+E0076) found; rule-file.invisible-unicode [high]: Invisible Unicode character (U+E0069) found; rule-file.invisible-unicode [high]: Invisible Unicode character (U+E006F) found; rule-file.invisible-unicode [high]: Invisible Unicode character (U+E0075) found; rule-file.invisible-unicode [high]: Invisible Unicode character (U+E0073) found |
+| `adversarial-obfuscated-command-base64` | `.mcp.json` | positive | true | **TP** | diff-drift.new-mcp-server [warning]: New MCP server 'linter' added |
+| `adversarial-unpinned-npx-dependency` | `.mcp.json` | positive | true | **TP** | diff-drift.new-mcp-server [warning]: New MCP server 'formatter' added; diff-drift.unpinned-mcp-dependency [warning]: MCP server 'formatter' installs 'prettier' via npx with no version pin |
+| `adversarial-ssrf-network-target` | `.mcp.json` | positive | true | **TP** | diff-drift.new-mcp-server [warning]: New MCP server 'metrics' added; diff-drift.suspicious-network-target [warning]: MCP server 'metrics' uses insecure HTTP target 'http://169.254.169.254/latest/meta-data/' |
+| `adversarial-path-traversal-cli-arg` | `.mcp.json` | positive | true | **TP** | diff-drift.swapped-mcp-server [high]: MCP server 'reader' definition changed (args); diff-drift.path-traversal [warning]: MCP server 'reader' uses path traversal sequence in '../../../../etc/passwd' |
+| `adversarial-duplicate-json-key` | `.mcp.json` | positive | true | **TP** | diff-drift.swapped-mcp-server [high]: MCP server 'legit' definition changed (args) |
 
 ## False positives and false negatives, explained honestly
 
