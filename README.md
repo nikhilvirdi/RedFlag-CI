@@ -1,4 +1,4 @@
-﻿# RedFlag CI
+# RedFlag CI
 
 <img width="1369" height="339" alt="RedFlag-CI Dark Theme Logo" src="https://github.com/user-attachments/assets/ad35a7f3-71ee-494c-8b32-ea207069ae8a" />
 
@@ -60,7 +60,7 @@ Two things that used to be listed here as "still planned" have since shipped, in
 
 ## Status
 
-v2.0.0 is complete -- the project's final planned release. The core pipeline (all fourteen detectors: the original six, plus eight added in v1.2.0) works end to end, from a GitHub webhook to a posted PR comment and check run, verified against a real pull request on a live repository. It's also been stress-tested against a 138-scenario adversarial benchmark, built specifically to find the tool's real limits -- see `docs/STRESS_TESTING.md` for what that testing found and `docs/adr/0001-deterministic-only-v1.md` for what the numbers below actually mean. v2.0.0's own additions -- cross-PR drift memory and the export functions -- are validated by the automated test suite (unit tests against a mocked Octokit, plus integration tests exercising the full webhook-to-comment pipeline) rather than that same live-repository run; `docs/STRESS_TESTING.md`'s new section explains why cross-PR behavior specifically is tested that way instead of via the benchmark corpus.
+v2.0.0 is complete -- the project's final planned release. The core pipeline (all twelve detector IDs: the original six, plus six new ones added in v1.2.0 (RF-1/RF-2's JSON-key extension reuses existing IDs, not new ones — see architecture.md §5)) works end to end, from a GitHub webhook to a posted PR comment and check run, verified against a real pull request on a live repository. It's also been stress-tested against a 138-scenario adversarial benchmark, built specifically to find the tool's real limits -- see `docs/STRESS_TESTING.md` for what that testing found and `docs/adr/0001-deterministic-only-v1.md` for what the numbers below actually mean. v2.0.0's own additions -- cross-PR drift memory and the export functions -- are validated by the automated test suite (unit tests against a mocked Octokit, plus integration tests exercising the full webhook-to-comment pipeline) rather than that same live-repository run; `docs/STRESS_TESTING.md`'s new section explains why cross-PR behavior specifically is tested that way instead of via the benchmark corpus.
 
 | Version | Precision | Recall | Benchmark corpus |
 |---|---|---|---|
