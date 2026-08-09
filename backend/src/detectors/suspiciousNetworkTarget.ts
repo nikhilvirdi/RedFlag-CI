@@ -139,6 +139,25 @@ export function detectSuspiciousNetworkTarget(
           continue;
         }
 
+        // To reduce false positives on version-like strings (e.g. "package-10.20.30.40.tgz"),
+        // we require the matched IP to either occupy the entire value, or be part of a clearly
+        // network-shaped substring like <ip>:<port>, <ip>/<path>, or <proto>://<ip>.
+        // We chose this approach (context-awareness of the IP's position) because it cleanly
+        // isolates actual network targets without needing to enumerate every possible way a
+        // version string might be formatted.
+        const isEntireValue = ip === val.trim();
+        const charAfter = matchIndex + ip.length < val.length ? val[matchIndex + ip.length] : '';
+        const prefix = val.slice(0, matchIndex);
+
+        const hasPort = charAfter === ':';
+        const hasPath = charAfter === '/';
+        const hasProtocol = prefix.endsWith('://');
+        const isUrlAuth = prefix.includes('://') && prefix.endsWith('@');
+
+        if (!isEntireValue && !hasPort && !hasPath && !hasProtocol && !isUrlAuth) {
+          continue;
+        }
+
         findings.push({
           detectorId: 'diff-drift.suspicious-network-target',
           severity: 'warning',
