@@ -33,14 +33,27 @@ function getField(entry: unknown, field: string): unknown {
   return (entry as Record<string, unknown>)[field];
 }
 
+// A version spec only pins anything if it's actually shaped like a semver
+// version ("1.2.3", "2.0.0-beta.1", ...). A floating dist-tag -- "latest",
+// "next", "canary", "beta", or any other bare word after "@" -- resolves to
+// whatever the registry currently marks it as pointing to, the exact same
+// non-deterministic resolution as no pin at all; syntactically it's just as
+// "@something" as a real pin, so checking only for the presence of an "@"
+// (the previous behavior) let "npx malicious-package@latest" read as pinned.
+const SEMVER_SHAPED = /^\d/;
+
 // An npm package specifier is pinned when it carries an explicit "@version"
-// suffix. Scoped packages ("@scope/name") already start with one "@" for the
-// scope itself, so that leading character is stripped before checking for a
-// second "@" -- otherwise every scoped package would read as "pinned" on its
-// scope marker alone.
+// suffix, and that suffix is semver-shaped. Scoped packages ("@scope/name")
+// already start with one "@" for the scope itself, so that leading character
+// is stripped before looking for a second "@" -- otherwise every scoped
+// package would read as "pinned" on its scope marker alone.
 function isPinnedPackageSpec(spec: string): boolean {
   const withoutScope = spec.startsWith('@') ? spec.slice(1) : spec;
-  return withoutScope.includes('@');
+  const atIndex = withoutScope.indexOf('@');
+  if (atIndex === -1) {
+    return false;
+  }
+  return SEMVER_SHAPED.test(withoutScope.slice(atIndex + 1));
 }
 
 // The package being run is the first argument that isn't itself a flag
