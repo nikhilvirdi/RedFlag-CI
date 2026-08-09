@@ -2,9 +2,13 @@ import { Finding } from '../types';
 import { normalizeUnicode } from '../unicodeNormalize';
 
 // Mirrors DD-2's own parseMcpServerEntries/getField exactly (swappedMcpServer.ts):
-// "mcpServers" takes precedence over "servers" when both are present, rather
-// than merging them, duplicated locally rather than imported since this task
-// is scoped to touching only this file.
+// both "mcpServers" and "servers" are read and merged, "mcpServers" winning
+// on a name collision, a malformed side skipped rather than the whole parse
+// being discarded -- duplicated locally rather than imported since this task
+// is scoped to touching only this file. (Previously used `mcpServers ??
+// servers`, the same short-circuit bug Task 2.1 fixed on DD-1: an
+// empty-but-present "mcpServers" is truthy, so it made "servers" invisible
+// entirely, not just when "mcpServers" was absent.)
 function parseMcpServerEntries(content: string): Record<string, unknown> | null {
   try {
     const parsed: unknown = JSON.parse(content);
@@ -13,13 +17,15 @@ function parseMcpServerEntries(content: string): Record<string, unknown> | null 
     }
 
     const obj = parsed as Record<string, unknown>;
-    const serverObj = obj.mcpServers ?? obj.servers;
+    const merged: Record<string, unknown> = {};
 
-    if (!serverObj || typeof serverObj !== 'object' || Array.isArray(serverObj)) {
-      return {};
+    for (const candidate of [obj.servers, obj.mcpServers]) {
+      if (candidate && typeof candidate === 'object' && !Array.isArray(candidate)) {
+        Object.assign(merged, candidate);
+      }
     }
 
-    return serverObj as Record<string, unknown>;
+    return merged;
   } catch {
     return null;
   }

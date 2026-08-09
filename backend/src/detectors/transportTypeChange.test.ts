@@ -158,6 +158,31 @@ describe('Task 5.7: detectTransportTypeChange', () => {
     expect(findings[0].file).toBe('claude_desktop_config.json');
   });
 
+  // Regression: parseMcpServerEntries previously used `mcpServers ?? servers`,
+  // which made "servers" invisible whenever "mcpServers" was present at all,
+  // even non-collidingly populated (the same bug Task 2.1 fixed on DD-1 --
+  // see judgment-dd1-both-schema-keys-present). Both keys here are present,
+  // with entirely different, non-colliding server names, so the old
+  // short-circuit would have silently dropped the "servers"-side entry and
+  // missed its transport change entirely.
+  it('detects a transport change on a "servers"-keyed entry when a non-colliding "mcpServers" key is also present', () => {
+    const before = JSON.stringify({
+      mcpServers: { api: { command: 'node', args: ['api.js'] } },
+      servers: { legacy: { command: 'node', args: ['legacy.js'] } },
+    });
+    const after = JSON.stringify({
+      mcpServers: { api: { command: 'node', args: ['api.js'] } },
+      servers: { legacy: { url: 'https://mcp.example.com/legacy' } },
+    });
+
+    const findings = detectTransportTypeChange('.mcp.json', before, after);
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0].summary).toBe(
+      "MCP server 'legacy' transport changed from local (command-based, stdio) to remote (url/transport-based)"
+    );
+  });
+
   it('Task 5.8: still finds the base entry and detects a real transport change when the key is expressed in a different Unicode normalization form (fixture)', () => {
     // before.json's key is NFD; after.json's is the NFC form of the same
     // logical key, AND the transport genuinely changes local -> remote --
