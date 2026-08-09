@@ -1,21 +1,6 @@
 import { Finding } from './types';
 
-// Severity ordering, from highest to lowest. The index in this array is the
-// numeric rank: lower index = higher severity. Used by meetsOrExceeds() to
-// compare two severity values without scattering the ordering rule across
-// multiple inline comparisons. Any future severity level added to Finding
-// only needs to be inserted here in the right position; nothing else changes.
-const SEVERITY_ORDER: ReadonlyArray<Finding['severity']> = ['high', 'warning', 'info'];
-
-// Returns true when `candidate` is at least as severe as `threshold` --
-// i.e. its position in SEVERITY_ORDER is at or before threshold's position.
-// A lower index means higher severity, so "meets or exceeds" is <=.
-function meetsOrExceeds(
-  candidate: Finding['severity'],
-  threshold: Finding['severity']
-): boolean {
-  return SEVERITY_ORDER.indexOf(candidate) <= SEVERITY_ORDER.indexOf(threshold);
-}
+import { meetsOrExceeds } from './severityOrder';
 
 // Pure function: given a findings list and an optional severity threshold,
 // returns 1 if any finding meets or exceeds the threshold, 0 otherwise.
