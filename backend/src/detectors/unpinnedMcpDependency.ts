@@ -69,6 +69,58 @@ function findPackageSpec(args: unknown): string | null {
   return packageArg ?? null;
 }
 
+// Returns the basename (last path segment) of a command string, normalising
+// both forward-slash and backslash separators. Used to handle absolute-path
+// invocations like "/usr/local/bin/npx" or "C:\...\npx.cmd".
+function basename(command: string): string {
+  // Replace all backslashes with forward slashes then take last segment.
+  return command.replace(/\\/g, '/').split('/').pop() ?? command;
+}
+
+// Identifies whether a given command (and the leading args of the entry) is a
+// "floating-dependency runner" -- a tool that resolves and executes a package
+// from a registry without a local install, making unpinned references a live
+// supply-chain risk.
+//
+// Returns a { runnerLabel, consumedArgCount } pair when the command is
+// recognised, or null when it is not:
+//   - runnerLabel   is the human-readable name used in finding messages.
+//   - consumedArgCount is the number of leading args already consumed by the
+//     runner itself (1 for "pnpm dlx" / "yarn dlx" since "dlx" occupies
+//     args[0]; 0 for all single-token runners).
+//
+// Recognised runners:
+//   npx, npx.cmd (Windows alias), an absolute path whose basename is either
+//   of those two, bunx -- all single-token, consumedArgCount = 0.
+//   pnpm dlx, yarn dlx -- two-token, consumedArgCount = 1.
+interface RunnerInfo {
+  runnerLabel: string;
+  consumedArgCount: number;
+}
+
+function classifyRunner(command: string, args: unknown[]): RunnerInfo | null {
+  const base = basename(command);
+
+  // Single-token runners: the whole command names the runner.
+  if (base === 'npx' || base === 'npx.cmd') {
+    return { runnerLabel: base === 'npx.cmd' ? 'npx.cmd' : 'npx', consumedArgCount: 0 };
+  }
+  if (base === 'bunx') {
+    return { runnerLabel: 'bunx', consumedArgCount: 0 };
+  }
+
+  // Two-token runners: command is the package manager, first non-flag arg must
+  // be "dlx". We check args[0] directly (before the flag-skip in
+  // findPackageSpec) since "dlx" is a subcommand, not a package name.
+  if (base === 'pnpm' || base === 'yarn') {
+    if (args.length > 0 && args[0] === 'dlx') {
+      return { runnerLabel: `${base} dlx`, consumedArgCount: 1 };
+    }
+  }
+
+  return null;
+}
+
 // Current-state check like RF-1/RF-2, not a diff: an unpinned server is a
 // live risk on every PR it's still present in, not just the PR that added or
 // changed it, so this only ever looks at head content.
@@ -88,11 +140,23 @@ export function detectUnpinnedMcpDependency(
   const findings: Finding[] = [];
 
   for (const [serverName, definition] of Object.entries(entries)) {
-    if (getField(definition, 'command') !== 'npx') {
+    const command = getField(definition, 'command');
+    if (typeof command !== 'string') {
       continue;
     }
 
-    const packageSpec = findPackageSpec(getField(definition, 'args'));
+    const rawArgs = getField(definition, 'args');
+    const argsArray: unknown[] = Array.isArray(rawArgs) ? rawArgs : [];
+
+    const runner = classifyRunner(command, argsArray);
+    if (!runner) {
+      continue;
+    }
+
+    // For two-token runners (pnpm dlx / yarn dlx), args[0] is "dlx" (already
+    // consumed), so pass the remaining tail to findPackageSpec.
+    const packageArgs = argsArray.slice(runner.consumedArgCount);
+    const packageSpec = findPackageSpec(packageArgs);
     if (packageSpec === null || isPinnedPackageSpec(packageSpec)) {
       continue;
     }
@@ -101,8 +165,8 @@ export function detectUnpinnedMcpDependency(
       detectorId: 'diff-drift.unpinned-mcp-dependency',
       severity: 'warning',
       file: filePath,
-      summary: `MCP server '${serverName}' installs '${packageSpec}' via npx with no version pin`,
-      detail: `The MCP server '${serverName}' in ${filePath} runs '${packageSpec}' via npx with no pinned version. Without an explicit version (e.g. '${packageSpec}@1.2.3'), npx always resolves to whatever release is currently published on the registry, so a compromised or malicious package update reaches every agent invocation immediately, with no PR for anyone to review.`,
+      summary: `MCP server '${serverName}' installs '${packageSpec}' via ${runner.runnerLabel} with no version pin`,
+      detail: `The MCP server '${serverName}' in ${filePath} runs '${packageSpec}' via ${runner.runnerLabel} with no pinned version. Without an explicit version (e.g. '${packageSpec}@1.2.3'), ${runner.runnerLabel} always resolves to whatever release is currently published on the registry, so a compromised or malicious package update reaches every agent invocation immediately, with no PR for anyone to review.`,
     });
   }
 

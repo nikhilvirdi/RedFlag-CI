@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "fetch": {
+      "command": "pnpm",
+      "args": ["dlx", "mcp-server-fetch"]
+    }
+  }
+}
