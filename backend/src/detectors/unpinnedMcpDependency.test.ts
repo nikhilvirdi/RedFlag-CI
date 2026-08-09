@@ -130,6 +130,52 @@ describe('Task 5.1: detectUnpinnedMcpDependency', () => {
     expect(detectUnpinnedMcpDependency('.mcp.json', headContent)).toHaveLength(0);
   });
 
+  // Regression: isPinnedPackageSpec previously accepted any "@something" as a
+  // pin, including a floating dist-tag that resolves to whatever the
+  // registry currently marks it as -- the same non-deterministic resolution
+  // as no pin at all. "npx malicious-package@latest" read as pinned.
+  it.each(['latest', 'next', 'canary', 'beta'])(
+    'treats a floating dist-tag ("@%s") as unpinned, not a real pin',
+    (tag) => {
+      const headContent = JSON.stringify({
+        mcpServers: { fetch: { command: 'npx', args: [`mcp-server-fetch@${tag}`] } },
+      });
+
+      const findings = detectUnpinnedMcpDependency('.mcp.json', headContent);
+
+      expect(findings).toHaveLength(1);
+      expect(findings[0].summary).toBe(
+        `MCP server 'fetch' installs 'mcp-server-fetch@${tag}' via npx with no version pin`
+      );
+    }
+  );
+
+  it('still treats a real semver version as pinned (not swept up by the dist-tag rejection)', () => {
+    const headContent = JSON.stringify({
+      mcpServers: { fetch: { command: 'npx', args: ['mcp-server-fetch@1.2.3'] } },
+    });
+
+    expect(detectUnpinnedMcpDependency('.mcp.json', headContent)).toHaveLength(0);
+  });
+
+  it('treats a scoped package pinned to a floating dist-tag as unpinned', () => {
+    const headContent = JSON.stringify({
+      mcpServers: {
+        filesystem: {
+          command: 'npx',
+          args: ['-y', '@modelcontextprotocol/server-filesystem@latest'],
+        },
+      },
+    });
+
+    const findings = detectUnpinnedMcpDependency('.mcp.json', headContent);
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0].summary).toBe(
+      "MCP server 'filesystem' installs '@modelcontextprotocol/server-filesystem@latest' via npx with no version pin"
+    );
+  });
+
   it('supports "servers" top-level key as well as "mcpServers"', () => {
     const headContent = JSON.stringify({ servers: { fetch: { command: 'npx', args: ['pkg'] } } });
 
