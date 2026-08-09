@@ -98,22 +98,33 @@ describe('readBaseline', () => {
     expect(getContent).toHaveBeenCalledWith(expect.objectContaining({ ref: 'custom-branch' }));
   });
 
-  it('fails open (returns null) when the baseline branch does not exist (404)', async () => {
+  it('fails open (returns null) and logs nothing when the baseline branch does not exist (404) -- the normal, expected steady state', async () => {
     const getContent = jest.fn().mockRejectedValue(notFoundError());
     const octokit = mockOctokit(getContent);
 
     const result = await readBaseline(octokit, { owner: 'octo-org', repo: 'octo-repo' });
 
     expect(result).toBeNull();
+    expect(mockLogger.warn).not.toHaveBeenCalled();
   });
 
-  it('fails open (returns null) when the API call fails for any other reason', async () => {
+  it('fails open (returns null) but logs distinctly when the API call fails for any other reason (rate limit, permission denied, network error)', async () => {
     const getContent = jest.fn().mockRejectedValue(new Error('network error'));
     const octokit = mockOctokit(getContent);
 
     const result = await readBaseline(octokit, { owner: 'octo-org', repo: 'octo-repo' });
 
     expect(result).toBeNull();
+    expect(mockLogger.warn).toHaveBeenCalledTimes(1);
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      'Failed to read baseline snapshot; falling back to stateless comparison',
+      expect.objectContaining({
+        owner: 'octo-org',
+        repo: 'octo-repo',
+        branch: 'redflag-ci/baseline',
+        message: 'network error',
+      })
+    );
   });
 
   it('fails open (returns null) when the baseline file content is not valid JSON', async () => {

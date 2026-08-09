@@ -142,7 +142,25 @@ export async function readBaseline(
     }
 
     return parsed.snapshot;
-  } catch {
+  } catch (error) {
+    // Task 6.3's same distinct-logging principle, applied to the baseline
+    // read: a 404 means no baseline has ever been written yet (the ordinary
+    // case on a repo's first merge past this feature's install, or a custom
+    // branch that was never created) and stays silent -- that's the expected
+    // steady state, not a failure. Anything else -- rate-limited,
+    // permission-denied, a network failure, GitHub API downtime -- means
+    // RedFlag CI never actually got to check, which looks identical to "no
+    // baseline yet" from the caller's null return value alone unless the
+    // logs say otherwise.
+    if (!isNotFoundError(error)) {
+      const message = error instanceof Error ? error.message : String(error);
+      logger.warn('Failed to read baseline snapshot; falling back to stateless comparison', {
+        owner,
+        repo,
+        branch,
+        message,
+      });
+    }
     return null;
   }
 }
