@@ -171,13 +171,28 @@ export function detectWidenedPermissions(
 
   for (const entry of unmatchedAdded) {
     if (isUnrestrictedWildcard(entry)) {
-      findings.push({
-        detectorId: 'diff-drift.widened-permissions',
-        severity: 'high',
-        file: filePath,
-        summary: `Wildcard permission '${entry}' added to allow-list`,
-        detail: `The head branch adds the wildcard permission '${entry}' to the allow-list in ${filePath}. A wildcard grants a broad, open-ended class of actions rather than a single reviewed one, sharply widening the agent's unprompted execution surface.`,
-      });
+      // Same HIGH-severity classification either way (isUnrestrictedWildcard
+      // above), but the wording must match what's actually in the entry: a
+      // bare unscoped tool name ("Bash") carries no literal "*" at all, so
+      // calling it a "wildcard permission" is factually wrong even though
+      // it's just as unrestricted as one.
+      if (entry.includes('*')) {
+        findings.push({
+          detectorId: 'diff-drift.widened-permissions',
+          severity: 'high',
+          file: filePath,
+          summary: `Wildcard permission '${entry}' added to allow-list`,
+          detail: `The head branch adds the wildcard permission '${entry}' to the allow-list in ${filePath}. A wildcard grants a broad, open-ended class of actions rather than a single reviewed one, sharply widening the agent's unprompted execution surface.`,
+        });
+      } else {
+        findings.push({
+          detectorId: 'diff-drift.widened-permissions',
+          severity: 'high',
+          file: filePath,
+          summary: `Unrestricted permission '${entry}' added to allow-list`,
+          detail: `The head branch adds '${entry}' to the allow-list in ${filePath} with nothing scoping it. An unscoped tool name grants that entire tool, unconditionally -- just as open-ended as an explicit wildcard even though it contains no literal '*' character -- sharply widening the agent's unprompted execution surface.`,
+        });
+      }
     } else {
       findings.push({
         detectorId: 'diff-drift.widened-permissions',

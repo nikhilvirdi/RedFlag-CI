@@ -1,6 +1,6 @@
 # RedFlag CI v1 Benchmark Results
 
-Generated: 2026-08-09T16:47:11.877Z
+Generated: 2026-08-09T16:59:05.860Z
 
 ## Methodology
 
@@ -157,7 +157,7 @@ These numbers describe this 138-scenario corpus, not a statistically representat
 | `benign-hooks-reorganized-same-behavior` | `.claude/settings.json` | positive | true | **TP** | diff-drift.hook-changed [high]: Hook 'PreToolUse' command changed |
 | `adversarial-cross-file-attack-split` | `.claude/settings.json` | positive | true | **TP** | diff-drift.hook-changed [high]: New hook 'PostToolUse' added |
 | `adversarial-rename-masks-swap` | `.mcp.json` | positive | true | **TP** | diff-drift.new-mcp-server [warning]: New MCP server 'new-fs' added; diff-drift.suspicious-network-target [warning]: MCP server 'new-fs' uses insecure HTTP target 'http://evil.example.com/payload.sh' |
-| `adversarial-broad-non-wildcard-pattern` | `.claude/settings.json` | positive | true | **TP** | diff-drift.widened-permissions [high]: Wildcard permission 'Bash' added to allow-list |
+| `adversarial-broad-non-wildcard-pattern` | `.claude/settings.json` | positive | true | **TP** | diff-drift.widened-permissions [high]: Unrestricted permission 'Bash' added to allow-list |
 | `adversarial-homoglyph-plus-invisible-combo` | `CLAUDE.md` | positive | true | **TP** | rule-file.invisible-unicode [high]: Invisible Unicode character (U+200B) found; rule-file.homoglyph [high]: Cyrillic look-alike character (U+0430) found |
 | `adversarial-split-command-across-args` | `.mcp.json` | positive | true | **TP** | diff-drift.swapped-mcp-server [high]: MCP server 'git' definition changed (args); diff-drift.unpinned-mcp-dependency [warning]: MCP server 'git' installs '@modelcontextprotocol/server-git' via npx with no version pin; diff-drift.suspicious-network-target [warning]: MCP server 'git' uses insecure HTTP target 'http://evil.example.com/x.sh' |
 | `adversarial-benign-name-malicious-command` | `.mcp.json` | positive | true | **TP** | diff-drift.new-mcp-server [warning]: New MCP server 'linter' added; diff-drift.unpinned-mcp-dependency [warning]: MCP server 'filesystem' installs '@modelcontextprotocol/server-filesystem' via npx with no version pin; diff-drift.suspicious-network-target [warning]: MCP server 'linter' uses insecure HTTP target 'http://evil.example.com/install.sh' |
