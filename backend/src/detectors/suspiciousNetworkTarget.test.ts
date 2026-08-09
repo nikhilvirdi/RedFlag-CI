@@ -149,4 +149,70 @@ describe('Task 5.5: detectSuspiciousNetworkTarget', () => {
     expect(findings).toHaveLength(1);
     expect(findings[0].file).toBe('claude_desktop_config.json');
   });
+
+  describe('False positive reduction for version-like strings', () => {
+    it('produces zero findings for a standalone version value (e.g., a version-like string)', () => {
+      const headContent = JSON.stringify({
+        mcpServers: {
+          server: { command: 'node', args: ['10.20.30.40.tgz'] },
+        },
+      });
+      expect(detectSuspiciousNetworkTarget('.mcp.json', headContent)).toHaveLength(0);
+    });
+
+    it('produces zero findings for a version embedded in an arg', () => {
+      const headContent = JSON.stringify({
+        mcpServers: {
+          server: { command: 'node', env: { VERSION: 'package-10.20.30.40' } },
+        },
+      });
+      expect(detectSuspiciousNetworkTarget('.mcp.json', headContent)).toHaveLength(0);
+    });
+
+    it('produces zero findings for a version embedded mid-word', () => {
+      const headContent = JSON.stringify({
+        mcpServers: {
+          server: { command: 'node', args: ['--version=10.20.30.40'] },
+        },
+      });
+      expect(detectSuspiciousNetworkTarget('.mcp.json', headContent)).toHaveLength(0);
+    });
+
+    it('still fires for the same digits as a genuine bare IP (whole value)', () => {
+      const headContent = JSON.stringify({
+        mcpServers: {
+          server: { command: 'node', args: ['10.20.30.40'] },
+        },
+      });
+      expect(detectSuspiciousNetworkTarget('.mcp.json', headContent)).toHaveLength(1);
+    });
+
+    it('still fires for the same digits in an ip:port shape', () => {
+      const headContent = JSON.stringify({
+        mcpServers: {
+          server: { command: 'node', args: ['10.20.30.40:8080'] },
+        },
+      });
+      expect(detectSuspiciousNetworkTarget('.mcp.json', headContent)).toHaveLength(1);
+    });
+
+    it('still fires for the same digits inside an actual URL shape', () => {
+      const headContent = JSON.stringify({
+        mcpServers: {
+          server: { command: 'node', args: ['tcp://10.20.30.40/path'] },
+        },
+      });
+      expect(detectSuspiciousNetworkTarget('.mcp.json', headContent)).toHaveLength(1);
+    });
+    
+    it('still fires for the same digits inside a URL with auth', () => {
+      const headContent = JSON.stringify({
+        mcpServers: {
+          server: { command: 'node', args: ['postgres://user:pass@10.20.30.40/db'] },
+        },
+      });
+      expect(detectSuspiciousNetworkTarget('.mcp.json', headContent)).toHaveLength(1);
+    });
+  });
 });
+
