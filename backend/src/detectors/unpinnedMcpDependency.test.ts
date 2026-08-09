@@ -184,4 +184,254 @@ describe('Task 5.1: detectUnpinnedMcpDependency', () => {
     expect(findings).toHaveLength(1);
     expect(findings[0].file).toBe('claude_desktop_config.json');
   });
+
+  // ---------------------------------------------------------------------------
+  // Additional floating-dependency runners (Task 5.1 extension)
+  // ---------------------------------------------------------------------------
+
+  describe('npx.cmd (Windows alias)', () => {
+    it('fires a WARNING finding for npx.cmd with an unpinned package (fixture)', () => {
+      const findings = detectUnpinnedMcpDependency(filePath, readFixture('npx-cmd-unpinned'));
+
+      expect(findings).toHaveLength(1);
+      expect(findings[0]).toEqual({
+        detectorId: 'diff-drift.unpinned-mcp-dependency',
+        severity: 'warning',
+        file: filePath,
+        summary: "MCP server 'fetch' installs 'mcp-server-fetch' via npx.cmd with no version pin",
+        detail:
+          "The MCP server 'fetch' in .mcp.json runs 'mcp-server-fetch' via npx.cmd with no pinned " +
+          "version. Without an explicit version (e.g. 'mcp-server-fetch@1.2.3'), npx.cmd always " +
+          'resolves to whatever release is currently published on the registry, so a compromised ' +
+          'or malicious package update reaches every agent invocation immediately, with no PR for ' +
+          'anyone to review.',
+      });
+    });
+
+    it('produces zero findings when npx.cmd server is pinned (fixture)', () => {
+      expect(detectUnpinnedMcpDependency(filePath, readFixture('npx-cmd-pinned'))).toHaveLength(0);
+    });
+
+    it('fires for an unpinned npx.cmd server given inline', () => {
+      const headContent = JSON.stringify({
+        mcpServers: { fetch: { command: 'npx.cmd', args: ['mcp-server-fetch'] } },
+      });
+      const findings = detectUnpinnedMcpDependency('.mcp.json', headContent);
+      expect(findings).toHaveLength(1);
+      expect(findings[0].summary).toBe(
+        "MCP server 'fetch' installs 'mcp-server-fetch' via npx.cmd with no version pin"
+      );
+    });
+
+    it('produces zero findings when npx.cmd package is pinned (inline)', () => {
+      const headContent = JSON.stringify({
+        mcpServers: { fetch: { command: 'npx.cmd', args: ['mcp-server-fetch@1.2.3'] } },
+      });
+      expect(detectUnpinnedMcpDependency('.mcp.json', headContent)).toHaveLength(0);
+    });
+  });
+
+  describe('absolute path to npx / npx.cmd', () => {
+    it('fires a WARNING finding for an absolute Unix path to npx with an unpinned package (fixture)', () => {
+      const findings = detectUnpinnedMcpDependency(filePath, readFixture('npx-abs-path-unpinned'));
+
+      expect(findings).toHaveLength(1);
+      expect(findings[0].summary).toBe(
+        "MCP server 'fetch' installs 'mcp-server-fetch' via npx with no version pin"
+      );
+    });
+
+    it('fires for /usr/local/bin/npx with unpinned package (inline)', () => {
+      const headContent = JSON.stringify({
+        mcpServers: { fetch: { command: '/usr/local/bin/npx', args: ['mcp-server-fetch'] } },
+      });
+      const findings = detectUnpinnedMcpDependency('.mcp.json', headContent);
+      expect(findings).toHaveLength(1);
+      expect(findings[0].summary).toBe(
+        "MCP server 'fetch' installs 'mcp-server-fetch' via npx with no version pin"
+      );
+    });
+
+    it('produces zero findings for /usr/local/bin/npx with a pinned package', () => {
+      const headContent = JSON.stringify({
+        mcpServers: { fetch: { command: '/usr/local/bin/npx', args: ['mcp-server-fetch@2.0.0'] } },
+      });
+      expect(detectUnpinnedMcpDependency('.mcp.json', headContent)).toHaveLength(0);
+    });
+
+    it('fires for a Windows absolute path to npx.cmd with an unpinned package (inline)', () => {
+      const headContent = JSON.stringify({
+        mcpServers: {
+          fetch: {
+            command: 'C:\\Users\\user\\AppData\\Roaming\\npm\\npx.cmd',
+            args: ['mcp-server-fetch'],
+          },
+        },
+      });
+      const findings = detectUnpinnedMcpDependency('.mcp.json', headContent);
+      expect(findings).toHaveLength(1);
+      expect(findings[0].summary).toBe(
+        "MCP server 'fetch' installs 'mcp-server-fetch' via npx.cmd with no version pin"
+      );
+    });
+  });
+
+  describe('pnpm dlx', () => {
+    it('fires a WARNING finding for pnpm dlx with an unpinned package (fixture)', () => {
+      const findings = detectUnpinnedMcpDependency(filePath, readFixture('pnpm-dlx-unpinned'));
+
+      expect(findings).toHaveLength(1);
+      expect(findings[0]).toEqual({
+        detectorId: 'diff-drift.unpinned-mcp-dependency',
+        severity: 'warning',
+        file: filePath,
+        summary: "MCP server 'fetch' installs 'mcp-server-fetch' via pnpm dlx with no version pin",
+        detail:
+          "The MCP server 'fetch' in .mcp.json runs 'mcp-server-fetch' via pnpm dlx with no pinned " +
+          "version. Without an explicit version (e.g. 'mcp-server-fetch@1.2.3'), pnpm dlx always " +
+          'resolves to whatever release is currently published on the registry, so a compromised ' +
+          'or malicious package update reaches every agent invocation immediately, with no PR for ' +
+          'anyone to review.',
+      });
+    });
+
+    it('produces zero findings when pnpm dlx package is pinned (fixture)', () => {
+      expect(detectUnpinnedMcpDependency(filePath, readFixture('pnpm-dlx-pinned'))).toHaveLength(0);
+    });
+
+    it('fires for pnpm dlx with unpinned package (inline)', () => {
+      const headContent = JSON.stringify({
+        mcpServers: { fetch: { command: 'pnpm', args: ['dlx', 'mcp-server-fetch'] } },
+      });
+      const findings = detectUnpinnedMcpDependency('.mcp.json', headContent);
+      expect(findings).toHaveLength(1);
+      expect(findings[0].summary).toBe(
+        "MCP server 'fetch' installs 'mcp-server-fetch' via pnpm dlx with no version pin"
+      );
+    });
+
+    it('produces zero findings when pnpm dlx package is pinned (inline)', () => {
+      const headContent = JSON.stringify({
+        mcpServers: { fetch: { command: 'pnpm', args: ['dlx', 'mcp-server-fetch@1.2.3'] } },
+      });
+      expect(detectUnpinnedMcpDependency('.mcp.json', headContent)).toHaveLength(0);
+    });
+
+    it('does not fire for bare pnpm (no dlx subcommand)', () => {
+      const headContent = JSON.stringify({
+        mcpServers: { fetch: { command: 'pnpm', args: ['mcp-server-fetch'] } },
+      });
+      expect(detectUnpinnedMcpDependency('.mcp.json', headContent)).toHaveLength(0);
+    });
+
+    it('fires for pnpm dlx with -y flag before package name', () => {
+      const headContent = JSON.stringify({
+        mcpServers: { fetch: { command: 'pnpm', args: ['dlx', '-y', 'mcp-server-fetch'] } },
+      });
+      const findings = detectUnpinnedMcpDependency('.mcp.json', headContent);
+      expect(findings).toHaveLength(1);
+    });
+  });
+
+  describe('yarn dlx', () => {
+    it('fires a WARNING finding for yarn dlx with an unpinned package (fixture)', () => {
+      const findings = detectUnpinnedMcpDependency(filePath, readFixture('yarn-dlx-unpinned'));
+
+      expect(findings).toHaveLength(1);
+      expect(findings[0]).toEqual({
+        detectorId: 'diff-drift.unpinned-mcp-dependency',
+        severity: 'warning',
+        file: filePath,
+        summary: "MCP server 'fetch' installs 'mcp-server-fetch' via yarn dlx with no version pin",
+        detail:
+          "The MCP server 'fetch' in .mcp.json runs 'mcp-server-fetch' via yarn dlx with no pinned " +
+          "version. Without an explicit version (e.g. 'mcp-server-fetch@1.2.3'), yarn dlx always " +
+          'resolves to whatever release is currently published on the registry, so a compromised ' +
+          'or malicious package update reaches every agent invocation immediately, with no PR for ' +
+          'anyone to review.',
+      });
+    });
+
+    it('produces zero findings when yarn dlx package is pinned (fixture)', () => {
+      expect(detectUnpinnedMcpDependency(filePath, readFixture('yarn-dlx-pinned'))).toHaveLength(0);
+    });
+
+    it('fires for yarn dlx with unpinned package (inline)', () => {
+      const headContent = JSON.stringify({
+        mcpServers: { fetch: { command: 'yarn', args: ['dlx', 'mcp-server-fetch'] } },
+      });
+      const findings = detectUnpinnedMcpDependency('.mcp.json', headContent);
+      expect(findings).toHaveLength(1);
+      expect(findings[0].summary).toBe(
+        "MCP server 'fetch' installs 'mcp-server-fetch' via yarn dlx with no version pin"
+      );
+    });
+
+    it('produces zero findings when yarn dlx package is pinned (inline)', () => {
+      const headContent = JSON.stringify({
+        mcpServers: { fetch: { command: 'yarn', args: ['dlx', 'mcp-server-fetch@1.2.3'] } },
+      });
+      expect(detectUnpinnedMcpDependency('.mcp.json', headContent)).toHaveLength(0);
+    });
+
+    it('does not fire for bare yarn (no dlx subcommand)', () => {
+      const headContent = JSON.stringify({
+        mcpServers: { fetch: { command: 'yarn', args: ['mcp-server-fetch'] } },
+      });
+      expect(detectUnpinnedMcpDependency('.mcp.json', headContent)).toHaveLength(0);
+    });
+  });
+
+  describe('bunx', () => {
+    it('fires a WARNING finding for bunx with an unpinned package (fixture)', () => {
+      const findings = detectUnpinnedMcpDependency(filePath, readFixture('bunx-unpinned'));
+
+      expect(findings).toHaveLength(1);
+      expect(findings[0]).toEqual({
+        detectorId: 'diff-drift.unpinned-mcp-dependency',
+        severity: 'warning',
+        file: filePath,
+        summary: "MCP server 'fetch' installs 'mcp-server-fetch' via bunx with no version pin",
+        detail:
+          "The MCP server 'fetch' in .mcp.json runs 'mcp-server-fetch' via bunx with no pinned " +
+          "version. Without an explicit version (e.g. 'mcp-server-fetch@1.2.3'), bunx always " +
+          'resolves to whatever release is currently published on the registry, so a compromised ' +
+          'or malicious package update reaches every agent invocation immediately, with no PR for ' +
+          'anyone to review.',
+      });
+    });
+
+    it('produces zero findings when bunx package is pinned (fixture)', () => {
+      expect(detectUnpinnedMcpDependency(filePath, readFixture('bunx-pinned'))).toHaveLength(0);
+    });
+
+    it('fires for bunx with unpinned package (inline)', () => {
+      const headContent = JSON.stringify({
+        mcpServers: { fetch: { command: 'bunx', args: ['mcp-server-fetch'] } },
+      });
+      const findings = detectUnpinnedMcpDependency('.mcp.json', headContent);
+      expect(findings).toHaveLength(1);
+      expect(findings[0].summary).toBe(
+        "MCP server 'fetch' installs 'mcp-server-fetch' via bunx with no version pin"
+      );
+    });
+
+    it('produces zero findings when bunx package is pinned (@version pin)', () => {
+      const headContent = JSON.stringify({
+        mcpServers: { fetch: { command: 'bunx', args: ['mcp-server-fetch@1.2.3'] } },
+      });
+      expect(detectUnpinnedMcpDependency('.mcp.json', headContent)).toHaveLength(0);
+    });
+
+    it('treats bunx with a floating dist-tag as unpinned', () => {
+      const headContent = JSON.stringify({
+        mcpServers: { fetch: { command: 'bunx', args: ['mcp-server-fetch@latest'] } },
+      });
+      const findings = detectUnpinnedMcpDependency('.mcp.json', headContent);
+      expect(findings).toHaveLength(1);
+      expect(findings[0].summary).toBe(
+        "MCP server 'fetch' installs 'mcp-server-fetch@latest' via bunx with no version pin"
+      );
+    });
+  });
 });

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "fetch": {
+      "command": "yarn",
+      "args": ["dlx", "mcp-server-fetch"]
+    }
+  }
+}

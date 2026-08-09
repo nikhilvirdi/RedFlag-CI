@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "fetch": {
+      "command": "/usr/local/bin/npx",
+      "args": ["-y", "mcp-server-fetch"]
+    }
+  }
+}
