@@ -50,6 +50,18 @@ function pullRequestPayload(overrides: Record<string, unknown> = {}): Record<str
 // path -> {base, head} content map a test scenario needs. Every call to
 // githubApp.getInstallationOctokit resolves to this same object, mirroring
 // how a real installation client gets reused across the whole pipeline.
+// octokit.paginate() takes the route function plus params and hands back the
+// flattened `.data` across every page; a single-page fixture only needs it
+// to delegate straight through to the mocked route.
+function mockPaginate() {
+  return jest
+    .fn()
+    .mockImplementation(async (route: (params: unknown) => Promise<{ data: unknown[] }>, params: unknown) => {
+      const { data } = await route(params);
+      return data;
+    });
+}
+
 function mockOctokit(changedFiles: string[], fileContents: Record<string, { base: string; head: string }>) {
   const listFiles = jest.fn().mockResolvedValue({ data: changedFiles.map((filename) => ({ filename })) });
 
@@ -79,6 +91,7 @@ function mockOctokit(changedFiles: string[], fileContents: Record<string, { base
       issues: { createComment, updateComment: jest.fn(), listComments },
       checks: { create: createCheck, update: jest.fn(), listForRef },
     },
+    paginate: mockPaginate(),
   };
 
   return { octokit, listFiles, getContent, createComment, createCheck };
@@ -148,6 +161,7 @@ function statefulMockOctokit(
       issues: { createComment, updateComment, listComments },
       checks: { create: createCheck, update: updateCheck, listForRef },
     },
+    paginate: mockPaginate(),
   };
 
   return { octokit, comments, createComment, updateComment, createCheck, updateCheck };

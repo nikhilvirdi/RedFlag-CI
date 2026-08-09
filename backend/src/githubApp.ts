@@ -71,12 +71,15 @@ export async function getChangedFiles(
   const { installationId, owner, repo, pullNumber } = request;
   const octokit = await app.getInstallationOctokit(installationId);
 
-  const { data } = await octokit.rest.pulls.listFiles({
+  // A PR touching >100 files needs more than one page, or anything past the
+  // first 100 silently goes unseen -- octokit.paginate() (already pulled in
+  // by @octokit/rest) walks every page and hands back the merged list.
+  const files = await octokit.paginate(octokit.rest.pulls.listFiles, {
     owner,
     repo,
     pull_number: pullNumber,
     per_page: 100,
   });
 
-  return data.map((file) => file.filename);
+  return files.map((file) => file.filename);
 }
