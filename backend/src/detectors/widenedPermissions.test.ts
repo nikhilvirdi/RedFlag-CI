@@ -182,6 +182,25 @@ describe('DD-3: detectWidenedPermissions', () => {
     expect(findings[0].severity).toBe('high');
   });
 
+  // Regression: a bare unscoped tool name with no "*" character at all is
+  // correctly classified as unrestricted (isUnrestrictedWildcard), but the
+  // finding text previously called it a "Wildcard permission" unconditionally
+  // -- factually wrong for an entry that contains no wildcard character.
+  // Every prior "Wildcard permission" fixture/test happens to contain a
+  // literal "*", so this gap was untested.
+  it('describes a bare unscoped tool name (no literal "*") as unrestricted, not a wildcard', () => {
+    const before = JSON.stringify({ permissions: { allow: ['Read(a)'], deny: [] } });
+    const after = JSON.stringify({ permissions: { allow: ['Read(a)', 'WebFetch'], deny: [] } });
+
+    const findings = detectWidenedPermissions(filePath, before, after);
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0].severity).toBe('high');
+    expect(findings[0].summary).toBe("Unrestricted permission 'WebFetch' added to allow-list");
+    expect(findings[0].summary).not.toMatch(/wildcard/i);
+    expect(findings[0].detail).toContain('nothing scoping it');
+  });
+
   it('does not escalate wildcards scoped by an extension or a directory prefix', () => {
     const before = JSON.stringify({ permissions: { allow: [], deny: [] } });
     const after = JSON.stringify({
