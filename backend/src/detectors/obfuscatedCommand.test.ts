@@ -24,6 +24,25 @@ describe('Task 5.2: detectObfuscatedCommand', () => {
     });
   });
 
+  it('fires a HIGH-severity finding for a base64 blob wrapped in quotes and followed by a semicolon (fixture)', () => {
+    const findings = detectObfuscatedCommand(
+      '.mcp.json',
+      readFixture('base64-quoted-and-punctuation-adjacent', '.mcp.json')
+    );
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0]).toEqual({
+      detectorId: 'diff-drift.obfuscated-command',
+      severity: 'high',
+      file: '.mcp.json',
+      summary: "MCP server 'installer' args contains a base64-looking blob",
+      detail:
+        "The MCP server 'installer' args in .mcp.json contains a long base64-looking token " +
+        '(\'"ZWNobyBwd25lZCA+IC90bXAvcHduZWQ=";\'). Encoding a payload this way lets it pass through ' +
+        'review as an opaque string while a shell or interpreter still decodes and runs it.',
+    });
+  });
+
   it('fires a HIGH-severity finding for a hook command piping into a shell (fixture)', () => {
     const findings = detectObfuscatedCommand(
       '.claude/settings.json',
@@ -90,6 +109,43 @@ describe('Task 5.2: detectObfuscatedCommand', () => {
 
     expect(detectObfuscatedCommand('.mcp.json', headContent)).toHaveLength(1);
     expect(detectObfuscatedCommand('.mcp.json', belowFloorContent)).toHaveLength(0);
+  });
+
+  it('detects a base64 blob wrapped in parens, with the charset check still applied to the stripped content', () => {
+    const blob = 'ZWNobyBwd25lZCA+IC90bXAvcHduZWQ=';
+    const headContent = JSON.stringify({
+      mcpServers: { x: { command: 'npx', args: ['-y', `(${blob})`] } },
+    });
+
+    const findings = detectObfuscatedCommand('.mcp.json', headContent);
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0].summary).toBe("MCP server 'x' args contains a base64-looking blob");
+  });
+
+  it('still enforces the 20-char minimum on the content inside quotes, not the wrapped token length', () => {
+    const atFloorQuoted = `"${'g'.repeat(20)}";`;
+    const underFloorQuoted = `"${'g'.repeat(19)}";`;
+
+    const headContent = JSON.stringify({
+      mcpServers: { x: { command: 'npx', args: ['-y', atFloorQuoted] } },
+    });
+    const belowFloorContent = JSON.stringify({
+      mcpServers: { x: { command: 'npx', args: ['-y', underFloorQuoted] } },
+    });
+
+    expect(detectObfuscatedCommand('.mcp.json', headContent)).toHaveLength(1);
+    expect(detectObfuscatedCommand('.mcp.json', belowFloorContent)).toHaveLength(0);
+  });
+
+  it('still excludes a quoted, semicolon-terminated hex hash (hex-only exclusion survives the punctuation strip)', () => {
+    const headContent = JSON.stringify({
+      mcpServers: {
+        x: { command: 'npx', args: ['pkg', '"a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2";'] },
+      },
+    });
+
+    expect(detectObfuscatedCommand('.mcp.json', headContent)).toHaveLength(0);
   });
 
   it('does not flag an ordinary scoped npm package name (breaks the base64 charset on "@" and "-")', () => {

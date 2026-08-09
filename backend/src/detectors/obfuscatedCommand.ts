@@ -25,8 +25,17 @@ const HEX_ONLY = /^[0-9a-fA-F]+$/;
 // Literal "|" into "sh"/"bash", with or without a space on either side.
 const PIPE_TO_SHELL = /\|\s*(sh|bash)\b/;
 
+// A base64 blob embedded in a larger shell string is often wrapped in
+// quotes ("...") or immediately followed by syntax punctuation (a
+// semicolon, a closing paren) -- neither is part of the token itself, so
+// strip them from both ends before charset-checking rather than requiring
+// the whole whitespace-delimited token to be pure base64. The charset check
+// itself (length, hex-only exclusion) still runs on what's left.
+const SURROUNDING_PUNCTUATION = /^["'`([{]+|["'`)\]};,]+$/g;
+
 function looksLikeBase64Blob(token: string): boolean {
-  return BASE64_TOKEN.test(token) && !HEX_ONLY.test(token);
+  const stripped = token.replace(SURROUNDING_PUNCTUATION, '');
+  return BASE64_TOKEN.test(stripped) && !HEX_ONLY.test(stripped);
 }
 
 function truncate(text: string): string {
