@@ -11,4 +11,4 @@ backend/TASK_REPORT.md
 backend/benchmark/testcase_v1report.md
 
 # Local tooling artifact, unrelated to this project
-.stenod/
+.stenod/coverage/
