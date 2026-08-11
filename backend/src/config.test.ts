@@ -1,4 +1,32 @@
-import { getGitHubAppConfig } from './config';
+import { getGitHubAppConfig, getWebhookSecret } from './config';
+
+describe('getWebhookSecret', () => {
+  afterEach(() => {
+    delete process.env.GITHUB_WEBHOOK_SECRET;
+  });
+
+  it('throws when GITHUB_WEBHOOK_SECRET is not set', () => {
+    delete process.env.GITHUB_WEBHOOK_SECRET;
+
+    expect(() => getWebhookSecret()).toThrow(
+      'GITHUB_WEBHOOK_SECRET environment variable is not set'
+    );
+  });
+
+  it('throws when GITHUB_WEBHOOK_SECRET is an empty string', () => {
+    process.env.GITHUB_WEBHOOK_SECRET = '';
+
+    expect(() => getWebhookSecret()).toThrow(
+      'GITHUB_WEBHOOK_SECRET environment variable is not set'
+    );
+  });
+
+  it('returns the secret when set', () => {
+    process.env.GITHUB_WEBHOOK_SECRET = 'a-webhook-secret';
+
+    expect(getWebhookSecret()).toBe('a-webhook-secret');
+  });
+});
 
 describe('getGitHubAppConfig', () => {
   afterEach(() => {
