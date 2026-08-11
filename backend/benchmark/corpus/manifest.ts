@@ -1291,4 +1291,13 @@ export const SCENARIOS: CorpusScenario[] = [
     groundTruth: 'negative',
     note: 'Variant of near-miss-legit-cyrillic-text confirming the script-majority fix generalizes past Cyrillic.',
   },
+  {
+    id: 'dd8-monitored-file-deleted',
+    description: 'A monitored diff-drift file present in base is deleted outright in head, taking every permission/hook/server definition with it.',
+    filePath: '.claude/settings.json',
+    engine: 'diff-drift',
+    detectorUnderTest: 'diff-drift.monitored-file-deleted',
+    groundTruth: 'positive',
+    note: 'Before this detector existed, DD-1 through DD-7 each correctly returned [] on a null head, so the single most severe change possible -- every constraint in the file gone at once -- produced zero findings. This scenario has no after.json: the file\'s absence in head IS the scenario, not any particular (empty) content for it.',
+  },
 ];

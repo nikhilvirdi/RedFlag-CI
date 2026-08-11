@@ -5,6 +5,7 @@ import { detectNewMcpServer } from '../src/detectors/newMcpServer';
 import { detectSwappedMcpServer } from '../src/detectors/swappedMcpServer';
 import { detectWidenedPermissions } from '../src/detectors/widenedPermissions';
 import { detectHookChanged } from '../src/detectors/hookChanged';
+import { detectMonitoredFileDeleted } from '../src/detectors/monitoredFileDeleted';
 import { detectUnpinnedMcpDependency } from '../src/detectors/unpinnedMcpDependency';
 import { detectObfuscatedCommand } from '../src/detectors/obfuscatedCommand';
 import { detectDuplicateJsonKey } from '../src/detectors/duplicateJsonKey';
@@ -27,6 +28,14 @@ const CORPUS_DIR = path.join(process.cwd(), 'benchmark', 'corpus');
 // actual production pipeline logic, not a reimplementation, run directly
 // against each corpus pair instead of through detector-level unit tests.
 function runDiffDriftDetectors(filePath: string, base: string | null, head: string | null): Finding[] {
+  // Mirrors processPullRequestEvent.ts's DD-8 short-circuit exactly: a
+  // monitored file present in base and absent in head reports the deletion
+  // instead of running the normal detectors, all of which return [] on a
+  // null head regardless.
+  if (base !== null && head === null) {
+    return detectMonitoredFileDeleted(filePath, base, head);
+  }
+
   return [
     ...detectNewMcpServer(filePath, base, head),
     ...detectSwappedMcpServer(filePath, base, head),
@@ -49,12 +58,16 @@ function runRuleFileDetectors(filePath: string, head: string | null): Finding[] 
   return [...detectInvisibleUnicode(filePath, head), ...detectHomoglyphs(filePath, head)];
 }
 
-function readScenarioFiles(scenario: CorpusScenario): { before: string; after: string } {
+function readScenarioFiles(scenario: CorpusScenario): { before: string; after: string | null } {
   const ext = path.extname(scenario.filePath);
   const dir = path.join(CORPUS_DIR, scenario.id);
+  const afterPath = path.join(dir, `after${ext}`);
   return {
     before: fs.readFileSync(path.join(dir, `before${ext}`), 'utf-8'),
-    after: fs.readFileSync(path.join(dir, `after${ext}`), 'utf-8'),
+    // A missing after file is not an error -- it's the scenario: the
+    // monitored file was deleted between base and head, so there is no
+    // "after" content to read, only its absence.
+    after: fs.existsSync(afterPath) ? fs.readFileSync(afterPath, 'utf-8') : null,
   };
 }
 

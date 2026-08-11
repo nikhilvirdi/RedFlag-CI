@@ -5,6 +5,7 @@ import { detectNewMcpServer } from './detectors/newMcpServer';
 import { detectSwappedMcpServer } from './detectors/swappedMcpServer';
 import { detectWidenedPermissions } from './detectors/widenedPermissions';
 import { detectHookChanged } from './detectors/hookChanged';
+import { detectMonitoredFileDeleted } from './detectors/monitoredFileDeleted';
 import { detectUnpinnedMcpDependency } from './detectors/unpinnedMcpDependency';
 import { detectObfuscatedCommand } from './detectors/obfuscatedCommand';
 import { detectDuplicateJsonKey } from './detectors/duplicateJsonKey';
@@ -127,6 +128,15 @@ function parseMergeEvent(payload: unknown): MergeEvent | null {
 }
 
 function runDiffDriftDetectors(filePath: string, base: string | null, head: string | null): Finding[] {
+  // DD-8 fires instead of the normal detectors below when the file existed
+  // in base and is gone in head: every one of them independently (and
+  // correctly) returns [] on a null head, since there's nothing left to scan
+  // -- but that leaves the deletion itself, the most severe possible change,
+  // completely unreported. See detectors/monitoredFileDeleted.ts.
+  if (base !== null && head === null) {
+    return detectMonitoredFileDeleted(filePath, base, head);
+  }
+
   return [
     ...detectNewMcpServer(filePath, base, head),
     ...detectSwappedMcpServer(filePath, base, head),
