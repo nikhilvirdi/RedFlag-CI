@@ -1,14 +1,23 @@
 import { Finding } from '../types';
 import { correlateRemovedAdded } from '../correlateRemovedAdded';
 import { normalizeUnicode, normalizeDeep } from '../unicodeNormalize';
+import { argsChanged } from '../argsComparison';
 
 // Mirrors DD-2's PINNED_FIELDS (swappedMcpServer.ts) -- what runs (command),
-// how it runs (args, env), and any explicit version/hash pin -- duplicated
-// here rather than imported, since this task is scoped to touching only
-// this file and DD-2 doesn't currently export the constant. Both detectors
-// independently agree on what "the same server" means at the field level,
-// which is also this task's own instruction: "everything DD-2 already
-// considers pinned."
+// how it runs (args, env), and any explicit version/hash pin. The field list
+// itself is still duplicated rather than imported, since this task is scoped
+// to touching only this file and DD-2 doesn't currently export the constant.
+// "args" specifically is NOT independently reimplemented, though: both
+// detectors compare it through the same shared argsChanged (../argsComparison).
+// That extraction closes a real drift this comment used to paper over --
+// it previously claimed the two detectors "independently agree on what 'the
+// same server' means," which was only true of the field *list*, not the
+// comparison itself: DD-2 already ignored a harmless flag reorder here,
+// while this file ran the same "args" value through a strict,
+// order-sensitive JSON.stringify comparison, so a rename with a
+// simultaneous flag reorder in the same diff spuriously read as a brand-new
+// server instead of correlating as a rename. Now both truly agree, because
+// both call the same function.
 const IDENTITY_FIELDS = ['command', 'args', 'version', 'hash', 'env'] as const;
 
 function parseMcpServerEntries(content: string): Record<string, unknown> | null {
@@ -49,21 +58,28 @@ interface ServerCandidate {
   definition: unknown;
 }
 
-// Same server, different key: every identity field matches exactly.
-// Order-sensitive for the "args" array (JSON.stringify preserves order),
-// matching DD-2's own comparison semantics -- a rename shouldn't also
-// silently swallow a simultaneous positional-argument reorder underneath it.
-// Compared through normalizeDeep (Task 5.8) so two otherwise-identical
-// fields expressed in different Unicode normalization forms (e.g. an env
-// value or an arg string using NFD instead of NFC) still correlate as the
-// same rename, rather than spuriously failing to match on byte differences
-// invisible to a human reviewer.
+// Same server, different key: every identity field matches exactly. "args"
+// is compared via the shared argsChanged (../argsComparison, the same logic
+// DD-2/swappedMcpServer.ts uses): positional arguments stay order-sensitive
+// (a reorder there can change execution semantics, so a rename shouldn't
+// silently swallow one underneath it), but flagged/named arguments compare
+// as an unordered multiset, since two independent flags being reordered
+// relative to each other is cosmetic, not drift -- and must not block a
+// correlated rename just because of it. Every other identity field stays a
+// strict, order-sensitive JSON.stringify comparison. Both paths go through
+// normalizeDeep (Task 5.8) so two otherwise-identical fields expressed in
+// different Unicode normalization forms (e.g. an env value or an arg string
+// using NFD instead of NFC) still correlate as the same rename, rather than
+// spuriously failing to match on byte differences invisible to a human
+// reviewer.
 function isSameServerDefinition(removed: ServerCandidate, added: ServerCandidate): boolean {
-  return IDENTITY_FIELDS.every(
-    (field) =>
-      JSON.stringify(normalizeDeep(getField(removed.definition, field))) ===
-      JSON.stringify(normalizeDeep(getField(added.definition, field)))
-  );
+  return IDENTITY_FIELDS.every((field) => {
+    const removedValue = getField(removed.definition, field);
+    const addedValue = getField(added.definition, field);
+    return field === 'args'
+      ? !argsChanged(removedValue, addedValue)
+      : JSON.stringify(normalizeDeep(removedValue)) === JSON.stringify(normalizeDeep(addedValue));
+  });
 }
 
 export function detectNewMcpServer(
