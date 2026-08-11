@@ -346,6 +346,26 @@ describe('writeBaseline', () => {
       expect.objectContaining({ branch: 'custom-branch' })
     );
   });
+
+  it('Finding #11: logs a distinct warning and does not throw when the write itself fails (a conflicting sha, or any other failure)', async () => {
+    const createOrUpdateFileContents = jest.fn().mockRejectedValue(new Error('sha conflict'));
+    const octokit = mockOctokit({ createOrUpdateFileContents });
+
+    await expect(
+      writeBaseline(octokit, { owner: 'octo-org', repo: 'octo-repo', snapshot })
+    ).resolves.toBeUndefined();
+
+    expect(mockLogger.warn).toHaveBeenCalledTimes(1);
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      'Failed to write baseline snapshot; next successful merge will self-heal',
+      expect.objectContaining({
+        owner: 'octo-org',
+        repo: 'octo-repo',
+        branch: 'redflag-ci/baseline',
+        message: 'sha conflict',
+      })
+    );
+  });
 });
 
 describe('Task A.4: checkBaselineBranchProtection', () => {

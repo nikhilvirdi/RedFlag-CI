@@ -1,6 +1,7 @@
 import { Octokit } from '@octokit/rest';
 import { Finding } from './types';
 import { formatFindingsComment, formatCumulativeDriftSection, formatResolvedComment } from './formatFindingsComment';
+import { logger } from './logger';
 
 export interface PostFindingsRequest {
   owner: string;
@@ -21,6 +22,30 @@ const CHECK_RUN_NAME = 'RedFlag CI';
 // on the same PR (a `synchronize` push) can find its own prior comment and
 // edit it instead of piling up a new one per push.
 const COMMENT_MARKER = '<!-- redflag-ci -->';
+
+// Finding #8: guards against two webhook deliveries for the same PR running
+// postFindings concurrently (e.g. two rapid `synchronize` pushes) and both
+// calling findExistingCommentId before either has written one -- the exact
+// duplicate Task 6.1's idempotency check exists to prevent, just reached via
+// a race instead of a missing lookup. Same in-memory-Set shape as app.ts's
+// Task 6.2 delivery dedup, but unbounded and self-clearing rather than
+// capped at a fixed size: a key is only ever held for the duration of one
+// in-flight call (added at the start, removed in a `finally` even on
+// error), never accumulated as a permanent log the way delivery IDs are, so
+// there's nothing to bound.
+//
+// Single-instance-process lock only: this Set lives in this process's own
+// memory. It provides zero protection across multiple replicas of this
+// service -- a second instance's postFindings call cannot see this one's
+// lock at all, and can still race with it. Cross-instance safety would need
+// a distributed lock or DB-backed mutex, both explicitly out of scope for
+// this stateless-service design (architecture.md section 2), the same
+// reasoning that already puts durable delivery dedup out of scope until v2.
+const inFlight = new Set<string>();
+
+function prLockKey(owner: string, repo: string, pullNumber: number): string {
+  return `${owner}/${repo}#${pullNumber}`;
+}
 
 async function findExistingCommentId(
   octokit: Octokit,
@@ -70,52 +95,64 @@ async function findExistingCheckRunId(
 // and still posts a comment even if this PR's own diff alone found nothing.
 export async function postFindings(octokit: Octokit, request: PostFindingsRequest): Promise<void> {
   const { owner, repo, pullNumber, headSha, findings, cumulativeFindings = [] } = request;
-  const hasFindings = findings.length > 0 || cumulativeFindings.length > 0;
+  const lockKey = prLockKey(owner, repo, pullNumber);
 
-  if (hasFindings) {
-    const sections = [formatFindingsComment(findings), formatCumulativeDriftSection(cumulativeFindings)].filter(
-      Boolean
-    );
-    const body = `${sections.join('\n\n')}\n\n${COMMENT_MARKER}`;
-    const existingCommentId = await findExistingCommentId(octokit, owner, repo, pullNumber);
-
-    if (existingCommentId !== null) {
-      await octokit.rest.issues.updateComment({ owner, repo, comment_id: existingCommentId, body });
-    } else {
-      await octokit.rest.issues.createComment({ owner, repo, issue_number: pullNumber, body });
-    }
-  } else {
-    // A prior comment on this PR was reporting findings that no longer
-    // exist as of this push -- left alone, it would show stale, resolved
-    // findings indefinitely. Edited in place, same as the findings-present
-    // branch above; never created fresh here, so a PR that never had a
-    // comment (the common case) still gets none, unchanged.
-    const existingCommentId = await findExistingCommentId(octokit, owner, repo, pullNumber);
-    if (existingCommentId !== null) {
-      const body = `${formatResolvedComment()}\n\n${COMMENT_MARKER}`;
-      await octokit.rest.issues.updateComment({ owner, repo, comment_id: existingCommentId, body });
-    }
+  if (inFlight.has(lockKey)) {
+    logger.warn('Skipping postFindings: already in flight for this PR', { owner, repo, pullNumber });
+    return;
   }
+  inFlight.add(lockKey);
 
-  const conclusion = hasFindings ? 'neutral' : 'success';
-  const existingCheckRunId = await findExistingCheckRunId(octokit, owner, repo, headSha);
+  try {
+    const hasFindings = findings.length > 0 || cumulativeFindings.length > 0;
 
-  if (existingCheckRunId !== null) {
-    await octokit.rest.checks.update({
-      owner,
-      repo,
-      check_run_id: existingCheckRunId,
-      status: 'completed',
-      conclusion,
-    });
-  } else {
-    await octokit.rest.checks.create({
-      owner,
-      repo,
-      name: CHECK_RUN_NAME,
-      head_sha: headSha,
-      status: 'completed',
-      conclusion,
-    });
+    if (hasFindings) {
+      const sections = [formatFindingsComment(findings), formatCumulativeDriftSection(cumulativeFindings)].filter(
+        Boolean
+      );
+      const body = `${sections.join('\n\n')}\n\n${COMMENT_MARKER}`;
+      const existingCommentId = await findExistingCommentId(octokit, owner, repo, pullNumber);
+
+      if (existingCommentId !== null) {
+        await octokit.rest.issues.updateComment({ owner, repo, comment_id: existingCommentId, body });
+      } else {
+        await octokit.rest.issues.createComment({ owner, repo, issue_number: pullNumber, body });
+      }
+    } else {
+      // A prior comment on this PR was reporting findings that no longer
+      // exist as of this push -- left alone, it would show stale, resolved
+      // findings indefinitely. Edited in place, same as the findings-present
+      // branch above; never created fresh here, so a PR that never had a
+      // comment (the common case) still gets none, unchanged.
+      const existingCommentId = await findExistingCommentId(octokit, owner, repo, pullNumber);
+      if (existingCommentId !== null) {
+        const body = `${formatResolvedComment()}\n\n${COMMENT_MARKER}`;
+        await octokit.rest.issues.updateComment({ owner, repo, comment_id: existingCommentId, body });
+      }
+    }
+
+    const conclusion = hasFindings ? 'neutral' : 'success';
+    const existingCheckRunId = await findExistingCheckRunId(octokit, owner, repo, headSha);
+
+    if (existingCheckRunId !== null) {
+      await octokit.rest.checks.update({
+        owner,
+        repo,
+        check_run_id: existingCheckRunId,
+        status: 'completed',
+        conclusion,
+      });
+    } else {
+      await octokit.rest.checks.create({
+        owner,
+        repo,
+        name: CHECK_RUN_NAME,
+        head_sha: headSha,
+        status: 'completed',
+        conclusion,
+      });
+    }
+  } finally {
+    inFlight.delete(lockKey);
   }
 }
