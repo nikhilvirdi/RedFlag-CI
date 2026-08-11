@@ -1,6 +1,16 @@
 import { Octokit } from '@octokit/rest';
 import { Finding } from './types';
 import { postFindings } from './postFindings';
+import { logger } from './logger';
+
+jest.mock('./logger', () => ({
+  logger: { warn: jest.fn(), error: jest.fn(), info: jest.fn() },
+}));
+const mockLogger = logger as unknown as { warn: jest.Mock };
+
+beforeEach(() => {
+  mockLogger.warn.mockReset();
+});
 
 const sampleFindings: Finding[] = [
   {
@@ -412,5 +422,102 @@ describe('Task A.6: cumulativeFindings render as a distinct comment section', ()
 
     const body = createComment.mock.calls[0][0].body as string;
     expect(body).not.toContain('additional change');
+  });
+});
+
+describe('Finding #8: in-process lock against concurrent postFindings for the same PR', () => {
+  it('skips the second of two concurrent calls for the same PR, logging instead of risking a duplicate', async () => {
+    const createComment = jest.fn().mockResolvedValue({});
+    const createCheck = jest.fn().mockResolvedValue({});
+    const octokit = mockOctokit({ createComment, createCheck });
+
+    const request = {
+      owner: 'octo-org',
+      repo: 'octo-repo',
+      pullNumber: 100,
+      headSha: 'sha-1',
+      findings: sampleFindings,
+    };
+
+    // Neither call is awaited individually first: both start executing
+    // synchronously (through to their first `await`) before either
+    // finishes, the same interleaving two concurrent webhook deliveries for
+    // the same PR would produce.
+    await Promise.all([postFindings(octokit, request), postFindings(octokit, request)]);
+
+    expect(createComment).toHaveBeenCalledTimes(1);
+    expect(createCheck).toHaveBeenCalledTimes(1);
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      'Skipping postFindings: already in flight for this PR',
+      expect.objectContaining({ owner: 'octo-org', repo: 'octo-repo', pullNumber: 100 })
+    );
+  });
+
+  it('does not lock across different PRs -- concurrent calls for different pull numbers both proceed', async () => {
+    const createComment = jest.fn().mockResolvedValue({});
+    const octokit = mockOctokit({ createComment });
+
+    await Promise.all([
+      postFindings(octokit, {
+        owner: 'octo-org',
+        repo: 'octo-repo',
+        pullNumber: 101,
+        headSha: 'sha-1',
+        findings: sampleFindings,
+      }),
+      postFindings(octokit, {
+        owner: 'octo-org',
+        repo: 'octo-repo',
+        pullNumber: 102,
+        headSha: 'sha-1',
+        findings: sampleFindings,
+      }),
+    ]);
+
+    expect(createComment).toHaveBeenCalledTimes(2);
+    expect(mockLogger.warn).not.toHaveBeenCalled();
+  });
+
+  it('releases the lock once a call completes, so a later (non-concurrent) call for the same PR still runs', async () => {
+    const createComment = jest.fn().mockResolvedValue({});
+    const octokit = mockOctokit({ createComment });
+
+    const request = {
+      owner: 'octo-org',
+      repo: 'octo-repo',
+      pullNumber: 103,
+      headSha: 'sha-1',
+      findings: sampleFindings,
+    };
+
+    await postFindings(octokit, request);
+    await postFindings(octokit, request);
+
+    expect(createComment).toHaveBeenCalledTimes(2);
+    expect(mockLogger.warn).not.toHaveBeenCalled();
+  });
+
+  it('releases the lock even when the call throws, so a subsequent call for the same PR is not stuck skipped forever', async () => {
+    const listComments = jest
+      .fn()
+      .mockRejectedValueOnce(new Error('boom'))
+      .mockResolvedValue({ data: [] });
+    const createComment = jest.fn().mockResolvedValue({});
+    const octokit = mockOctokit({ listComments, createComment });
+
+    const request = {
+      owner: 'octo-org',
+      repo: 'octo-repo',
+      pullNumber: 104,
+      headSha: 'sha-1',
+      findings: sampleFindings,
+    };
+
+    await expect(postFindings(octokit, request)).rejects.toThrow('boom');
+    // If the lock were not released in a `finally`, this second call would
+    // be silently skipped forever, not just once.
+    await expect(postFindings(octokit, request)).resolves.toBeUndefined();
+
+    expect(createComment).toHaveBeenCalledTimes(1);
   });
 });

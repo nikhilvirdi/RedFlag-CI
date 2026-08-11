@@ -156,4 +156,26 @@ describe('updateBaselineOnMerge', () => {
 
     expect(mockLogger.warn).not.toHaveBeenCalled();
   });
+
+  it('Finding #11: does not block the merge event when the baseline write fails -- still checks branch protection and returns normally', async () => {
+    const { githubApp, createOrUpdateFileContents, getBranch } = mockGitHubApp({ '.mcp.json': '{}' });
+    createOrUpdateFileContents.mockRejectedValue(new Error('sha conflict'));
+
+    await expect(
+      updateBaselineOnMerge(githubApp, {
+        owner: OWNER,
+        repo: REPO,
+        mergeCommitSha: MERGE_SHA,
+        installationId: INSTALLATION_ID,
+      })
+    ).resolves.toBeUndefined();
+
+    // writeBaseline's own failure must not prevent the branch-protection
+    // check that follows it in updateBaselineOnMerge from still running.
+    expect(getBranch).toHaveBeenCalled();
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      'Failed to write baseline snapshot; next successful merge will self-heal',
+      expect.objectContaining({ owner: OWNER, repo: REPO, message: 'sha conflict' })
+    );
+  });
 });

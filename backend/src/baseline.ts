@@ -224,15 +224,35 @@ export async function writeBaseline(octokit: Octokit, request: WriteBaselineRequ
 
   const stored: StoredBaseline = { snapshot, contentHash: computeSnapshotHash(snapshot) };
 
-  await octokit.rest.repos.createOrUpdateFileContents({
-    owner,
-    repo,
-    path: BASELINE_FILE_PATH,
-    branch,
-    message: 'redflag-ci: update baseline snapshot',
-    content: Buffer.from(JSON.stringify(stored, null, 2)).toString('base64'),
-    sha,
-  });
+  try {
+    await octokit.rest.repos.createOrUpdateFileContents({
+      owner,
+      repo,
+      path: BASELINE_FILE_PATH,
+      branch,
+      message: 'redflag-ci: update baseline snapshot',
+      content: Buffer.from(JSON.stringify(stored, null, 2)).toString('base64'),
+      sha,
+    });
+  } catch (error) {
+    // Finding #11: a conflicting (stale sha, concurrent write) or otherwise
+    // failed baseline write is not retried -- no queue, no backoff. The
+    // baseline is a full snapshot, not an incremental diff, so the very
+    // next successful merge overwrites it wholesale and the stored state
+    // self-heals on its own; the same reasoning readBaseline's Task #10 fix
+    // already applies on the read side. Logging, not retrying, is the
+    // correct response to a failure this shape self-heals, and it must
+    // never block the merge event that triggered this write -- caught here
+    // rather than left to propagate, so a stale-sha conflict on the
+    // baseline branch can't fail the whole webhook delivery.
+    const message = error instanceof Error ? error.message : String(error);
+    logger.warn('Failed to write baseline snapshot; next successful merge will self-heal', {
+      owner,
+      repo,
+      branch,
+      message,
+    });
+  }
 }
 
 // Task A.4: A.2's merge-only update path is the only way the baseline is
