@@ -217,25 +217,24 @@ describe('readBaseline', () => {
       expect(mockLogger.warn).not.toHaveBeenCalled();
     });
 
-    // Stress-test finding (backend/STRESS_TEST_FINDINGS.md, EXT-E1): documents
-    // a real, currently-open gap rather than fixing it. writeBaseline/
-    // buildSnapshot never validate that a monitored file's raw content is
-    // parseable JSON before storing it -- they store whatever text
-    // getFileAtRef fetched, verbatim. So a merge landing with an
+    // Closes the silent-fail-open gap from backend/STRESS_TEST_FINDINGS.md,
+    // EXT-E1: writeBaseline/buildSnapshot never validate that a monitored
+    // file's raw content is parseable JSON before storing it -- they store
+    // whatever text getFileAtRef fetched, verbatim. A merge landing with an
     // already-unparseable .claude/settings.json (or any monitored file)
-    // leaves the STORED BASELINE holding malformed content under a
-    // perfectly VALID hash, since the hash is computed over that same
-    // malformed string -- no tampering occurred, so none of the block
-    // above's warnings fire. readBaseline returns this snapshot as-is (not
-    // null); the eventual fail-open happens silently, one layer down, inside
-    // whichever individual detector's own JSON.parse try/catch runs against
-    // it during cumulative-drift comparison (already covered by
-    // cumulativeDrift.test.ts's "returns an empty list when the baseline
-    // content itself is malformed" case) -- with NO log line anywhere
-    // marking that this happened, unlike every other fail-open path in this
-    // file (a 404, an unreadable branch, a hash mismatch), which this
-    // project otherwise takes care to log as a distinctly named condition.
-    it('known-gap: returns the snapshot as-is and logs nothing when a stored file\'s own content is unparseable, even though the wrapper hash is genuinely valid', async () => {
+    // leaves the stored baseline holding malformed content under a
+    // perfectly valid hash, since the hash is computed over that same
+    // malformed string -- no tampering occurred, so the block above stays
+    // quiet. readBaseline now checks each stored file's own parseability
+    // after the hash check passes, logs this as its own distinctly named
+    // condition (same pattern as the hash-mismatch/read-failure logging
+    // above), and fails open -- matching every other unusable-baseline case
+    // in this file instead of surfacing only one layer down, silently,
+    // inside a detector's own try/catch (cumulativeDrift.test.ts's "returns
+    // an empty list when the baseline content itself is malformed" still
+    // covers that downstream fail-open; this covers the newly-observable
+    // read-time warning).
+    it('fails open (returns null) and logs distinctly when a stored file\'s own content is unparseable, even though the wrapper hash is genuinely valid', async () => {
       const poisoned: BaselineSnapshot = {
         version: 1,
         updatedAt: '2026-01-01T00:00:00.000Z',
@@ -246,7 +245,25 @@ describe('readBaseline', () => {
 
       const result = await readBaseline(octokit, { owner: 'octo-org', repo: 'octo-repo' });
 
-      expect(result).toEqual(poisoned);
+      expect(result).toBeNull();
+      expect(mockLogger.warn).toHaveBeenCalledTimes(1);
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        'Baseline snapshot contains unparseable file content -- a prior merge may have captured invalid JSON; falling back to stateless comparison',
+        expect.objectContaining({
+          owner: 'octo-org',
+          repo: 'octo-repo',
+          branch: 'redflag-ci/baseline',
+          path: '.claude/settings.json',
+        })
+      );
+    });
+
+    it('does not log the unparseable-content warning when every stored file is valid JSON (the ordinary case)', async () => {
+      const getContent = jest.fn().mockResolvedValue(storedFileResponse(sampleSnapshot));
+      const octokit = mockOctokit(getContent);
+
+      await readBaseline(octokit, { owner: 'octo-org', repo: 'octo-repo' });
+
       expect(mockLogger.warn).not.toHaveBeenCalled();
     });
   });

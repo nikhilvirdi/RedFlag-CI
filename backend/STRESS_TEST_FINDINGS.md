@@ -19,7 +19,7 @@ Four scenarios turned up something genuinely new (not already written down in `d
 | INT-B3 | N | Untestable -- no code path |
 | INT-B4 | Y | Working as designed |
 | INT-B5 | Y | Working as designed (positive confirmation) |
-| EXT-E1 | Y | **New finding** (regression test added) |
+| EXT-E1 | Y | **New finding — fixed** (now logged, same as every other baseline failure) |
 | EXT-E2 | Y | Confirms already-documented limitation |
 | EXT-E3 | Y | Confirms already-documented non-goal |
 | EXT-E4 | Y | **New finding** (regression test added) |
@@ -189,7 +189,7 @@ createComment call count: 1
 Cumulative-drift section present? false
 ```
 
-**Verdict: New finding.** This confirms `cumulativeDrift.test.ts`'s existing "malformed baseline → empty findings" unit test holds at the full pipeline level too -- but it also surfaces something that test doesn't: `readBaseline` has no way to know a stored file's own content is unparseable (it only validates the *wrapper* shape and hash), so it returns the poisoned snapshot as a perfectly valid result, and **nothing anywhere logs this.** Contrast with the tamper/hash-mismatch case (`docs/adr §Task A.5`), which is explicitly, distinctly logged. Every other fail-open path in `baseline.ts` (a 404, an unreadable branch, a hash mismatch, a write failure) is logged as a named condition; this one silently isn't. Regression test added: `baseline.test.ts` — `known-gap: returns the snapshot as-is and logs nothing when a stored file's own content is unparseable, even though the wrapper hash is genuinely valid`.
+**Verdict: New finding — fixed.** This confirmed `cumulativeDrift.test.ts`'s existing "malformed baseline → empty findings" unit test holds at the full pipeline level too -- but it also surfaced something that test didn't: `readBaseline` had no way to know a stored file's own content was unparseable (it only validated the *wrapper* shape and hash), so it returned the poisoned snapshot as a perfectly valid result, and **nothing anywhere logged this.** Contrast with the tamper/hash-mismatch case (`docs/adr §Task A.5`), which is explicitly, distinctly logged. Closed: `readBaseline` now checks every stored file's own JSON-parseability after the hash check passes, logs a distinctly-named `logger.warn` (same pattern as the hash-mismatch/read-failure logging), and fails open -- matching every other unusable-baseline path in this file. `baseline.test.ts`'s test was updated from `known-gap:` to a normal passing assertion of the new log line, plus a companion test confirming the warning stays silent on an ordinary, valid baseline.
 
 ### EXT-E2: Hook command string untouched; the script file it points to is rewritten
 
