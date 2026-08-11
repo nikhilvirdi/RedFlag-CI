@@ -132,10 +132,15 @@ export function detectSuspiciousNetworkTarget(
           continue;
         }
 
-        const prefix8 = val.slice(Math.max(0, matchIndex - 8), matchIndex).toLowerCase();
+        // Only http:// is skipped here: that case is already reported as an
+        // insecure-HTTP finding above, so this avoids double-reporting the
+        // same address. https:// is deliberately NOT skipped -- a bare IP
+        // behind HTTPS still bypasses domain name validation, TLS
+        // certificate verification, and DNS governance, so it must still
+        // fall through to the bare-IP check below.
         const prefix7 = val.slice(Math.max(0, matchIndex - 7), matchIndex).toLowerCase();
 
-        if (prefix8.endsWith('https://') || prefix7.endsWith('http://')) {
+        if (prefix7.endsWith('http://')) {
           continue;
         }
 
