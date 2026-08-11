@@ -60,12 +60,7 @@ function extractHostnameFromHttpUrl(urlStr: string): string | null {
     if (!match) {
       return null;
     }
-    let host = match[1].toLowerCase();
-    const colonIndex = host.indexOf(':');
-    if (colonIndex !== -1) {
-      host = host.slice(0, colonIndex);
-    }
-    return host;
+    return match[1].toLowerCase();
   }
 }
 
