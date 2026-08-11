@@ -128,7 +128,7 @@ export function detectUnpinnedMcpDependency(
   filePath: string,
   headContent: string | null
 ): Finding[] {
-  if (!headContent) {
+  if (headContent === null) {
     return [];
   }
 

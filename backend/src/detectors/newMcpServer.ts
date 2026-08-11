@@ -71,7 +71,7 @@ export function detectNewMcpServer(
   baseContent: string | null,
   headContent: string | null
 ): Finding[] {
-  if (!headContent) {
+  if (headContent === null) {
     return [];
   }
 
