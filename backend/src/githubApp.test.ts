@@ -1,4 +1,10 @@
-import { createGitHubApp, getChangedFiles, GitHubApp } from './githubApp';
+import { createGitHubApp, getChangedFiles, GitHubApp, onLimit } from './githubApp';
+import { logger } from './logger';
+
+jest.mock('./logger', () => ({
+  logger: { warn: jest.fn(), error: jest.fn(), info: jest.fn() },
+}));
+const mockLogger = logger as unknown as { warn: jest.Mock };
 
 // Shaped like a real GitHub `pull_request` webhook event payload.
 const mockPullRequestEvent = {
@@ -126,5 +132,46 @@ describe('Task 6.3: throttling plugin is actually wired into the Octokit client'
 
     expect(typeof app.octokit.rest.pulls.listFiles).toBe('function');
     expect(typeof app.octokit.rest.checks.create).toBe('function');
+  });
+});
+
+describe('Task 6.3: onLimit rate-limit retry decision', () => {
+  beforeEach(() => {
+    mockLogger.warn.mockReset();
+  });
+
+  const options = { method: 'GET', url: 'https://api.github.com/repos/octo-org/octo-repo/pulls/42/files' };
+
+  it('retries (returns true) and logs a distinct primary-rate-limit event when under MAX_RATE_LIMIT_RETRIES', () => {
+    const shouldRetry = onLimit('primary')(30, options, {}, 0);
+
+    expect(shouldRetry).toBe(true);
+    expect(mockLogger.warn).toHaveBeenCalledWith('GitHub API primary rate limit hit, retrying', {
+      route: 'GET https://api.github.com/repos/octo-org/octo-repo/pulls/42/files',
+      retryAfterSeconds: 30,
+      retryCount: 0,
+    });
+  });
+
+  it('gives up (returns false) once retryCount reaches MAX_RATE_LIMIT_RETRIES for a primary rate limit', () => {
+    const shouldRetry = onLimit('primary')(30, options, {}, 1);
+
+    expect(shouldRetry).toBe(false);
+    expect(mockLogger.warn).toHaveBeenCalledWith('GitHub API primary rate limit hit, retrying', {
+      route: 'GET https://api.github.com/repos/octo-org/octo-repo/pulls/42/files',
+      retryAfterSeconds: 30,
+      retryCount: 1,
+    });
+  });
+
+  it('gives up (returns false) once retryCount reaches MAX_RATE_LIMIT_RETRIES for a secondary rate limit', () => {
+    const shouldRetry = onLimit('secondary')(60, options, {}, 1);
+
+    expect(shouldRetry).toBe(false);
+    expect(mockLogger.warn).toHaveBeenCalledWith('GitHub API secondary rate limit hit, retrying', {
+      route: 'GET https://api.github.com/repos/octo-org/octo-repo/pulls/42/files',
+      retryAfterSeconds: 60,
+      retryCount: 1,
+    });
   });
 });

@@ -20,7 +20,7 @@ const ThrottledOctokit = Octokit.plugin(throttling);
 // rate limit.
 const MAX_RATE_LIMIT_RETRIES = 1;
 
-function onLimit(kind: 'primary' | 'secondary') {
+export function onLimit(kind: 'primary' | 'secondary') {
   return (
     retryAfter: number,
     options: { method: string; url: string },
