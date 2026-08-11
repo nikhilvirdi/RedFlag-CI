@@ -149,7 +149,7 @@ function buildFinding(filePath: string, source: CommandSource, kind: 'pipe' | 'b
 // .claude/settings.json alike -- both are handed the same head content, and
 // each extractor above simply finds nothing if its own key isn't present.
 export function detectObfuscatedCommand(filePath: string, headContent: string | null): Finding[] {
-  if (!headContent) {
+  if (headContent === null) {
     return [];
   }
 

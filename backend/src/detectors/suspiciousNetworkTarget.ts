@@ -76,7 +76,7 @@ export function detectSuspiciousNetworkTarget(
   filePath: string,
   headContent: string | null
 ): Finding[] {
-  if (!headContent) {
+  if (headContent === null) {
     return [];
   }
 

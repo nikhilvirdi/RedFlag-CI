@@ -85,7 +85,7 @@ function findTopLevelKeys(content: string): string[] {
 // a live risk on every PR it's still present in, so this only ever looks at
 // head content.
 export function detectDuplicateJsonKey(filePath: string, headContent: string | null): Finding[] {
-  if (!headContent) {
+  if (headContent === null) {
     return [];
   }
 
