@@ -1,10 +1,10 @@
 # RedFlag CI v1 Benchmark Results
 
-Generated: 2026-08-11T07:13:30.101Z
+Generated: 2026-08-11T07:27:46.542Z
 
 ## Methodology
 
-138 synthetic PR scenarios, each a before/after file pair for one monitored file, stored under `benchmark/corpus/<scenario-id>/`. `benchmark/run.ts` runs the actual production detector functions and `aggregateFindings` against each pair -- the same dispatch logic `processPullRequestEvent.ts` uses (diff-drift files get DD-1 through DD-4, the unpinned-MCP-dependency, obfuscated-command, duplicate-JSON-key, suspicious-network-target, path-traversal, and transport-type-change checks, plus RF-1/RF-2 against MCP server names and permission entries; rule-file files get RF-1/RF-2 against head content only) -- with no GitHub API, webhook, or posting involved. Each scenario carries a ground-truth label (`positive` = should produce at least one finding, `negative` = should produce none). A scenario "fires" if the aggregated findings array is non-empty. No detector logic was modified to produce these numbers.
+139 synthetic PR scenarios, each a before/after file pair for one monitored file, stored under `benchmark/corpus/<scenario-id>/`. `benchmark/run.ts` runs the actual production detector functions and `aggregateFindings` against each pair -- the same dispatch logic `processPullRequestEvent.ts` uses (diff-drift files get DD-1 through DD-4, the unpinned-MCP-dependency, obfuscated-command, duplicate-JSON-key, suspicious-network-target, path-traversal, and transport-type-change checks, plus RF-1/RF-2 against MCP server names and permission entries; rule-file files get RF-1/RF-2 against head content only) -- with no GitHub API, webhook, or posting involved. Each scenario carries a ground-truth label (`positive` = should produce at least one finding, `negative` = should produce none). A scenario "fires" if the aggregated findings array is non-empty. No detector logic was modified to produce these numbers.
 
 Classification:
 - **TP**: positive label, fired
@@ -14,14 +14,14 @@ Classification:
 
 ## Headline numbers
 
-- True positives: 94
+- True positives: 95
 - False positives: 0
 - True negatives: 44
 - False negatives: 0
-- **Precision** = TP / (TP + FP) = 94 / 94 = 1.000
-- **Recall** = TP / (TP + FN) = 94 / 94 = 1.000
+- **Precision** = TP / (TP + FP) = 95 / 95 = 1.000
+- **Recall** = TP / (TP + FN) = 95 / 95 = 1.000
 
-These numbers describe this 138-scenario corpus, not a statistically representative sample of real-world PRs. The corpus intentionally includes near-miss and known-gap cases designed to surface the detectors' actual limits (see below) rather than a set chosen to look clean.
+These numbers describe this 139-scenario corpus, not a statistically representative sample of real-world PRs. The corpus intentionally includes near-miss and known-gap cases designed to surface the detectors' actual limits (see below) rather than a set chosen to look clean.
 
 ## Breakdown by detector
 
@@ -29,6 +29,7 @@ These numbers describe this 138-scenario corpus, not a statistically representat
 |---|---|---|---|---|
 | `diff-drift.duplicate-json-key` | 1 | 1 | 0 | 0 |
 | `diff-drift.hook-changed` | 12 | 12 | 5 | 0 |
+| `diff-drift.monitored-file-deleted` | 1 | 1 | 0 | 0 |
 | `diff-drift.new-mcp-server` | 15 | 15 | 17 | 0 |
 | `diff-drift.new-mcp-server + diff-drift.swapped-mcp-server` | 3 | 3 | 0 | 0 |
 | `diff-drift.obfuscated-command` | 1 | 1 | 0 | 0 |
@@ -184,6 +185,7 @@ These numbers describe this 138-scenario corpus, not a statistically representat
 | `regression-dd3-narrowing-correlation` | `.claude/settings.json` | negative | false | **TN** | (none) |
 | `regression-dd2-positional-arg-reorder-fires` | `.mcp.json` | positive | true | **TP** | diff-drift.swapped-mcp-server [high]: MCP server 'cli' definition changed (args) |
 | `regression-rf2-greek-majority-legit` | `CLAUDE.md` | negative | false | **TN** | (none) |
+| `dd8-monitored-file-deleted` | `.claude/settings.json` | positive | true | **TP** | diff-drift.monitored-file-deleted [high]: Monitored file '.claude/settings.json' was deleted |
 
 ## False positives and false negatives, explained honestly
 
