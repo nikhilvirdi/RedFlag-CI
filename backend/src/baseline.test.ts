@@ -216,6 +216,39 @@ describe('readBaseline', () => {
       expect(result).toBeNull();
       expect(mockLogger.warn).not.toHaveBeenCalled();
     });
+
+    // Stress-test finding (backend/STRESS_TEST_FINDINGS.md, EXT-E1): documents
+    // a real, currently-open gap rather than fixing it. writeBaseline/
+    // buildSnapshot never validate that a monitored file's raw content is
+    // parseable JSON before storing it -- they store whatever text
+    // getFileAtRef fetched, verbatim. So a merge landing with an
+    // already-unparseable .claude/settings.json (or any monitored file)
+    // leaves the STORED BASELINE holding malformed content under a
+    // perfectly VALID hash, since the hash is computed over that same
+    // malformed string -- no tampering occurred, so none of the block
+    // above's warnings fire. readBaseline returns this snapshot as-is (not
+    // null); the eventual fail-open happens silently, one layer down, inside
+    // whichever individual detector's own JSON.parse try/catch runs against
+    // it during cumulative-drift comparison (already covered by
+    // cumulativeDrift.test.ts's "returns an empty list when the baseline
+    // content itself is malformed" case) -- with NO log line anywhere
+    // marking that this happened, unlike every other fail-open path in this
+    // file (a 404, an unreadable branch, a hash mismatch), which this
+    // project otherwise takes care to log as a distinctly named condition.
+    it('known-gap: returns the snapshot as-is and logs nothing when a stored file\'s own content is unparseable, even though the wrapper hash is genuinely valid', async () => {
+      const poisoned: BaselineSnapshot = {
+        version: 1,
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        files: { '.claude/settings.json': '{ "permissions": { "allow": [ BROKEN' },
+      };
+      const getContent = jest.fn().mockResolvedValue(storedFileResponse(poisoned));
+      const octokit = mockOctokit(getContent);
+
+      const result = await readBaseline(octokit, { owner: 'octo-org', repo: 'octo-repo' });
+
+      expect(result).toEqual(poisoned);
+      expect(mockLogger.warn).not.toHaveBeenCalled();
+    });
   });
 });
 
