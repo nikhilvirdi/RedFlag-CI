@@ -249,6 +249,50 @@ describe('DD-1: detectNewMcpServer', () => {
     expect(findings[0].summary).toBe("New MCP server 'brand-new' added");
   });
 
+  it('produces zero findings when a rename is paired with a harmless flag reorder in the same diff (fixture)', () => {
+    // Closes the rename-correlation/arg-comparison drift: 'fs-server' ->
+    // 'filesystem-server', with '-y'/'--verbose' also swapping places.
+    // isSameServerDefinition now runs "args" through the same shared
+    // argsChanged DD-2 uses, which already treats a flag reorder like this
+    // as no real change -- so the rename still correlates, matching what
+    // detectSwappedMcpServer would report if this were a same-key change
+    // instead of a rename.
+    const beforeContent = fs.readFileSync(
+      path.join(fixturesDir, 'rename-with-flag-reorder', 'before.json'),
+      'utf-8'
+    );
+    const afterContent = fs.readFileSync(
+      path.join(fixturesDir, 'rename-with-flag-reorder', 'after.json'),
+      'utf-8'
+    );
+
+    const findings = detectNewMcpServer('.mcp.json', beforeContent, afterContent);
+
+    expect(findings).toHaveLength(0);
+  });
+
+  it('still reports a new server when a rename is paired with a positional-argument reorder in the same diff (fixture)', () => {
+    // Companion to the flag-reorder case above: 'sync-server' -> 'sync-tool',
+    // with the two positional args ('src', 'dest') swapping order. A
+    // positional reorder can change execution semantics, so the shared
+    // argsChanged correctly treats this as a real args change -- the rename
+    // must NOT correlate, confirming positional-argument sensitivity
+    // survived the extraction into ../argsComparison.
+    const beforeContent = fs.readFileSync(
+      path.join(fixturesDir, 'rename-with-positional-reorder', 'before.json'),
+      'utf-8'
+    );
+    const afterContent = fs.readFileSync(
+      path.join(fixturesDir, 'rename-with-positional-reorder', 'after.json'),
+      'utf-8'
+    );
+
+    const findings = detectNewMcpServer('.mcp.json', beforeContent, afterContent);
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0].summary).toBe("New MCP server 'sync-tool' added");
+  });
+
   it('Task 5.8: does NOT report a new server when the same key is expressed in a different Unicode normalization form (fixture)', () => {
     // before.json's key is NFD ("cafe" + combining acute accent); after.json's
     // is the same server under the NFC (precomposed) form of the same name.

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "sync-server": {
+      "command": "npx",
+      "args": ["src", "dest", "--verbose"]
+    }
+  }
+}
