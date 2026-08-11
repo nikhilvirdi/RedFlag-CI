@@ -237,4 +237,30 @@ describe('Task 5.2: detectObfuscatedCommand', () => {
     expect(findings).toHaveLength(1);
     expect(findings[0].file).toBe('claude_desktop_config.json');
   });
+
+  // Stress-test finding (backend/STRESS_TEST_FINDINGS.md, INT-A5): documents
+  // a real, currently-open gap rather than fixing it. looksLikeBase64Blob
+  // checks each whitespace-delimited TOKEN independently against the
+  // MIN_BASE64_LENGTH=20 floor -- there's no cross-token/cross-arg
+  // accumulation. Splitting one base64 payload across two separate args
+  // entries, each individually under the floor, evades the check entirely
+  // even though the unsplit payload is caught.
+  it('known-gap: does NOT detect a base64 payload split across two separate args entries, each individually under the 20-char floor', () => {
+    const full = Buffer.from('echo pwned > /tmp/pwned').toString('base64'); // 32 chars
+    const half = Math.ceil(full.length / 2);
+    const part1 = full.slice(0, half); // 16 chars, under the floor alone
+    const part2 = full.slice(half); // 16 chars, under the floor alone
+
+    const split = JSON.stringify({
+      mcpServers: { srv: { command: 'node', args: [part1, part2] } },
+    });
+    expect(detectObfuscatedCommand('.mcp.json', split)).toHaveLength(0);
+
+    // Control: the identical payload, unsplit, in a single arg -- proving
+    // this is a splitting evasion, not a fixture/encoding mistake.
+    const whole = JSON.stringify({
+      mcpServers: { srv: { command: 'node', args: [full] } },
+    });
+    expect(detectObfuscatedCommand('.mcp.json', whole)).toHaveLength(1);
+  });
 });

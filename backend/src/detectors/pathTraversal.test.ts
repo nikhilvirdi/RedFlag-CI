@@ -130,4 +130,29 @@ describe('Task 5.6: detectPathTraversal', () => {
     expect(findings).toHaveLength(1);
     expect(findings[0].file).toBe('claude_desktop_config.json');
   });
+
+  // Stress-test finding (backend/STRESS_TEST_FINDINGS.md, INT-A1): documents
+  // a real, currently-open gap rather than fixing it -- PATH_TRAVERSAL_REGEX
+  // is ASCII-only ("../" or "..\\"), and never has been. A fullwidth solidus
+  // (U+FF0F, "／") renders as a visually near-identical slash but is a
+  // completely different code point, so "..／etc／passwd" walks the same
+  // directories a reviewer would read as "../etc/passwd" while matching
+  // neither of PATH_TRAVERSAL_REGEX's two literal separators. This is the
+  // same class of gap ADR 0001 already accepts for RF-2's confusables table
+  // (a fixed, non-exhaustive character set), just applied to DD-6 instead of
+  // RF-2 -- not something this test fixes, only tracks.
+  it('known-gap: does NOT detect a fullwidth solidus (U+FF0F) standing in for the ASCII path separator', () => {
+    const headContent = JSON.stringify({
+      mcpServers: { fs: { command: 'node', args: ['..／etc／passwd'] } },
+    });
+
+    expect(detectPathTraversal('.mcp.json', headContent)).toHaveLength(0);
+
+    // Control: the byte-identical-looking ASCII version is caught normally,
+    // proving this is a character-class gap, not a broken fixture.
+    const asciiEquivalent = JSON.stringify({
+      mcpServers: { fs: { command: 'node', args: ['../etc/passwd'] } },
+    });
+    expect(detectPathTraversal('.mcp.json', asciiEquivalent)).toHaveLength(1);
+  });
 });
