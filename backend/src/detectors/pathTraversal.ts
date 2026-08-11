@@ -41,7 +41,15 @@ function getField(entry: unknown, field: string): unknown {
 // are safe and produce no findings. Requiring an explicit slash or backslash
 // after ".." ("../" or "..\") prevents false positives on benign CLI flags and
 // identifier strings while reliably flagging directory traversal attempts.
-const PATH_TRAVERSAL_REGEX = /\.\.[/\\]/;
+//
+// Also matches the fullwidth solidus (U+FF0F "／") and fullwidth reverse
+// solidus (U+FF3C "＼") as separators, not just their ASCII look-alikes
+// (backend/STRESS_TEST_FINDINGS.md, INT-A1): "..／etc／passwd" renders as a
+// near-identical traversal sequence to a human reviewer but is built from
+// different code points than "../etc/passwd", and the ASCII-only regex
+// never matched it. Same Unicode-confusable awareness RF-1/RF-2 already
+// apply elsewhere, extended to this detector.
+const PATH_TRAVERSAL_REGEX = /\.\.[/\\／＼]/;
 
 // Current-state check like RF-1/RF-2/DD-5/DD-6, not a diff: a path traversal
 // sequence is a live risk on every PR it's still present in, so this only ever

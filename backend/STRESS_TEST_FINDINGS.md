@@ -8,7 +8,7 @@ Four scenarios turned up something genuinely new (not already written down in `d
 
 | ID | Buildable? | Verdict |
 |---|---|---|
-| INT-A1 | Y | **New finding** (regression test added) |
+| INT-A1 | Y | **New finding — fixed** (fullwidth separators now detected) |
 | INT-A2 | Y | Confirms/sharpens already-documented tradeoff |
 | INT-A3 | Y | Working as designed (explicit in source comment) |
 | INT-A4 | Y | Working as designed (matches predicted scope) |
@@ -50,7 +50,7 @@ detectPathTraversal('.mcp.json', JSON.stringify({ mcpServers: { fs: { command: '
 // -> []
 ```
 
-**Verdict: New finding.** Nothing in `STRESS_TESTING.md` or the ADR mentions this. A fullwidth solidus renders as a near-identical slash to a human reviewer but is a distinct code point the regex never matches. Same *class* of gap the ADR already accepts for RF-2's confusables table (a fixed character set, not exhaustive), just showing up in DD-6 instead. Regression test added: `pathTraversal.test.ts` — `known-gap: does NOT detect a fullwidth solidus (U+FF0F) standing in for the ASCII path separator`.
+**Verdict: New finding — fixed.** Nothing in `STRESS_TESTING.md` or the ADR mentions this. A fullwidth solidus renders as a near-identical slash to a human reviewer but is a distinct code point the regex never matched. Same *class* of gap the ADR already accepts for RF-2's confusables table (a fixed character set, not exhaustive), just showing up in DD-6 instead. Closed: `PATH_TRAVERSAL_REGEX` now also matches U+FF0F (／) and U+FF3C (＼) alongside the ASCII separators. `pathTraversal.test.ts`'s test was updated from `known-gap:` to a normal passing assertion: `detects the fullwidth solidus (U+FF0F) and fullwidth reverse solidus (U+FF3C) standing in for the ASCII path separators`.
 
 ### INT-A2: RF-2 script-majority tie-exploit
 
