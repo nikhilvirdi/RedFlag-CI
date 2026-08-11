@@ -258,6 +258,58 @@ describe('Task 6.1: comment/check-run idempotency on synchronize events', () => 
     expect(updateComment).not.toHaveBeenCalled();
   });
 
+  it('edits a prior findings comment to a resolved-state message when a later push has zero findings', async () => {
+    const octokit = statefulOctokit();
+
+    await postFindings(octokit, {
+      owner: 'octo-org',
+      repo: 'octo-repo',
+      pullNumber: 42,
+      headSha: 'sha-1',
+      findings: sampleFindings,
+    });
+    await postFindings(octokit, {
+      owner: 'octo-org',
+      repo: 'octo-repo',
+      pullNumber: 42,
+      headSha: 'sha-1',
+      findings: [],
+    });
+
+    const { createComment, updateComment, listComments } = octokit.rest.issues as unknown as {
+      createComment: jest.Mock;
+      updateComment: jest.Mock;
+      listComments: jest.Mock;
+    };
+    const finalComments = (await listComments.mock.results.at(-1)!.value).data as { body: string }[];
+
+    // Edited in place, not replaced with a second comment.
+    expect(createComment).toHaveBeenCalledTimes(1);
+    expect(updateComment).toHaveBeenCalledTimes(1);
+    expect(finalComments).toHaveLength(1);
+    expect(finalComments[0].body).toContain(
+      'RedFlag CI: previously flagged issues have been resolved.'
+    );
+    expect(finalComments[0].body).toContain('No findings on the latest push.');
+    // The stale finding must actually be gone, not just appended to.
+    expect(finalComments[0].body).not.toContain("New hook 'PostToolUse' added");
+    expect(finalComments[0].body).not.toContain('RedFlag CI found');
+
+    const { create: createCheck, update: updateCheck, listForRef } = octokit.rest.checks as unknown as {
+      create: jest.Mock;
+      update: jest.Mock;
+      listForRef: jest.Mock;
+    };
+    const finalRuns = (await listForRef.mock.results.at(-1)!.value).data.check_runs as {
+      conclusion: string;
+    }[];
+
+    expect(finalRuns).toHaveLength(1);
+    expect(finalRuns[0].conclusion).toBe('success');
+    expect(createCheck).toHaveBeenCalledTimes(1);
+    expect(updateCheck).toHaveBeenCalledTimes(1);
+  });
+
   it('only matches a comment carrying the RedFlag CI marker, ignoring unrelated comments on the PR', async () => {
     const listComments = jest
       .fn()

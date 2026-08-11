@@ -24,6 +24,23 @@ export function formatFindingsComment(findings: Finding[]): string {
   return [`**RedFlag CI found ${findings.length} ${noun}:**`, '', ...lines].join('\n');
 }
 
+// postFindings.ts's resolved-state edit path: a prior comment already
+// exists on the PR (it was posted when an earlier push had findings), but
+// the latest push has none. Left untouched, that comment would keep
+// showing stale, now-resolved findings indefinitely -- this replaces it
+// with a short message in the opposite shape of formatFindingsComment's
+// bulleted list above, so a reader can tell at a glance the comment is
+// reporting a clean state, not just an unusually short findings list.
+// Never used to create a brand-new comment: matching this project's
+// "quiet by default" stance (README), a PR with no prior comment and no
+// findings still gets no comment at all.
+export function formatResolvedComment(): string {
+  return (
+    '**RedFlag CI: previously flagged issues have been resolved.** ' +
+    'No findings on the latest push.'
+  );
+}
+
 // Task A.6: renders as its own distinct section, not folded into the main
 // list above -- these findings only show up by comparing against the
 // stored baseline (Task A.3), not this PR's own base/head diff, so calling

@@ -1,6 +1,6 @@
 import { Octokit } from '@octokit/rest';
 import { Finding } from './types';
-import { formatFindingsComment, formatCumulativeDriftSection } from './formatFindingsComment';
+import { formatFindingsComment, formatCumulativeDriftSection, formatResolvedComment } from './formatFindingsComment';
 
 export interface PostFindingsRequest {
   owner: string;
@@ -83,6 +83,17 @@ export async function postFindings(octokit: Octokit, request: PostFindingsReques
       await octokit.rest.issues.updateComment({ owner, repo, comment_id: existingCommentId, body });
     } else {
       await octokit.rest.issues.createComment({ owner, repo, issue_number: pullNumber, body });
+    }
+  } else {
+    // A prior comment on this PR was reporting findings that no longer
+    // exist as of this push -- left alone, it would show stale, resolved
+    // findings indefinitely. Edited in place, same as the findings-present
+    // branch above; never created fresh here, so a PR that never had a
+    // comment (the common case) still gets none, unchanged.
+    const existingCommentId = await findExistingCommentId(octokit, owner, repo, pullNumber);
+    if (existingCommentId !== null) {
+      const body = `${formatResolvedComment()}\n\n${COMMENT_MARKER}`;
+      await octokit.rest.issues.updateComment({ owner, repo, comment_id: existingCommentId, body });
     }
   }
 
