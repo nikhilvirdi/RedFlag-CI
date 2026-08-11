@@ -123,12 +123,35 @@ So cross-PR behavior is tested instead by integration tests against the actual p
 
 The result: the 138-scenario corpus measures exactly what it always measured -- single-PR diff-drift and rule-file detection -- completely unchanged by v2.0.0, and a separate, purpose-built test suite measures the new stateful behavior the corpus format was never going to express well.
 
+## Stage 3: a 23-scenario adversarial and boundary sweep
+
+Post-ship, v2.0.0 went through a full hardening audit before this roadmap was considered closed -- covered in full in `TRANSPARENCY_REPORT.md`. One piece of that audit belongs here, applying this document's own recurring standard one level up from a single detector: not "does each detector work on the inputs already imagined," but "does the system as a whole hold up against inputs someone who'd read only the public docs would specifically construct to get past it."
+
+23 scenarios, generated from two deliberately independent sources to counter a specific, real risk: a single author reviewing their own work tends to construct test cases shaped like the mental model they already have, not like an attacker's. 11 came from full implementation knowledge; the other 12 came from a genuinely separate pass given only the public-facing docs (README, this project's `architecture.md`) and explicitly instructed to attack the *stated* design without seeing any source code.
+
+21 of the 23 were expressible as real tests against real production code, never a reimplementation of the logic under test. Two had no code path to even point a test at: an attacker uninstalling the GitHub App itself, and a pure social-engineering attempt conducted entirely through PR comment text that no function in this codebase ever reads.
+
+**Two scenarios surfaced something genuinely new and got fixed:**
+
+- A path-traversal sequence built with the fullwidth Unicode solidus (`／`, U+FF0F) instead of the ASCII `/` rendered as a near-identical slash to a human reviewer but was invisible to a regex that only recognized ASCII separators. Fixed to recognize the fullwidth forms alongside the ASCII ones.
+- A baseline snapshot could carry a correctly-computed hash over content that was itself unparseable JSON -- a case the existing tamper-detection logic never checked for, since it validated the wrapper and the hash but not what was actually inside. This produced complete silence: no tamper warning, no read-failure warning, nothing. Fixed to check the stored content's own parseability and log distinctly when it fails, the same pattern already used for every other baseline failure mode.
+
+**Two more surfaced real evasions, left as documented, permanent tradeoffs** -- the same standard this document already applies to the arg-reorder, legitimate-Cyrillic-text, and server-rename false positives above: a base64 payload split across two separate argument entries, each individually under the detector's length threshold, evades detection even though the same payload as one unsplit token would fire; and a composed attack chaining two individually-already-known facts (the confusables table doesn't cover the Mathematical Bold Fraktur Unicode block, and the JSON-key homoglyph scan only reads specific known fields, not arbitrary fabricated sibling keys) into one realistic evasion neither fact alone had been flagged as.
+
+The remaining 19 scenarios confirmed existing, already-documented behavior -- either a limitation already written down somewhere in this document or the ADR, or a positive confirmation that a piece of logic holds at a scale or shape it hadn't been explicitly tested at before.
+
+Full scenario-by-scenario detail, including exactly what was run and the real output for every one, is in `backend/STRESS_TEST_FINDINGS.md`; the complete Stage 3 audit this sweep was one part of is in `TRANSPARENCY_REPORT.md`.
+
+**The corpus grew by exactly one scenario as a direct result** -- `dd8-monitored-file-deleted`, covering the new DD-8 detector this audit's separate code-review pass found the need for (`TRANSPARENCY_REPORT.md` section 2) -- bringing the total to 139. Precision and recall stayed at 1.000/1.000.
+
 ## Where to look next
 
-- `backend/benchmark/RESULTS.md` -- the full 138-scenario results table, generated fresh by the benchmark runner, unchanged since v1.2.0.
+- `backend/benchmark/RESULTS.md` -- the full 139-scenario results table, generated fresh by the benchmark runner.
 - `backend/benchmark/COMPARISON.md` -- the live comparison against Snyk Agent Scan.
 - `docs/adr/0001-deterministic-only-v1.md` -- why v1 is deterministic-only, and the honest cost of that choice.
 - `docs/EXPORTS.md` -- the SARIF/JSON export and exit-code-threshold functions v2.0.0 Phase B added.
+- `backend/STRESS_TEST_FINDINGS.md` -- the full 23-scenario Stage 3 sweep, one entry per scenario with real output.
+- `TRANSPARENCY_REPORT.md` -- the complete Stage 3 audit this sweep was one part of.
 - `CHANGELOG.md` -- the exact fixes and additions that shipped in v1.1.0, v1.2.0, and v2.0.0.
 
-This corpus is as final as this document gets. v2.0.0 (see `architecture.md` section 8) is the project's last planned version, and its own testing needs -- covered above -- didn't call for growing this corpus further. It stops at 138 scenarios not because looking for more stopped being worthwhile, but because there's no next version left to motivate expanding it for. The same philosophy that grew it from 18 to 138 -- hunt for real gaps deliberately, document what's found honestly, don't stop once the numbers look clean -- is exactly why it stayed at 138 rather than being padded out with scenarios that wouldn't have tested anything new.
+This corpus is as final as this document gets. v2.0.0 (see `architecture.md` section 8) is the project's last planned version, and its own testing needs -- covered above -- didn't call for growing this corpus further. Stage 3's post-ship audit added exactly one more scenario afterward, `dd8-monitored-file-deleted`, for the same reason every prior addition happened: a real gap was found, this time by the audit's own code-review pass rather than the stress-test sweep. It stops at 139 scenarios now, not because looking for more stopped being worthwhile, but because there's no next version left to motivate expanding it for. The same philosophy that grew it from 18 to 139 -- hunt for real gaps deliberately, document what's found honestly, don't stop once the numbers look clean -- is exactly why it stayed at 139 rather than being padded out with scenarios that wouldn't have tested anything new.
