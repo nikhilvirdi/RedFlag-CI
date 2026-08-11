@@ -77,6 +77,30 @@ function isNotFoundError(error: unknown): boolean {
   );
 }
 
+// Task #10 addendum: writeBaseline/buildSnapshot never validate that a
+// monitored file's raw content is parseable JSON before storing it -- they
+// store whatever text getFileAtRef fetched, verbatim (see buildSnapshot's
+// own doc comment: "the exact content it was handed"). So a merge landing
+// with an already-unparseable monitored file leaves the stored baseline
+// holding malformed content under a perfectly VALID hash, since the hash is
+// computed over that same malformed string -- no tampering occurred, so the
+// integrity check above has nothing to catch. Without this check, that
+// snapshot would be returned as a normal, valid result, and the eventual
+// fail-open would happen silently, one layer down, inside whichever
+// individual detector's own JSON.parse try/catch runs against it during
+// cumulative-drift comparison -- unlike every other fail-open path in this
+// file, with no log line anywhere marking that it happened.
+function findUnparseableFile(snapshot: BaselineSnapshot): string | null {
+  for (const [path, content] of Object.entries(snapshot.files)) {
+    try {
+      JSON.parse(content);
+    } catch {
+      return path;
+    }
+  }
+  return null;
+}
+
 function isValidSnapshot(value: unknown): value is BaselineSnapshot {
   if (typeof value !== 'object' || value === null) {
     return false;
@@ -137,6 +161,22 @@ export async function readBaseline(
         owner,
         repo,
         branch,
+      });
+      return null;
+    }
+
+    // Same distinct-logging principle as the hash-mismatch check above,
+    // applied to a different failure mode: the wrapper is genuinely
+    // untampered (the hash matches), but a stored file's own content isn't
+    // usable JSON. Treated the same as any other unusable baseline -- fail
+    // open, don't use it -- but now observable instead of silent.
+    const unparseablePath = findUnparseableFile(parsed.snapshot);
+    if (unparseablePath !== null) {
+      logger.warn('Baseline snapshot contains unparseable file content -- a prior merge may have captured invalid JSON; falling back to stateless comparison', {
+        owner,
+        repo,
+        branch,
+        path: unparseablePath,
       });
       return null;
     }
