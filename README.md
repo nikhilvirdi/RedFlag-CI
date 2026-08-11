@@ -1,9 +1,11 @@
-# RedFlag CI
+﻿# RedFlag CI
 
 <img width="1369" height="339" alt="RedFlag-CI Dark Theme Logo" src="https://github.com/user-attachments/assets/ad35a7f3-71ee-494c-8b32-ea207069ae8a" />
 
 
 RedFlag CI is a GitHub App that watches pull requests for risky changes to your AI agent configuration, before those changes get merged.
+
+**Latest release: [v2.0.0](https://github.com/nikhilvirdi/RedFlag-CI/releases/tag/v2.0.0)** -- the project's final planned version. See the release page for the full writeup, or `TRANSPARENCY_REPORT.md` in this repo for the post-ship audit behind it.
 
 ## Why this exists
 
@@ -60,7 +62,7 @@ Two things that used to be listed here as "still planned" have since shipped, in
 
 ## Status
 
-v2.0.0 is complete -- the project's final planned release, since hardened by a full post-ship audit (Stage 3; see `TRANSPARENCY_REPORT.md`). The core pipeline (the original twelve detector IDs: the original six, plus six new ones added in v1.2.0 (RF-1/RF-2's JSON-key extension reuses existing IDs, not new ones — see architecture.md §5)) works end to end, from a GitHub webhook to a posted PR comment and check run, verified against a real pull request on a live repository. It's also been stress-tested against a 139-scenario adversarial benchmark, built specifically to find the tool's real limits -- see `docs/STRESS_TESTING.md` for what that testing found and `docs/adr/0001-deterministic-only-v1.md` for what the numbers below actually mean. v2.0.0's own additions since that live run -- cross-PR drift memory and the export functions, plus Stage 3's DD-8 (a thirteenth detector ID, catching a monitored file's outright deletion) and its fixes to existing detectors -- are validated by the automated test suite (unit tests against a mocked Octokit, plus integration tests exercising the full webhook-to-comment pipeline) and, for Stage 3 specifically, a dedicated 23-scenario adversarial stress-test sweep (`backend/STRESS_TEST_FINDINGS.md`), rather than that same live-repository run; `docs/STRESS_TESTING.md`'s new section explains why cross-PR behavior specifically is tested that way instead of via the benchmark corpus.
+v2.0.0 is complete -- the project's final planned release, since hardened by a full post-ship audit (Stage 3; see `TRANSPARENCY_REPORT.md`). The core pipeline (thirteen detector IDs total: the original six, six new ones added in v1.2.0 -- RF-1/RF-2's JSON-key extension reuses existing IDs rather than adding new ones, see `architecture.md` §5 -- plus DD-8, added during Stage 3's audit to catch a monitored file's outright deletion) works end to end, from a GitHub webhook to a posted PR comment and check run, verified against a real pull request on a live repository at v1.0.0. It's also been stress-tested against a 139-scenario adversarial benchmark, built specifically to find the tool's real limits -- see `docs/STRESS_TESTING.md` for what that testing found and `docs/adr/0001-deterministic-only-v1.md` for what the numbers below actually mean. v2.0.0's own additions since that live run -- cross-PR drift memory, the export functions, and Stage 3's fixes to existing detectors -- are validated by the automated test suite (unit tests against a mocked Octokit, plus integration tests exercising the full webhook-to-comment pipeline) and, for Stage 3 specifically, a dedicated 23-scenario adversarial stress-test sweep (`backend/STRESS_TEST_FINDINGS.md`), rather than that same live-repository run; `docs/STRESS_TESTING.md`'s new section explains why cross-PR behavior specifically is tested that way instead of via the benchmark corpus.
 
 | Version | Precision | Recall | Benchmark corpus |
 |---|---|---|---|
@@ -76,7 +78,7 @@ Full breakdown: `backend/benchmark/RESULTS.md`.
 
 ## Getting started
 
-RedFlag CI is self-hosted: there's no public, one-click install yet, since v1 hasn't been published to the GitHub Marketplace. Running it on your own repository means registering your own GitHub App and pointing it at a webhook endpoint you control.
+RedFlag CI is self-hosted: there's no public, one-click install yet, since this project hasn't been published to the GitHub Marketplace. Running it on your own repository means registering your own GitHub App and pointing it at a webhook endpoint you control.
 
 **1. Clone and install**
 
