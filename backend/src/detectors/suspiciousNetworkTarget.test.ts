@@ -121,6 +121,73 @@ describe('Task 5.5: detectSuspiciousNetworkTarget', () => {
     expect(summaries).toContain("MCP server 'c' uses insecure HTTP target 'http://plain-http.org'");
   });
 
+  it('fails open (returns 0 findings) for a malformed server entry that is not an object', () => {
+    const headContent = JSON.stringify({
+      mcpServers: {
+        weird: 'just-a-string',
+      },
+    });
+
+    expect(detectSuspiciousNetworkTarget('.mcp.json', headContent)).toHaveLength(0);
+  });
+
+  it('falls back to regex hostname extraction when the WHATWG URL parser rejects the matched URL', () => {
+    const headContent = JSON.stringify({
+      mcpServers: {
+        server: { command: 'node', args: ['http://%zz/path'] },
+      },
+    });
+
+    const findings = detectSuspiciousNetworkTarget('.mcp.json', headContent);
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0].summary).toBe(
+      "MCP server 'server' uses insecure HTTP target 'http://%zz/path'"
+    );
+  });
+
+  it('falls back to regex hostname extraction and still exempts localhost-shaped hosts the URL parser rejects', () => {
+    const headContent = JSON.stringify({
+      mcpServers: {
+        server: { command: 'node', args: ['http://:8080/health'] },
+      },
+    });
+
+    // new URL('http://:8080/health') throws (empty host before the port),
+    // and the fallback regex requires a non-empty, non-colon first
+    // character after "http://" -- it also fails to extract a host here,
+    // so this falls open (0 findings) rather than firing or crashing.
+    expect(detectSuspiciousNetworkTarget('.mcp.json', headContent)).toHaveLength(0);
+  });
+
+  it('still fires as a bare-IP target for a non-exempt IP behind https://, since HTTPS does not fix the missing DNS/cert-validation concern', () => {
+    const headContent = JSON.stringify({
+      mcpServers: {
+        server: { command: 'node', args: ['https://8.8.8.8/api'] },
+      },
+    });
+
+    const findings = detectSuspiciousNetworkTarget('.mcp.json', headContent);
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0].summary).toBe("MCP server 'server' uses bare IP target '8.8.8.8'");
+  });
+
+  it('does not double-report a non-exempt IP behind http:// (already reported as insecure-HTTP)', () => {
+    const headContent = JSON.stringify({
+      mcpServers: {
+        server: { command: 'node', args: ['http://8.8.8.8/api'] },
+      },
+    });
+
+    const findings = detectSuspiciousNetworkTarget('.mcp.json', headContent);
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0].summary).toBe(
+      "MCP server 'server' uses insecure HTTP target 'http://8.8.8.8/api'"
+    );
+  });
+
   it('produces zero findings when headContent is null (file deleted in head)', () => {
     expect(detectSuspiciousNetworkTarget('.mcp.json', null)).toHaveLength(0);
   });
