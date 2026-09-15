@@ -9,7 +9,7 @@
     "lint": "eslint . --no-error-on-unmatched-pattern",
     "format": "prettier --write .",
     "test": "jest",
-    "benchmark": "cd ../redflag-ci-adversarial-tests && node ../backend/node_modules/typescript/bin/tsc -p benchmark/tsconfig.json && node benchmark/dist/redflag-ci-adversarial-tests/benchmark/run.js"
+    "benchmark": "cd ../../redflag-ci-adversarial-tests && node ../RedFlag-CI/backend/node_modules/typescript/bin/tsc -p benchmark/tsconfig.json && node benchmark/dist/redflag-ci-adversarial-tests/benchmark/run.js"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
