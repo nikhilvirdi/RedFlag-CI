@@ -26,7 +26,6 @@ coverage/
 /CLAUDE.md
 /workplan.md
 backend/TASK_REPORT.md
-redflag-ci-adversarial-tests/benchmark/testcase_v1report.md
 
 # Local tooling artifact, unrelated to this project
 .stenod/coverage/
