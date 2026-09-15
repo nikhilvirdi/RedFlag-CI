@@ -91,7 +91,7 @@ describe('Task 5.3: RF-1/RF-2 extended to JSON config keys', () => {
     expect(findings[0].detectorId).toBe('rule-file.invisible-unicode');
   });
 
-  // Stress-test finding (redflag-ci-adversarial-tests/STRESS_TEST_FINDINGS.md, EXT-E4): documents
+  // Stress-test finding (https://github.com/nikhilvirdi/redflag-ci-adversarial-tests/blob/main/STRESS_TEST_FINDINGS.md, EXT-E4): documents
   // a real, currently-open COMPOUND gap rather than fixing it -- two
   // independent, each-individually-in-scope facts combine into a concrete
   // evasion:

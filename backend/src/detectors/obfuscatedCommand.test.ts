@@ -238,7 +238,7 @@ describe('Task 5.2: detectObfuscatedCommand', () => {
     expect(findings[0].file).toBe('claude_desktop_config.json');
   });
 
-  // Stress-test finding (redflag-ci-adversarial-tests/STRESS_TEST_FINDINGS.md, INT-A5): documents
+  // Stress-test finding (https://github.com/nikhilvirdi/redflag-ci-adversarial-tests/blob/main/STRESS_TEST_FINDINGS.md, INT-A5): documents
   // a real, currently-open gap rather than fixing it. looksLikeBase64Blob
   // checks each whitespace-delimited TOKEN independently against the
   // MIN_BASE64_LENGTH=20 floor -- there's no cross-token/cross-arg

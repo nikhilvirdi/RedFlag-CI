@@ -23,7 +23,7 @@ Determinism is also what makes v1's other properties possible: the tool is state
 
 ## Consequences
 
-Task 7.1 measured this decision against an 18-scenario synthetic benchmark (`redflag-ci-adversarial-tests/benchmark/corpus/`, results in `redflag-ci-adversarial-tests/benchmark/RESULTS.md`), covering all six detectors, four genuinely benign changes, five near-miss cases designed to stress false positives, and one case designed to stress a false negative. The corpus was built to surface real limits, not to look clean, and no detector logic was adjusted afterward to improve the numbers.
+Task 7.1 measured this decision against an 18-scenario synthetic benchmark (`https://github.com/nikhilvirdi/redflag-ci-adversarial-tests/tree/main/benchmark/corpus/`, results in `https://github.com/nikhilvirdi/redflag-ci-adversarial-tests/blob/main/benchmark/RESULTS.md`), covering all six detectors, four genuinely benign changes, five near-miss cases designed to stress false positives, and one case designed to stress a false negative. The corpus was built to surface real limits, not to look clean, and no detector logic was adjusted afterward to improve the numbers.
 
 **Actual result: Precision = 0.727, Recall = 0.889** (8 true positives, 3 false positives, 6 true negatives, 1 false negative, out of 18 scenarios).
 
@@ -77,7 +77,7 @@ That expansion did its job. It surfaced one real detector defect during construc
 - DD-3 recognized `Bash(*)` as an unrestricted grant but not the equally broad `Bash` with no arguments at all, since that shape contains no literal asterisk.
 - DD-4 had no whitespace normalization on hook-command comparison, and never compared a hook's matcher/trigger scope, only its command.
 
-All five were fixed, each verified individually against the specific scenario that found it, with the rest of the test suite confirmed unaffected. `architecture.md` section 5 was updated to reflect DD-2's and DD-4's expanded scope. Re-running the full 120-scenario corpus afterward: **precision rose to 0.926, recall to 0.949** (see `redflag-ci-adversarial-tests/benchmark/RESULTS.md`).
+All five were fixed, each verified individually against the specific scenario that found it, with the rest of the test suite confirmed unaffected. `architecture.md` section 5 was updated to reflect DD-2's and DD-4's expanded scope. Re-running the full 120-scenario corpus afterward: **precision rose to 0.926, recall to 0.949** (see `https://github.com/nikhilvirdi/redflag-ci-adversarial-tests/blob/main/benchmark/RESULTS.md`).
 
 What this addendum does not claim: the three false positives and one false negative documented above, in the original 18-scenario run, are unchanged. The arg-reorder, legitimate-Cyrillic-text, and server-rename false positives are still there, for the same structural reasons already given -- fixing them would mean DD-1/DD-2 correlating removals with additions, or RF-2 gaining natural-language awareness, both of which remain the kind of judgment call this decision keeps out of v1's deterministic detectors. The RF-2 qualification to architecture.md's "near-zero false-positive rate" claim, above, also still stands; it was not addressed by this round and remains open for whoever next revises that section.
 
