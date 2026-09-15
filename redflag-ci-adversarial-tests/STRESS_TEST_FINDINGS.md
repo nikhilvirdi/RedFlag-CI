@@ -2,7 +2,7 @@
 
 This is a findings pass, not a fix pass. Nothing in this document changed any detector's actual logic. Two sources generated the 23 scenarios below: 11 built with full internal knowledge of the codebase ("INT-"), 12 built by a separate reviewer given only the public-facing docs (README, `architecture.md`) and told to attack the *stated* design without seeing implementation ("EXT-"). Every scenario that could be expressed as real code was run against the real compiled detector/pipeline functions in `backend/dist` -- never a reimplementation. The two harness scripts used are reproduced inline per scenario as "what was run"; nothing here was hand-waved.
 
-Four scenarios turned up something genuinely new (not already written down in `docs/STRESS_TESTING.md` or `docs/adr/0001-deterministic-only-v1.md`). Each of those got one small, permanent Jest test -- `known-gap:`-prefixed, same convention the project already uses for `known-gap-uncommon-homoglyph` in the benchmark corpus -- that **documents the gap by asserting the current (open) behavior**, not a test that would fail until someone fixes it. No detector logic changed. Full `npm test` / `npm run lint` / `npm run benchmark` still pass, corpus unchanged, at the end of this document.
+Four scenarios turned up something genuinely new (not already written down in `STRESS_TESTING.md` or `docs/adr/0001-deterministic-only-v1.md`). Each of those got one small, permanent Jest test -- `known-gap:`-prefixed, same convention the project already uses for `known-gap-uncommon-homoglyph` in the benchmark corpus -- that **documents the gap by asserting the current (open) behavior**, not a test that would fail until someone fixes it. No detector logic changed. Full `npm test` / `npm run lint` / `npm run benchmark` still pass, corpus unchanged, at the end of this document.
 
 ## Summary table
 
@@ -210,7 +210,7 @@ detectTransportTypeChange('.mcp.json', content, content) -> []   // content iden
 detectSwappedMcpServer('.mcp.json', content, content) -> []
 ```
 
-**Verdict: Confirms an already-documented non-goal.** Neither detector -- nor anything else in the codebase -- ever executes a referenced command or observes runtime behavior. `architecture.md` §8 explicitly lists "MCP server behavioral/semantic scanning" as **cut**, not deferred, citing the safety risk of running untrusted servers (`backend/benchmark/COMPARISON.md`) and that it's already well-covered ground elsewhere (mcp-scan, AgentShield). This tool only ever diffs declared config text between two refs; a `command`-based server's actual runtime network behavior is permanently outside what any ref-level diff could see.
+**Verdict: Confirms an already-documented non-goal.** Neither detector -- nor anything else in the codebase -- ever executes a referenced command or observes runtime behavior. `architecture.md` §8 explicitly lists "MCP server behavioral/semantic scanning" as **cut**, not deferred, citing the safety risk of running untrusted servers (`benchmark/COMPARISON.md`) and that it's already well-covered ground elsewhere (mcp-scan, AgentShield). This tool only ever diffs declared config text between two refs; a `command`-based server's actual runtime network behavior is permanently outside what any ref-level diff could see.
 
 ### EXT-E4: A confusable JSON key using the Mathematical Fraktur block, alongside the real key it impersonates
 

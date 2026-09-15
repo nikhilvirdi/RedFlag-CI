@@ -73,7 +73,7 @@ Every one of the 120 scenarios was checked individually against what it was buil
 
 ## Compared to what else is out there
 
-We ran the same original benchmark against Snyk Agent Scan (the tool most people know as mcp-scan). It couldn't render a verdict on any of the 18 files, for three separate reasons: it doesn't parse markdown rule files at all, its schema doesn't cover permissions or hooks, and reaching an actual verdict on MCP server configs requires a cloud account and running the servers themselves, neither of which RedFlag CI's own headless, zero-config design requires. The full comparison, including exactly what was tried and why, is in `backend/benchmark/COMPARISON.md`.
+We ran the same original benchmark against Snyk Agent Scan (the tool most people know as mcp-scan). It couldn't render a verdict on any of the 18 files, for three separate reasons: it doesn't parse markdown rule files at all, its schema doesn't cover permissions or hooks, and reaching an actual verdict on MCP server configs requires a cloud account and running the servers themselves, neither of which RedFlag CI's own headless, zero-config design requires. The full comparison, including exactly what was tried and why, is in `benchmark/COMPARISON.md`.
 
 ## v1.2.0: closing the gaps this document left open
 
@@ -113,7 +113,7 @@ A perfect score on the resulting 138-scenario corpus is not a claim that detecti
 
 ## v2.0.0: testing a stateful feature, differently
 
-Every detector this document has covered so far -- v1's original six, v1.2.0's eight more -- is a pure function: given a before-state and an after-state of one file, it returns findings, deterministically, with no memory of anything outside that one call. The 138-scenario corpus tests exactly that shape. `benchmark/run.ts` calls detector functions directly against one before/after file pair per scenario ID -- no Octokit, no webhook, no GitHub API involved at all (see the corpus's own "Methodology" section in `backend/benchmark/RESULTS.md`). A scenario's ground truth is "does this one file pair, on its own, look like drift." The format has no concept of "this is the second of two related PRs," or "this ran after that other thing already happened."
+Every detector this document has covered so far -- v1's original six, v1.2.0's eight more -- is a pure function: given a before-state and an after-state of one file, it returns findings, deterministically, with no memory of anything outside that one call. The 138-scenario corpus tests exactly that shape. `benchmark/run.ts` calls detector functions directly against one before/after file pair per scenario ID -- no Octokit, no webhook, no GitHub API involved at all (see the corpus's own "Methodology" section in `benchmark/RESULTS.md`). A scenario's ground truth is "does this one file pair, on its own, look like drift." The format has no concept of "this is the second of two related PRs," or "this ran after that other thing already happened."
 
 v2.0.0's Phase A doesn't fit that shape, and forcing it to would have meant testing the wrong thing. "Does the baseline update only on merge, never on open or synchronize" and "does a hash mismatch get logged as tampering, not silently swallowed" aren't questions about what a detector returns given two file contents -- they're questions about *when* a webhook event arrives, *what* a prior event already wrote, and *how* a mocked Octokit's `git`/`repos` endpoints behave across a sequence of calls. None of that is expressible as a single before/after pair.
 
@@ -140,17 +140,17 @@ Post-ship, v2.0.0 went through a full hardening audit before this roadmap was co
 
 The remaining 19 scenarios confirmed existing, already-documented behavior -- either a limitation already written down somewhere in this document or the ADR, or a positive confirmation that a piece of logic holds at a scale or shape it hadn't been explicitly tested at before.
 
-Full scenario-by-scenario detail, including exactly what was run and the real output for every one, is in `backend/STRESS_TEST_FINDINGS.md`; the complete Stage 3 audit this sweep was one part of is in `TRANSPARENCY_REPORT.md`.
+Full scenario-by-scenario detail, including exactly what was run and the real output for every one, is in `STRESS_TEST_FINDINGS.md`; the complete Stage 3 audit this sweep was one part of is in `TRANSPARENCY_REPORT.md`.
 
 **The corpus grew by exactly one scenario as a direct result** -- `dd8-monitored-file-deleted`, covering the new DD-8 detector this audit's separate code-review pass found the need for (`TRANSPARENCY_REPORT.md` section 2) -- bringing the total to 139. Precision and recall stayed at 1.000/1.000.
 
 ## Where to look next
 
-- `backend/benchmark/RESULTS.md` -- the full 139-scenario results table, generated fresh by the benchmark runner.
-- `backend/benchmark/COMPARISON.md` -- the live comparison against Snyk Agent Scan.
+- `benchmark/RESULTS.md` -- the full 139-scenario results table, generated fresh by the benchmark runner.
+- `benchmark/COMPARISON.md` -- the live comparison against Snyk Agent Scan.
 - `docs/adr/0001-deterministic-only-v1.md` -- why v1 is deterministic-only, and the honest cost of that choice.
 - `docs/EXPORTS.md` -- the SARIF/JSON export and exit-code-threshold functions v2.0.0 Phase B added.
-- `backend/STRESS_TEST_FINDINGS.md` -- the full 23-scenario Stage 3 sweep, one entry per scenario with real output.
+- `STRESS_TEST_FINDINGS.md` -- the full 23-scenario Stage 3 sweep, one entry per scenario with real output.
 - `TRANSPARENCY_REPORT.md` -- the complete Stage 3 audit this sweep was one part of.
 - `CHANGELOG.md` -- the exact fixes and additions that shipped in v1.1.0, v1.2.0, and v2.0.0.
 

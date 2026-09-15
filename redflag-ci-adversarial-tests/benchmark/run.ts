@@ -1,27 +1,27 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { SCENARIOS, CorpusScenario } from './corpus/manifest';
-import { detectNewMcpServer } from '../src/detectors/newMcpServer';
-import { detectSwappedMcpServer } from '../src/detectors/swappedMcpServer';
-import { detectWidenedPermissions } from '../src/detectors/widenedPermissions';
-import { detectHookChanged } from '../src/detectors/hookChanged';
-import { detectMonitoredFileDeleted } from '../src/detectors/monitoredFileDeleted';
-import { detectUnpinnedMcpDependency } from '../src/detectors/unpinnedMcpDependency';
-import { detectObfuscatedCommand } from '../src/detectors/obfuscatedCommand';
-import { detectDuplicateJsonKey } from '../src/detectors/duplicateJsonKey';
-import { detectSuspiciousNetworkTarget } from '../src/detectors/suspiciousNetworkTarget';
-import { detectPathTraversal } from '../src/detectors/pathTraversal';
-import { detectTransportTypeChange } from '../src/detectors/transportTypeChange';
-import { detectInvisibleUnicode } from '../src/detectors/invisibleUnicode';
-import { detectHomoglyphs } from '../src/detectors/homoglyphs';
-import { detectRuleFileChecksInJsonKeys } from '../src/detectors/ruleFileJsonKeys';
-import { aggregateFindings } from '../src/aggregateFindings';
-import { Finding } from '../src/types';
+import { detectNewMcpServer } from '../../backend/src/detectors/newMcpServer';
+import { detectSwappedMcpServer } from '../../backend/src/detectors/swappedMcpServer';
+import { detectWidenedPermissions } from '../../backend/src/detectors/widenedPermissions';
+import { detectHookChanged } from '../../backend/src/detectors/hookChanged';
+import { detectMonitoredFileDeleted } from '../../backend/src/detectors/monitoredFileDeleted';
+import { detectUnpinnedMcpDependency } from '../../backend/src/detectors/unpinnedMcpDependency';
+import { detectObfuscatedCommand } from '../../backend/src/detectors/obfuscatedCommand';
+import { detectDuplicateJsonKey } from '../../backend/src/detectors/duplicateJsonKey';
+import { detectSuspiciousNetworkTarget } from '../../backend/src/detectors/suspiciousNetworkTarget';
+import { detectPathTraversal } from '../../backend/src/detectors/pathTraversal';
+import { detectTransportTypeChange } from '../../backend/src/detectors/transportTypeChange';
+import { detectInvisibleUnicode } from '../../backend/src/detectors/invisibleUnicode';
+import { detectHomoglyphs } from '../../backend/src/detectors/homoglyphs';
+import { detectRuleFileChecksInJsonKeys } from '../../backend/src/detectors/ruleFileJsonKeys';
+import { aggregateFindings } from '../../backend/src/aggregateFindings';
+import { Finding } from '../../backend/src/types';
 
-// Resolved from process.cwd() (npm scripts run from backend/), not __dirname:
+// Resolved from process.cwd() (run from redflag-ci-adversarial-tests/), not __dirname:
 // tsc only compiles .ts files, so the compiled run.js ends up nested under
-// benchmark/dist/benchmark/, while the corpus fixtures stay put at their
-// source location, benchmark/corpus/.
+// benchmark/dist/redflag-ci-adversarial-tests/benchmark/, while the corpus
+// fixtures stay put at their source location, benchmark/corpus/.
 const CORPUS_DIR = path.join(process.cwd(), 'benchmark', 'corpus');
 
 // Mirrors processPullRequestEvent.ts's engine dispatch exactly -- this is the
