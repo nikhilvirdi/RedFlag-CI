@@ -10,4 +10,4 @@ RedFlag CI itself reads pull request diffs and a small set of configuration file
 
 ## A note on dogfooding
 
-This repository's own `CLAUDE.md`, `AGENTS.md`, and any future `.cursor/rules` are the same category of file RedFlag CI is built to watch. Once the app is far enough along to install on its own repository, it will be, deliberately. A tool built to catch this class of risk should be able to catch it in its own codebase.
+This repository's own agent-config and rule files, whenever it has any, are the same category RedFlag CI is built to watch. Once the app is far enough along to install on its own repository, it will be, deliberately. A tool built to catch this class of risk should be able to catch it in its own codebase.
