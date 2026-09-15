@@ -159,7 +159,7 @@ export function detectWidenedPermissions(
   // replaced by the narrower "Bash(npm test)" must not read as a brand-new
   // grant just because the exact string wasn't in base. DECISION (matching
   // Task 3.2's precedent, and this scenario's own documented ground truth
-  // in benchmark/corpus/manifest.ts): a correlated narrowing pair produces
+  // in redflag-ci-adversarial-tests/benchmark/corpus/manifest.ts): a correlated narrowing pair produces
   // NO finding at all, not a distinct "permission narrowed" finding --
   // architecture.md 5's DD-3 spec has no such finding type, and a
   // provably-narrower grant on the same tool isn't itself a risk DD-3

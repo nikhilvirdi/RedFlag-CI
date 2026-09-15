@@ -217,7 +217,7 @@ describe('readBaseline', () => {
       expect(mockLogger.warn).not.toHaveBeenCalled();
     });
 
-    // Closes the silent-fail-open gap from backend/STRESS_TEST_FINDINGS.md,
+    // Closes the silent-fail-open gap from redflag-ci-adversarial-tests/STRESS_TEST_FINDINGS.md,
     // EXT-E1: writeBaseline/buildSnapshot never validate that a monitored
     // file's raw content is parseable JSON before storing it -- they store
     // whatever text getFileAtRef fetched, verbatim. A merge landing with an

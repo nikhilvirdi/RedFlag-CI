@@ -131,7 +131,7 @@ describe('Task 5.6: detectPathTraversal', () => {
     expect(findings[0].file).toBe('claude_desktop_config.json');
   });
 
-  // Closes the fullwidth-separator gap from backend/STRESS_TEST_FINDINGS.md,
+  // Closes the fullwidth-separator gap from redflag-ci-adversarial-tests/STRESS_TEST_FINDINGS.md,
   // INT-A1: a fullwidth solidus (U+FF0F, "／") renders as a visually
   // near-identical slash but is a different code point than ASCII "/", so
   // "..／etc／passwd" walks the same directories a reviewer would read as

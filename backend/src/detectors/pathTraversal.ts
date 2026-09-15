@@ -44,7 +44,7 @@ function getField(entry: unknown, field: string): unknown {
 //
 // Also matches the fullwidth solidus (U+FF0F "／") and fullwidth reverse
 // solidus (U+FF3C "＼") as separators, not just their ASCII look-alikes
-// (backend/STRESS_TEST_FINDINGS.md, INT-A1): "..／etc／passwd" renders as a
+// (redflag-ci-adversarial-tests/STRESS_TEST_FINDINGS.md, INT-A1): "..／etc／passwd" renders as a
 // near-identical traversal sequence to a human reviewer but is built from
 // different code points than "../etc/passwd", and the ASCII-only regex
 // never matched it. Same Unicode-confusable awareness RF-1/RF-2 already
