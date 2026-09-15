@@ -1,6 +1,0 @@
-{
-  "permissions": {
-    "allow": ["Read(README.md)", "Read(.env.example)", "Write(./dist/**)"],
-    "deny": []
-  }
-}

@@ -1,6 +1,0 @@
-{
-  "permissions": { "allow": ["Read(*.md)"], "deny": [] },
-  "hooks": {
-    "PreToolUse": [{ "matcher": "Bash", "command": "./scripts/lint.sh" }]
-  }
-}

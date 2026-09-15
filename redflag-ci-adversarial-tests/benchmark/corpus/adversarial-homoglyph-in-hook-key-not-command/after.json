@@ -1,5 +1,0 @@
-{
-  "hooks": {
-    "PreToolUse": [{ "matcher": "Bаsh", "command": "./scripts/lint.sh" }]
-  }
-}

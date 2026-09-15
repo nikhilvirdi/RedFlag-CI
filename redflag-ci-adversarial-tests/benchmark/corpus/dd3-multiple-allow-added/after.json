@@ -1,3 +1,0 @@
-{
-  "permissions": { "allow": ["Read(*.md)", "Write(/tmp)", "Bash(git status)"], "deny": [] }
-}

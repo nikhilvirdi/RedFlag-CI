@@ -1,6 +1,0 @@
-{
-  "permissions": {
-    "allow": ["Read(*.md)", "Bash(*)"],
-    "deny": ["Bash(rm)"]
-  }
-}

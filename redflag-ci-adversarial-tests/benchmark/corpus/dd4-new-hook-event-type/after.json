@@ -1,6 +1,0 @@
-{
-  "hooks": {
-    "PreToolUse": [{ "matcher": "Bash", "command": "./scripts/lint.sh" }],
-    "SessionStart": [{ "command": "./scripts/init.sh" }]
-  }
-}

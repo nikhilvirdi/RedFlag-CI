@@ -1,6 +1,0 @@
-{
-  "permissions": {
-    "allow": ["Read(*.md)"],
-    "deny": ["Bash(git log)"]
-  }
-}

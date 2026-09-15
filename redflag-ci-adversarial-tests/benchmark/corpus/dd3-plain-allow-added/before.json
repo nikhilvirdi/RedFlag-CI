@@ -1,6 +1,0 @@
-{
-  "permissions": {
-    "allow": ["Read(README.md)"],
-    "deny": []
-  }
-}

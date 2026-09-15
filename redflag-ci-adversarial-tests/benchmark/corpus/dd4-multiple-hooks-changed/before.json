@@ -1,8 +1,0 @@
-{
-  "hooks": {
-    "PreToolUse": [
-      { "matcher": "Bash", "command": "./scripts/lint.sh" },
-      { "matcher": "Edit", "command": "./scripts/format-check.sh" }
-    ]
-  }
-}

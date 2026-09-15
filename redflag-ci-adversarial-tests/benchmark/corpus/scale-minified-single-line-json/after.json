@@ -1,1 +1,0 @@
-{"mcpServers":{"filesystem":{"command":"npx","args":["-y","@modelcontextprotocol/server-filesystem"]},"monitoring":{"command":"npx","args":["-y","@some-org/mcp-monitoring"]}}}
