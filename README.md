@@ -1,10 +1,10 @@
-<img width="1369" height="339" alt="RedFlag-CI Dark Theme Logo" src="REPLACE_WITH_YOUR_HOSTED_SVG_URL" />
+<img width="1369" height="339" alt="RedFlag-CI Dark Theme Logo" src="logo.svg" />
 
 # RedFlag CI
 
 RedFlag CI is a GitHub App that watches pull requests for risky changes to your AI agent configuration, before those changes get merged.
 
-**Latest release: [v2.0.0](https://github.com/nikhilvirdi/RedFlag-CI/releases/tag/v2.0.0)** -- the project's final planned version. See the release page for the full writeup, or `https://github.com/nikhilvirdi/redflag-ci-adversarial-tests/blob/main/TRANSPARENCY_REPORT.md` in this repo for the post-ship audit behind it.
+**Latest release: [v2.0.0](https://github.com/nikhilvirdi/RedFlag-CI/releases/tag/v2.0.0)** -- the project's final planned version. See the release page for the full writeup, or the adversarial-tests repo's [`TRANSPARENCY_REPORT.md`](https://github.com/nikhilvirdi/redflag-ci-adversarial-tests/blob/main/TRANSPARENCY_REPORT.md) for the post-ship audit behind it.
 
 ## Why this exists
 
@@ -13,6 +13,8 @@ AI coding agents like Claude Code, Cursor, and Copilot read instructions from fi
 That makes them a supply chain, and a pull request is where that supply chain actually changes. A PR that adds a new MCP server, widens a permission, or swaps a pinned tool version can quietly change what your agent is allowed to do. A rule file with a hidden Unicode character can inject instructions that no reviewer will ever spot by reading the diff on GitHub.
 
 2026 has already produced real incidents here: CVE-2026-25253, the first CVE ever assigned to an agentic AI system; the ClawHavoc campaign, which planted over a thousand malicious agent skills into a public marketplace; and CVE-2025-6514, a critical remote-code-execution bug in a widely used MCP package. Most existing scanners either run locally on your own machine or surface findings in a security dashboard that nobody outside the AppSec team opens. Neither shows up where a developer is actually looking: the pull request.
+
+`ARCHITECTURE.md` covers the research behind this scope, and what else exists in this space, in much more depth.
 
 ## What it does
 
@@ -31,14 +33,14 @@ If a PR doesn't touch any of these files, RedFlag CI does nothing: no comment, n
 
 ## Key features
 
-- **Thirteen deterministic detectors**, covering agent-config drift (new MCP servers, swapped tools, widened permissions, hook changes, unpinned dependencies, obfuscated commands, duplicate keys, suspicious network targets, path traversal, transport-type changes, monitored-file deletion) and rule-file injection (invisible Unicode, homoglyphs) -- see `architecture.md` for the exact behavior of each.
+- **Thirteen deterministic detectors**, covering agent-config drift (new MCP servers, swapped tools, widened permissions, hook changes, unpinned dependencies, obfuscated commands, duplicate keys, suspicious network targets, path traversal, transport-type changes, monitored-file deletion) and rule-file injection (invisible Unicode, homoglyphs) -- see `ARCHITECTURE.md` for the exact behavior of each.
 - **No LLM calls, anywhere in the pipeline.** Every check is a plain function over file content, so a given diff always produces the same result. Nothing here depends on a model call succeeding, staying consistent, or costing you tokens.
 - **Fail-open by design.** A malformed or unparseable config file is skipped, not blocked. RedFlag CI would rather miss a broken file than break your build.
 - **Zero-config install.** No dashboard, no settings screen, nothing to configure beyond installing the app. It works the moment it's on your repo.
 - **Quiet by default.** No comment posts unless there's an actual finding. A PR that doesn't touch a monitored file gets no response at all -- silence is part of the product, not a gap in coverage.
 - **Least-privilege permissions.** The GitHub App requests `contents:read`, `pull_requests:write`, and `checks:write`. Nothing broader.
 - **Never blocks a merge.** Check runs report `success` or `neutral`, never `failure`. Whether a finding should block a PR is a decision for your repo's own branch protection rules, not something this tool imposes.
-- **Benchmarked, not just claimed.** A 139-scenario adversarial test corpus backs the precision and recall numbers below, with every known limitation documented openly rather than hidden. See `https://github.com/nikhilvirdi/redflag-ci-adversarial-tests/blob/main/STRESS_TESTING.md`.
+- **Benchmarked, not just claimed.** A 139-scenario adversarial test corpus backs the precision and recall numbers below, with every known limitation documented openly rather than hidden. See the adversarial-tests repo's [`STRESS_TESTING.md`](https://github.com/nikhilvirdi/redflag-ci-adversarial-tests/blob/main/STRESS_TESTING.md).
 
 ## Tech stack
 
@@ -55,13 +57,13 @@ If a PR doesn't touch any of these files, RedFlag CI does nothing: no comment, n
 
 ## What it doesn't do, and why
 
-No dashboard. No auto-fix. No LLM-based or ML-based semantic analysis, anywhere in the roadmap. These weren't left out for lack of time -- they were considered and deliberately rejected, because each one would trade away the thing that makes this tool different: deterministic, zero-noise, zero-config detection. `architecture.md` section 8 has the full reasoning.
+No dashboard. No auto-fix. No LLM-based or ML-based semantic analysis, anywhere in the roadmap. These weren't left out for lack of time -- they were considered and deliberately rejected, because each one would trade away the thing that makes this tool different: deterministic, zero-noise, zero-config detection. `ARCHITECTURE.md` section 10 has the full reasoning.
 
-Two things that used to be listed here as "still planned" have since shipped, in v2.0.0, the project's final version: memory of drift across multiple pull requests (still no database -- a small git-native snapshot, not a hosted service), and SARIF/JSON export so teams that want a dashboard can get one for free via GitHub's own Security tab, without this project building one. With v2.0.0 shipped, this roadmap is closed -- there's nothing left planned beyond what's already built. See `CHANGELOG.md` for exactly what shipped, and `docs/EXPORTS.md` for how to use the export functions.
+Two things that used to be listed here as "still planned" have since shipped, in v2.0.0, the project's final version: memory of drift across multiple pull requests (still no database -- a small git-native snapshot, not a hosted service), and SARIF/JSON export so teams that want a dashboard can get one for free via GitHub's own Security tab, without this project building one. With v2.0.0 shipped, this roadmap is closed -- there's nothing left planned beyond what's already built. See `CHANGELOG.md` for exactly what shipped, and `ARCHITECTURE.md` section 10 for how to use the export functions.
 
 ## Status
 
-v2.0.0 is complete -- the project's final planned release, since hardened by a full post-ship audit (Stage 3; see `https://github.com/nikhilvirdi/redflag-ci-adversarial-tests/blob/main/TRANSPARENCY_REPORT.md`). The core pipeline (thirteen detector IDs total: the original six, six new ones added in v1.2.0 -- RF-1/RF-2's JSON-key extension reuses existing IDs rather than adding new ones, see `architecture.md` §5 -- plus DD-8, added during Stage 3's audit to catch a monitored file's outright deletion) works end to end, from a GitHub webhook to a posted PR comment and check run, verified against a real pull request on a live repository at v1.0.0. It's also been stress-tested against a 139-scenario adversarial benchmark, built specifically to find the tool's real limits -- see `https://github.com/nikhilvirdi/redflag-ci-adversarial-tests/blob/main/STRESS_TESTING.md` for what that testing found and `docs/adr/0001-deterministic-only-v1.md` for what the numbers below actually mean. v2.0.0's own additions since that live run -- cross-PR drift memory, the export functions, and Stage 3's fixes to existing detectors -- are validated by the automated test suite (unit tests against a mocked Octokit, plus integration tests exercising the full webhook-to-comment pipeline) and, for Stage 3 specifically, a dedicated 23-scenario adversarial stress-test sweep (`https://github.com/nikhilvirdi/redflag-ci-adversarial-tests/blob/main/STRESS_TEST_FINDINGS.md`), rather than that same live-repository run; `https://github.com/nikhilvirdi/redflag-ci-adversarial-tests/blob/main/STRESS_TESTING.md`'s new section explains why cross-PR behavior specifically is tested that way instead of via the benchmark corpus.
+v2.0.0 is complete -- the project's final planned release, since hardened by a full post-ship audit (Stage 3; see the adversarial-tests repo's [`TRANSPARENCY_REPORT.md`](https://github.com/nikhilvirdi/redflag-ci-adversarial-tests/blob/main/TRANSPARENCY_REPORT.md)). The core pipeline (thirteen detector IDs total: the original six, six new ones added in v1.2.0 -- RF-1/RF-2's JSON-key extension reuses existing IDs rather than adding new ones, see `ARCHITECTURE.md` §7 -- plus DD-8, added during Stage 3's audit to catch a monitored file's outright deletion) works end to end, from a GitHub webhook to a posted PR comment and check run, verified against a real pull request on a live repository at v1.0.0. It's also been stress-tested against a 139-scenario adversarial benchmark, built specifically to find the tool's real limits -- see the adversarial-tests repo's [`STRESS_TESTING.md`](https://github.com/nikhilvirdi/redflag-ci-adversarial-tests/blob/main/STRESS_TESTING.md) for what that testing found and `ARCHITECTURE.md`'s Appendix A for what the numbers below actually mean. v2.0.0's own additions since that live run -- cross-PR drift memory, the export functions, and Stage 3's fixes to existing detectors -- are validated by the automated test suite (unit tests against a mocked Octokit, plus integration tests exercising the full webhook-to-comment pipeline) and, for Stage 3 specifically, a dedicated 23-scenario adversarial stress-test sweep ([`STRESS_TEST_FINDINGS.md`](https://github.com/nikhilvirdi/redflag-ci-adversarial-tests/blob/main/STRESS_TEST_FINDINGS.md)), rather than that same live-repository run; [`STRESS_TESTING.md`](https://github.com/nikhilvirdi/redflag-ci-adversarial-tests/blob/main/STRESS_TESTING.md)'s new section explains why cross-PR behavior specifically is tested that way instead of via the benchmark corpus.
 
 | Version | Precision | Recall | Benchmark corpus |
 |---|---|---|---|
@@ -69,11 +71,11 @@ v2.0.0 is complete -- the project's final planned release, since hardened by a f
 | v1.1.0 | 0.926 | 0.949 | 120 scenarios |
 | v1.2.0 | 1.000 | 1.000 | 138 scenarios |
 
-v2.0.0 shipped against this same 138-scenario corpus, unchanged at first: Phase A's cross-PR drift memory is a stateful, sequential, webhook-timing-dependent feature that doesn't fit the corpus's single-PR-scoped format, so it's covered instead by integration tests exercising the real pipeline (`https://github.com/nikhilvirdi/redflag-ci-adversarial-tests/blob/main/STRESS_TESTING.md` explains why in full). Stage 3's post-ship audit grew the corpus by one scenario after that -- `dd8-monitored-file-deleted`, covering the new DD-8 detector -- bringing it to 139. Precision and recall stayed at 1.000/1.000 throughout.
+v2.0.0 shipped against this same 138-scenario corpus, unchanged at first: Phase A's cross-PR drift memory is a stateful, sequential, webhook-timing-dependent feature that doesn't fit the corpus's single-PR-scoped format, so it's covered instead by integration tests exercising the real pipeline ([`STRESS_TESTING.md`](https://github.com/nikhilvirdi/redflag-ci-adversarial-tests/blob/main/STRESS_TESTING.md) explains why in full). Stage 3's post-ship audit grew the corpus by one scenario after that -- `dd8-monitored-file-deleted`, covering the new DD-8 detector -- bringing it to 139. Precision and recall stayed at 1.000/1.000 throughout.
 
 This table is now complete: v2.0.0 is the project's last planned version, and no future release will grow the corpus for one. Stage 3's one-scenario addition, above, came from hardening an already-shipped release, not from a new version.
 
-Full breakdown: `https://github.com/nikhilvirdi/redflag-ci-adversarial-tests/blob/main/benchmark/RESULTS.md`.
+Full breakdown: the adversarial-tests repo's [`benchmark/RESULTS.md`](https://github.com/nikhilvirdi/redflag-ci-adversarial-tests/blob/main/benchmark/RESULTS.md).
 
 ## Getting started
 
@@ -117,22 +119,18 @@ npm run build
 node dist/index.js
 ```
 
-The service listens on port 3000 by default. Once it's running and reachable at the webhook URL you configured, RedFlag CI is live: open a pull request that touches one of the monitored files (see `architecture.md` section 4 for the full list) on the repo you installed it on, and it'll comment if it finds something worth flagging.
+The service listens on port 3000 by default. Once it's running and reachable at the webhook URL you configured, RedFlag CI is live: open a pull request that touches one of the monitored files (see `ARCHITECTURE.md` section 6 for the full list) on the repo you installed it on, and it'll comment if it finds something worth flagging.
 
 ## Documentation
 
 | File | What's in it |
 |---|---|
-| [`architecture.md`](architecture.md) | Full system design: every detector, every decision, the complete roadmap through v2.0.0, the project's final release |
-| [`docs/PROBLEM_SPACE.md`](docs/PROBLEM_SPACE.md) | The research behind why this exists |
-| [`docs/COMPETITIVE_LANDSCAPE.md`](docs/COMPETITIVE_LANDSCAPE.md) | What else is out there, and where the gaps are |
-| [`docs/adr/0001-deterministic-only-v1.md`](docs/adr/0001-deterministic-only-v1.md) | Why v1 is deterministic-only, and what that costs in practice |
-| [`https://github.com/nikhilvirdi/redflag-ci-adversarial-tests/blob/main/STRESS_TESTING.md`](https://github.com/nikhilvirdi/redflag-ci-adversarial-tests/blob/main/STRESS_TESTING.md) | How the benchmark grew from 18 to 139 scenarios, and what it found |
-| [`https://github.com/nikhilvirdi/redflag-ci-adversarial-tests/blob/main/benchmark/RESULTS.md`](https://github.com/nikhilvirdi/redflag-ci-adversarial-tests/blob/main/benchmark/RESULTS.md) | The full benchmark corpus and results |
-| [`https://github.com/nikhilvirdi/redflag-ci-adversarial-tests/blob/main/benchmark/COMPARISON.md`](https://github.com/nikhilvirdi/redflag-ci-adversarial-tests/blob/main/benchmark/COMPARISON.md) | A live comparison against Snyk Agent Scan (formerly mcp-scan) |
-| [`docs/EXPORTS.md`](docs/EXPORTS.md) | v2.0.0's SARIF/JSON export and exit-code-threshold functions, and a worked GitHub Actions example |
-| [`https://github.com/nikhilvirdi/redflag-ci-adversarial-tests/blob/main/TRANSPARENCY_REPORT.md`](https://github.com/nikhilvirdi/redflag-ci-adversarial-tests/blob/main/TRANSPARENCY_REPORT.md) | The post-ship Stage 3 audit: dependency and dead-code checks, a full code-review pass, a coverage investigation, and a 23-scenario adversarial stress-test sweep |
-| [`https://github.com/nikhilvirdi/redflag-ci-adversarial-tests/blob/main/STRESS_TEST_FINDINGS.md`](https://github.com/nikhilvirdi/redflag-ci-adversarial-tests/blob/main/STRESS_TEST_FINDINGS.md) | Stage 3's stress-test sweep, scenario by scenario, with real output |
+| [`ARCHITECTURE.md`](ARCHITECTURE.md) | Full system design: the research and competitive landscape behind this project's scope, every detector, every decision, the complete roadmap through v2.0.0, and the ADR behind the deterministic-only design |
+| [adversarial-tests repo: `STRESS_TESTING.md`](https://github.com/nikhilvirdi/redflag-ci-adversarial-tests/blob/main/STRESS_TESTING.md) | How the benchmark grew from 18 to 139 scenarios, and what it found |
+| [adversarial-tests repo: `benchmark/RESULTS.md`](https://github.com/nikhilvirdi/redflag-ci-adversarial-tests/blob/main/benchmark/RESULTS.md) | The full benchmark corpus and results |
+| [adversarial-tests repo: `benchmark/COMPARISON.md`](https://github.com/nikhilvirdi/redflag-ci-adversarial-tests/blob/main/benchmark/COMPARISON.md) | A live comparison against Snyk Agent Scan (formerly mcp-scan) |
+| [adversarial-tests repo: `TRANSPARENCY_REPORT.md`](https://github.com/nikhilvirdi/redflag-ci-adversarial-tests/blob/main/TRANSPARENCY_REPORT.md) | The post-ship Stage 3 audit: dependency and dead-code checks, a full code-review pass, a coverage investigation, and a 23-scenario adversarial stress-test sweep |
+| [adversarial-tests repo: `STRESS_TEST_FINDINGS.md`](https://github.com/nikhilvirdi/redflag-ci-adversarial-tests/blob/main/STRESS_TEST_FINDINGS.md) | Stage 3's stress-test sweep, scenario by scenario, with real output |
 | [`CHANGELOG.md`](CHANGELOG.md) | What shipped in each version |
 | [`SECURITY.md`](SECURITY.md) | How to report a vulnerability, and the tool's own security scope |
 
