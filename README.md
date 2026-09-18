@@ -1,6 +1,9 @@
+# RedFlag CI
+
+
 <img width="1369" height="339" alt="RedFlag-CI Dark Theme Logo" src="logo.svg" />
 
-# RedFlag CI
+
 
 RedFlag CI is a GitHub App that watches pull requests for risky changes to your AI agent configuration, before those changes get merged.
 
